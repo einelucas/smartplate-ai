@@ -176,13 +176,20 @@ export async function POST(request: Request) {
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
+// O app ainda não coleta idade nem nível de atividade do usuário. Até que
+// isso exista no onboarding, usamos médias documentadas (adulto jovem,
+// atividade moderada) em vez de números soltos na fórmula — decisão tomada
+// para não expandir o escopo desta tarefa apenas para remover o cálculo.
+const ASSUMED_AGE_YEARS = 30;
+const ASSUMED_ACTIVITY_FACTOR = 1.55; // atividade moderada (Mifflin-St Jeor)
+
 function calculateDailyCalories(
-  height: number,
+  heightCm: number,
   currentWeight: number,
   targetWeight: number
 ): number {
-  const tmb = 10 * currentWeight + 6.25 * height - 5 * 30 + 5;
-  const maintenance = Math.round(tmb * 1.55);
+  const bmr = 10 * currentWeight + 6.25 * heightCm - 5 * ASSUMED_AGE_YEARS + 5;
+  const maintenance = Math.round(bmr * ASSUMED_ACTIVITY_FACTOR);
   if (targetWeight < currentWeight) return Math.round(maintenance - 500);
   if (targetWeight > currentWeight) return Math.round(maintenance + 300);
   return maintenance;

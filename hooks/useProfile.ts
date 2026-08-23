@@ -2,45 +2,45 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useUser } from "@clerk/nextjs";
 import toast from "react-hot-toast";
-import type {
-  PhysicalData,
-  UserPreferences,
-  UserProfile,
-} from "@/types/profile";
+import type { PhysicalData, UserPreferences } from "@/types/profile";
+import { useCommunityMe, useGamificationDetail, useUpdateCommunityProfile } from "@/hooks/useCommunity";
 
 export function useProfile() {
   const { isSignedIn } = useUser();
   const queryClient = useQueryClient();
 
   // ============================================
-  // BUSCAR DADOS FÍSICOS
+  // DADOS FÍSICOS
   // ============================================
   const { data: physicalData, isLoading: physicalLoading } = useQuery({
     queryKey: ["physical-data"],
     queryFn: async () => {
       const response = await fetch("/api/user/physical-data");
-      if (!response.ok) {
-        throw new Error("Erro ao buscar dados físicos");
-      }
+      if (!response.ok) throw new Error("Erro ao buscar dados físicos");
       return response.json() as Promise<PhysicalData>;
     },
     enabled: isSignedIn,
   });
 
   // ============================================
-  // BUSCAR PREFERÊNCIAS
+  // PREFERÊNCIAS
   // ============================================
   const { data: preferences, isLoading: preferencesLoading } = useQuery({
     queryKey: ["preferences"],
     queryFn: async () => {
       const response = await fetch("/api/user/preferences");
-      if (!response.ok) {
-        throw new Error("Erro ao buscar preferências");
-      }
+      if (!response.ok) throw new Error("Erro ao buscar preferências");
       return response.json() as Promise<UserPreferences>;
     },
     enabled: isSignedIn,
   });
+
+  // ============================================
+  // IDENTIDADE PÚBLICA (SocialProfile) + GAMIFICAÇÃO
+  // Reaproveita os hooks já existentes da Comunidade — não duplica a busca.
+  // ============================================
+  const { data: meData, isLoading: socialLoading } = useCommunityMe();
+  const { data: gamificationDetail, isLoading: gamificationLoading } = useGamificationDetail();
 
   // ============================================
   // ATUALIZAR DADOS FÍSICOS
@@ -52,20 +52,17 @@ export function useProfile() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
-
       if (!response.ok) {
-        throw new Error("Erro ao atualizar dados");
+        const error = await response.json().catch(() => null);
+        throw new Error(error?.error || "Erro ao atualizar dados");
       }
-
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["physical-data"] });
       toast.success("Dados atualizados!");
     },
-    onError: (error: Error) => {
-      toast.error(error.message);
-    },
+    onError: (error: Error) => toast.error(error.message),
   });
 
   // ============================================
@@ -78,37 +75,39 @@ export function useProfile() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
-
       if (!response.ok) {
-        throw new Error("Erro ao atualizar preferências");
+        const error = await response.json().catch(() => null);
+        throw new Error(error?.error || "Erro ao atualizar preferências");
       }
-
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["preferences"] });
       toast.success("Preferências atualizadas!");
     },
-    onError: (error: Error) => {
-      toast.error(error.message);
-    },
+    onError: (error: Error) => toast.error(error.message),
   });
 
   // ============================================
-  // REGISTRAR PESO
+  // ATUALIZAR IDENTIDADE (displayName/username/bio/avatar) — reaproveita a
+  // mesma mutation já usada pela Comunidade, sem endpoint paralelo.
+  // ============================================
+  const updateIdentity = useUpdateCommunityProfile();
+
+  // ============================================
+  // REGISTRAR PESO — rota oficial única: POST /api/weight
   // ============================================
   const addWeightLog = useMutation({
-    mutationFn: async (weight: number) => {
-      const response = await fetch("/api/weight-logs", {
+    mutationFn: async (input: { weight: number; notes?: string }) => {
+      const response = await fetch("/api/weight", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ weight }),
+        body: JSON.stringify(input),
       });
-
       if (!response.ok) {
-        throw new Error("Erro ao registrar peso");
+        const error = await response.json().catch(() => null);
+        throw new Error(error?.error || "Erro ao registrar peso");
       }
-
       return response.json();
     },
     onSuccess: () => {
@@ -116,58 +115,46 @@ export function useProfile() {
       queryClient.invalidateQueries({ queryKey: ["physical-data"] });
       toast.success("Peso registrado!");
     },
-    onError: (error: Error) => {
-      toast.error(error.message);
-    },
+    onError: (error: Error) => toast.error(error.message),
   });
 
   // ============================================
-  // VERIFICAR SE PERFIL ESTÁ COMPLETO
+  // STATUS DO ONBOARDING / PERFIL
   // ============================================
-  const isProfileComplete = () => {
-    if (!physicalData || !preferences) return false;
+  const isProfileComplete = !!physicalData?.onboardingCompletedAt;
 
-    return !!(
-      physicalData.height &&
-      physicalData.currentWeight &&
-      physicalData.targetWeight &&
-      physicalData.dietType &&
-      physicalData.cookingLevel
-    );
-  };
-
-  // ============================================
-  // OBTER CAMPOS FALTANTES
-  // ============================================
-  const getMissingFields = () => {
+  const missingFields = (() => {
     const missing: string[] = [];
-
     if (!physicalData?.height) missing.push("altura");
     if (!physicalData?.currentWeight) missing.push("peso atual");
     if (!physicalData?.targetWeight) missing.push("peso meta");
     if (!physicalData?.dietType) missing.push("tipo de dieta");
     if (!physicalData?.cookingLevel) missing.push("nível na cozinha");
-
     return missing;
-  };
+  })();
 
   return {
     // Dados
     physicalData,
     preferences,
+    socialProfile: meData?.profile,
+    gamification: gamificationDetail ?? meData?.gamification,
 
     // Status
     physicalLoading,
     preferencesLoading,
-    isLoading: physicalLoading || preferencesLoading,
+    socialLoading,
+    gamificationLoading,
+    isLoading: physicalLoading || preferencesLoading || socialLoading,
 
-    // Métodos
+    // Mutations
     updatePhysicalData,
     updatePreferences,
+    updateIdentity,
     addWeightLog,
 
     // Utilitários
-    isProfileComplete: isProfileComplete(),
-    missingFields: getMissingFields(),
+    isProfileComplete,
+    missingFields,
   };
 }

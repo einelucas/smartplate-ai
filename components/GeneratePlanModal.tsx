@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { Sparkles, X, Plus } from "lucide-react";
+import { DIET_TYPES, DIET_GOALS, COOKING_LEVELS, BUDGET_LEVELS, ALLERGY_OPTIONS } from "@/lib/profile/options";
 
 export interface GeneratePlanFormData {
   dietType: string;
@@ -20,37 +21,13 @@ export interface GeneratePlanFormData {
   additionalNotes: string;
 }
 
-const dietTypes = [
-  { value: "tradicional", label: "Tradicional" },
-  { value: "vegetariana", label: "Vegetariana" },
-  { value: "vegana", label: "Vegana" },
-  { value: "low_carb", label: "Low Carb" },
-  { value: "cetogenica", label: "Cetogênica" },
-  { value: "mediterranea", label: "Mediterrânea" },
-  { value: "sem_gluten", label: "Sem Glúten" },
-  { value: "sem_lactose", label: "Sem Lactose" },
-];
-
-const dietGoals = [
-  { value: "perder peso", label: "Perder peso" },
-  { value: "ganhar massa", label: "Ganhar massa" },
-  { value: "manter", label: "Manter o peso" },
-];
-
-const cookingLevels = [
-  { value: "iniciante", label: "Iniciante" },
-  { value: "intermediario", label: "Intermediário" },
-  { value: "avancado", label: "Avançado" },
-  { value: "chef", label: "Chef" },
-];
-
-const budgetLevels = [
-  { value: "low", label: "Econômico" },
-  { value: "medium", label: "Moderado" },
-  { value: "high", label: "Sem restrição" },
-];
-
-const commonAllergies = ["Glúten", "Lactose", "Ovos", "Frutos do mar", "Amendoim", "Soja"];
+// Opções centralizadas em lib/profile/options.ts — reaproveitadas também no
+// onboarding e no EditProfileModal, sem listas divergentes.
+const dietTypes = DIET_TYPES;
+const dietGoals = DIET_GOALS;
+const cookingLevels = COOKING_LEVELS;
+const budgetLevels = BUDGET_LEVELS;
+const commonAllergies = ALLERGY_OPTIONS.map((a) => a.value);
 
 function TagInput({
   values,

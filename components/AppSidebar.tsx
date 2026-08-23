@@ -19,6 +19,7 @@ import {
   LogOut,
 } from "lucide-react";
 import NotificationsBell from "@/components/NotificationsBell";
+import { useCommunityMe } from "@/hooks/useCommunity";
 
 const navItems = [
   { href: "/", icon: Home, label: "Início" },
@@ -33,8 +34,15 @@ export default function AppSidebar({ children }: { children: React.ReactNode }) 
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const { user } = useUser();
   const pathname = usePathname();
+  const { data: meData } = useCommunityMe();
 
   const currentItem = navItems.find((item) => (item.href === "/" ? pathname === "/" : pathname.startsWith(item.href)));
+
+  // Identidade pública (SocialProfile) é a fonte oficial; Clerk é usado como
+  // fallback temporário enquanto a query carrega.
+  const sidebarDisplayName = meData?.profile?.displayName || user?.fullName || user?.firstName || "Usuário";
+  const sidebarUsername = meData?.profile?.username;
+  const sidebarAvatarUrl = meData?.profile?.avatarUrl || user?.imageUrl;
 
   return (
     <div className="min-h-screen bg-slate-50 flex">
@@ -119,18 +127,18 @@ export default function AppSidebar({ children }: { children: React.ReactNode }) 
         <div className="p-4 border-t border-slate-100">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 flex-shrink-0 bg-gradient-to-br from-[#007BFF] to-[#28A745] rounded-full flex items-center justify-center text-white text-sm font-bold overflow-hidden">
-              {user?.imageUrl ? (
+              {sidebarAvatarUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={user.imageUrl} alt="Avatar" className="w-full h-full object-cover" />
+                <img src={sidebarAvatarUrl} alt="Avatar" className="w-full h-full object-cover" />
               ) : (
-                user?.firstName?.charAt(0) || "U"
+                sidebarDisplayName.charAt(0)
               )}
             </div>
             <AnimatePresence>
               {sidebarOpen && (
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-slate-800 truncate">{user?.fullName || user?.firstName || "Usuário"}</p>
-                  <p className="text-xs text-slate-400 truncate">{user?.primaryEmailAddress?.emailAddress}</p>
+                  <p className="text-sm font-semibold text-slate-800 truncate">{sidebarDisplayName}</p>
+                  <p className="text-xs text-slate-400 truncate">{sidebarUsername ? `@${sidebarUsername}` : user?.primaryEmailAddress?.emailAddress}</p>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -159,11 +167,11 @@ export default function AppSidebar({ children }: { children: React.ReactNode }) 
             <NotificationsBell />
             <Link href="/profile">
               <div className="w-10 h-10 bg-gradient-to-br from-[#007BFF] to-[#28A745] rounded-full flex items-center justify-center text-lg cursor-pointer overflow-hidden">
-                {user?.imageUrl ? (
+                {sidebarAvatarUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={user.imageUrl} alt="Avatar" className="w-full h-full object-cover" />
+                  <img src={sidebarAvatarUrl} alt="Avatar" className="w-full h-full object-cover" />
                 ) : (
-                  <span className="text-white text-sm font-bold">{user?.firstName?.charAt(0) || "U"}</span>
+                  <span className="text-white text-sm font-bold">{sidebarDisplayName.charAt(0)}</span>
                 )}
               </div>
             </Link>

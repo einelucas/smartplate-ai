@@ -19,10 +19,10 @@ model Profile {
   updatedAt            DateTime @updatedAt
 
   // Dados físicos
-  height        Float? // altura em metros
-  startWeight   Float? // peso inicial
-  targetWeight  Float? // peso meta
-  currentWeight Float? // peso atual
+  height        Float? // altura em CENTÍMETROS (ex.: 175). Antes de 2026-08-23 era metros — ver migration de conversão.
+  startWeight   Float? // peso inicial (kg)
+  targetWeight  Float? // peso meta (kg)
+  currentWeight Float? // peso atual (kg)
   dietType      String? // tipo de dieta atual
   cookingLevel  String? // nível na cozinha
 
@@ -32,6 +32,10 @@ model Profile {
 
   // Papel na comunidade (moderação)
   role ProfileRole @default(USER)
+
+  // Onboarding
+  onboardingCompletedAt DateTime?
+  onboardingVersion     Int       @default(0)
 
   // Relações
   mealPlans     MealPlan[]

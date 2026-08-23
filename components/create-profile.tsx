@@ -5,7 +5,6 @@
 import { useEffect, useState } from "react";
 import { useUser } from "@clerk/nextjs";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import toast from "react-hot-toast";
 import OnboardingWizard from "./OnboardingWizard";
 
 type ApiResponse = {
@@ -53,7 +52,7 @@ export default function CreateProfileOnSignIn() {
     enabled: !!isSignedIn && isSuccess,
   });
 
-  const needsOnboarding = !!isSignedIn && isSuccess && !isLoading && !dismissed && !physicalData?.dietType;
+  const needsOnboarding = !!isSignedIn && isSuccess && !isLoading && !dismissed && !physicalData?.onboardingCompletedAt;
 
   if (!needsOnboarding) return null;
 

@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
+import { updatePreferencesSchema } from "@/lib/profile/validation";
 
 export async function GET() {
   const { userId } = await auth();
@@ -26,18 +27,18 @@ export async function PUT(request: Request) {
   if (!userId)
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
+  const body = await request.json().catch(() => null);
+  const parsed = updatePreferencesSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Dados inválidos", details: parsed.error.flatten() }, { status: 400 });
+  }
+
+  const updateData = Object.fromEntries(Object.entries(parsed.data).filter(([, v]) => v !== undefined));
+
+  if (Object.keys(updateData).length === 0)
+    return NextResponse.json({ error: "Nenhum campo para atualizar" }, { status: 400 });
+
   try {
-    const data = await request.json();
-
-    const updateData: Record<string, any> = {};
-    if (data.allergies !== undefined) updateData.allergies = data.allergies;
-    if (data.dislikedFoods !== undefined) updateData.dislikedFoods = data.dislikedFoods;
-    if (data.preferredFoods !== undefined) updateData.preferredFoods = data.preferredFoods;
-    if (data.maxPrepTime !== undefined) updateData.maxPrepTime = parseInt(data.maxPrepTime);
-    if (data.budgetLevel !== undefined) updateData.budgetLevel = data.budgetLevel;
-    if (data.dietGoal !== undefined) updateData.dietGoal = data.dietGoal;
-    if (data.additionalNotes !== undefined) updateData.additionalNotes = data.additionalNotes;
-
     const updated = await prisma.userPreferences.upsert({
       where: { userId },
       update: updateData,

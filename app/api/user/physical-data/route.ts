@@ -2,14 +2,18 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
+import { updatePhysicalDataSchema } from "@/lib/profile/validation";
 
-const ALLOWED_FIELDS = [
+// Campos legíveis via GET (inclui status de onboarding, somente leitura aqui).
+const READABLE_FIELDS = [
   "height",
   "startWeight",
   "targetWeight",
   "currentWeight",
   "dietType",
   "cookingLevel",
+  "onboardingCompletedAt",
+  "onboardingVersion",
 ] as const;
 
 export async function GET() {
@@ -20,7 +24,7 @@ export async function GET() {
   try {
     const profile = await prisma.profile.findUnique({
       where: { userId },
-      select: Object.fromEntries(ALLOWED_FIELDS.map((f) => [f, true])) as any,
+      select: Object.fromEntries(READABLE_FIELDS.map((f) => [f, true])),
     });
     return NextResponse.json(profile ?? {});
   } catch (error) {
@@ -34,17 +38,18 @@ export async function PUT(request: Request) {
   if (!userId)
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
+  const body = await request.json().catch(() => null);
+  const parsed = updatePhysicalDataSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Dados inválidos", details: parsed.error.flatten() }, { status: 400 });
+  }
+
+  const updateData = Object.fromEntries(Object.entries(parsed.data).filter(([, v]) => v !== undefined));
+
+  if (Object.keys(updateData).length === 0)
+    return NextResponse.json({ error: "Nenhum campo para atualizar" }, { status: 400 });
+
   try {
-    const body = await request.json();
-
-    const updateData: Record<string, any> = {};
-    for (const field of ALLOWED_FIELDS) {
-      if (body[field] !== undefined) updateData[field] = body[field];
-    }
-
-    if (Object.keys(updateData).length === 0)
-      return NextResponse.json({ error: "Nenhum campo para atualizar" }, { status: 400 });
-
     const updated = await prisma.profile.update({
       where: { userId },
       data: updateData,

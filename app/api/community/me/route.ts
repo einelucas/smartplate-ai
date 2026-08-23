@@ -4,10 +4,12 @@
 // PATCH: edita perfil social / privacidade / aceite dos termos.
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { ensureSocialProfile } from "@/lib/community/social-profile";
 import { updateSocialProfileSchema } from "@/lib/community/validation";
 import { getLevelProgress } from "@/lib/community/achievements";
+import { isReservedUsername } from "@/lib/profile/validation";
 
 export async function GET() {
   const { userId } = await auth();
@@ -65,20 +67,31 @@ export async function PATCH(request: Request) {
   const { acceptTerms, username, ...rest } = parsed.data;
 
   if (username) {
+    if (isReservedUsername(username)) {
+      return NextResponse.json({ error: "Este nome de usuário não está disponível" }, { status: 400 });
+    }
     const existing = await prisma.socialProfile.findUnique({ where: { username }, select: { userId: true } });
     if (existing && existing.userId !== userId) {
       return NextResponse.json({ error: "Nome de usuário já em uso" }, { status: 409 });
     }
   }
 
-  const updated = await prisma.socialProfile.update({
-    where: { userId },
-    data: {
-      ...rest,
-      ...(username ? { username } : {}),
-      ...(acceptTerms ? { termsAcceptedAt: new Date() } : {}),
-    },
-  });
+  try {
+    const updated = await prisma.socialProfile.update({
+      where: { userId },
+      data: {
+        ...rest,
+        ...(username ? { username } : {}),
+        ...(acceptTerms ? { termsAcceptedAt: new Date() } : {}),
+      },
+    });
 
-  return NextResponse.json({ profile: updated });
+    return NextResponse.json({ profile: updated });
+  } catch (error) {
+    // Corrida real: outro request salvou o mesmo username entre a checagem acima e este update.
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      return NextResponse.json({ error: "Nome de usuário já em uso" }, { status: 409 });
+    }
+    throw error;
+  }
 }
