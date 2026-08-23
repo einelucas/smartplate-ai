@@ -7,12 +7,13 @@ const SHARE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 dias
 
 export async function POST(
   _request: Request,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   const { userId } = await auth();
   if (!userId)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  const params = await context.params;
   try {
     const plan = await prisma.mealPlan.findUnique({
       where: { id: params.id, userId },

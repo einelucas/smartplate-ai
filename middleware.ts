@@ -11,6 +11,9 @@ const isPublicRoute = createRouteMatcher([
   "/api/checkout(.*)",
   "/api/stripe-webhook(.*)",
   "/api/check-subscription(.*)",
+  "/shared(.*)",
+  "/community/invite(.*)",
+  "/api/community/groups/invite(.*)",
 ]);
 
 // 2. Define a route group for Meal Plan. We want to check subscription

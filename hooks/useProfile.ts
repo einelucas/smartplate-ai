@@ -131,8 +131,8 @@ export function useProfile() {
       physicalData.height &&
       physicalData.currentWeight &&
       physicalData.targetWeight &&
-      preferences.dietType &&
-      preferences.cookingLevel
+      physicalData.dietType &&
+      physicalData.cookingLevel
     );
   };
 
@@ -145,8 +145,8 @@ export function useProfile() {
     if (!physicalData?.height) missing.push("altura");
     if (!physicalData?.currentWeight) missing.push("peso atual");
     if (!physicalData?.targetWeight) missing.push("peso meta");
-    if (!preferences?.dietType) missing.push("tipo de dieta");
-    if (!preferences?.cookingLevel) missing.push("nível na cozinha");
+    if (!physicalData?.dietType) missing.push("tipo de dieta");
+    if (!physicalData?.cookingLevel) missing.push("nível na cozinha");
 
     return missing;
   };

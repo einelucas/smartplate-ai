@@ -19,180 +19,511 @@ model Profile {
   updatedAt            DateTime @updatedAt
 
   // Dados físicos
-  height               Float?   // altura em metros
-  startWeight          Float?   // peso inicial
-  targetWeight         Float?   // peso meta
-  currentWeight        Float?   // peso atual
-  dietType             String?  // tipo de dieta atual
-  cookingLevel         String?  // nível na cozinha
+  height        Float? // altura em metros
+  startWeight   Float? // peso inicial
+  targetWeight  Float? // peso meta
+  currentWeight Float? // peso atual
+  dietType      String? // tipo de dieta atual
+  cookingLevel  String? // nível na cozinha
 
   // Dica diária da IA (cacheada para não chamar o modelo a cada carregamento)
-  dailyTip             String?
-  dailyTipDate         DateTime?
+  dailyTip     String?
+  dailyTipDate DateTime?
+
+  // Papel na comunidade (moderação)
+  role ProfileRole @default(USER)
 
   // Relações
   mealPlans     MealPlan[]
   shoppingLists ShoppingList[]
   weightLogs    WeightLog[]
   preferences   UserPreferences?
+
+  // Relações — Comunidade / Gamificação
+  socialProfile           SocialProfile?
+  gamification            UserGamification?
+  xpEvents                XpEvent[]
+  dailyActivities         DailyActivity[]
+  achievements            UserAchievement[]
+  ownedGroups             CommunityGroup[]
+  groupMemberships        GroupMember[]
+  createdChallenges       Challenge[]
+  challengeParticipations ChallengeParticipant[]
+  communityPosts          CommunityPost[]
+  communityComments       CommunityComment[]
+  communityReactions      CommunityReaction[]
+  contentReports          ContentReport[]
 }
 
 // 🔥 NOVO MODELO PARA DETALHES NUTRICIONAIS
 model NutritionalInfo {
-  id          String   @id @default(uuid())
-  mealId      String   @unique
-  meal        Meal     @relation(fields: [mealId], references: [id], onDelete: Cascade)
-  calories    Int
-  protein     Float    // em gramas
-  carbs       Float    // em gramas
-  fat         Float    // em gramas
-  fiber       Float?   // em gramas
-  sugar       Float?   // em gramas
-  sodium      Float?   // em mg
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String   @id @default(uuid())
+  mealId    String   @unique
+  meal      Meal     @relation(fields: [mealId], references: [id], onDelete: Cascade)
+  calories  Int
+  protein   Float // em gramas
+  carbs     Float // em gramas
+  fat       Float // em gramas
+  fiber     Float? // em gramas
+  sugar     Float? // em gramas
+  sodium    Float? // em mg
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // 🔥 NOVO MODELO PARA REFEIÇÕES DETALHADAS
 model Meal {
-  id          String   @id @default(uuid())
+  id          String  @id @default(uuid())
   dayPlanId   String
-  dayPlan     DayPlan  @relation(fields: [dayPlanId], references: [id], onDelete: Cascade)
-  type        String   // "breakfast", "lunch", "dinner", "snack"
+  dayPlan     DayPlan @relation(fields: [dayPlanId], references: [id], onDelete: Cascade)
+  type        String // "breakfast", "lunch", "dinner", "snack"
   name        String
   description String?
-  prepTime    Int?     // minutos
-  difficulty  String?  // "Fácil", "Médio", "Difícil"
-  servings    Int?     @default(1)
-  
+  prepTime    Int? // minutos
+  difficulty  String? // "Fácil", "Médio", "Difícil"
+  servings    Int?    @default(1)
+
   // Feedback
-  rating      Int?     // 1-5
-  completed   Boolean  @default(false)
-  isFavorite  Boolean  @default(false)
-  userNotes   String?
-  
+  rating     Int? // 1-5
+  completed  Boolean @default(false)
+  isFavorite Boolean @default(false)
+  userNotes  String?
+
   // Relações
   nutritionalInfo NutritionalInfo?
   ingredients     Ingredient[]
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // 🔥 NOVO MODELO PARA INGREDIENTES
 model Ingredient {
-  id          String   @id @default(uuid())
-  mealId      String
-  meal        Meal     @relation(fields: [mealId], references: [id], onDelete: Cascade)
-  name        String
-  amount      Float
-  unit        String   // "g", "kg", "ml", "xícara", "colher"
-  notes       String?  // "picado", "cozido", etc
-  
-  createdAt   DateTime @default(now())
+  id     String  @id @default(uuid())
+  mealId String
+  meal   Meal    @relation(fields: [mealId], references: [id], onDelete: Cascade)
+  name   String
+  amount Float
+  unit   String // "g", "kg", "ml", "xícara", "colher"
+  notes  String? // "picado", "cozido", etc
+
+  createdAt DateTime @default(now())
 }
 
 model MealPlan {
-  id          String    @id @default(uuid())
-  userId      String
-  user        Profile   @relation(fields: [userId], references: [userId], onDelete: Cascade)
-  name        String?   // "Meu plano de verão"
-  dietType    String
-  calories    Int
-  allergies   String?
-  cuisine     String?
-  snacks      Boolean
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  isTemplate  Boolean   @default(false)
-  favorite    Boolean   @default(false)  // Para marcar como favorito
-  
+  id         String   @id @default(uuid())
+  userId     String
+  user       Profile  @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  name       String? // "Meu plano de verão"
+  dietType   String
+  calories   Int
+  allergies  String?
+  cuisine    String?
+  snacks     Boolean
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  isTemplate Boolean  @default(false)
+  favorite   Boolean  @default(false) // Para marcar como favorito
+
   // 🔥 ADICIONAR CAMPO PARA SALVAR CONTEXTO DO USUÁRIO
-  userContext Json?     // Salva os dados do usuário no momento da criação
-  
+  userContext Json? // Salva os dados do usuário no momento da criação
+
   // Relações
-  days        DayPlan[]
+  days          DayPlan[]
   shoppingLists ShoppingList[]
   sharedPlans   SharedPlan[]
-  
+
   @@index([userId])
   @@index([createdAt])
 }
 
 model DayPlan {
-  id          String    @id @default(uuid())
-  mealPlanId  String
-  mealPlan    MealPlan  @relation(fields: [mealPlanId], references: [id], onDelete: Cascade)
-  day         String    // Monday, Tuesday, etc (armazenar em inglês)
-  
+  id         String   @id @default(uuid())
+  mealPlanId String
+  mealPlan   MealPlan @relation(fields: [mealPlanId], references: [id], onDelete: Cascade)
+  day        String // Monday, Tuesday, etc (armazenar em inglês)
+
   // 🔥 SUBSTITUIR STRINGS POR RELAÇÕES
-  breakfast   String?   // REMOVER - vamos usar o modelo Meal
-  lunch       String?   // REMOVER
-  dinner      String?   // REMOVER
-  snacks      String?   // REMOVER
-  
+  breakfast String? // REMOVER - vamos usar o modelo Meal
+  lunch     String? // REMOVER
+  dinner    String? // REMOVER
+  snacks    String? // REMOVER
+
   // 🔥 ADICIONAR RELAÇÕES
-  meals       Meal[]    // Todas as refeições do dia
-  
+  meals Meal[] // Todas as refeições do dia
+
   // Feedback do dia
-  dayRating   Int?      // 1-5
-  dayFeedback String?   // Comentário sobre o dia
-  
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  
+  dayRating   Int? // 1-5
+  dayFeedback String? // Comentário sobre o dia
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@unique([mealPlanId, day])
   @@index([mealPlanId])
 }
 
 model ShoppingList {
-  id          String    @id @default(uuid())
-  userId      String
-  user        Profile   @relation(fields: [userId], references: [userId], onDelete: Cascade)
-  mealPlanId  String
-  mealPlan    MealPlan  @relation(fields: [mealPlanId], references: [id], onDelete: Cascade)
-  items       Json      // Lista de itens agrupados por categoria
-  createdAt   DateTime  @default(now())
-  
+  id         String   @id @default(uuid())
+  userId     String
+  user       Profile  @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  mealPlanId String
+  mealPlan   MealPlan @relation(fields: [mealPlanId], references: [id], onDelete: Cascade)
+  items      Json // Lista de itens agrupados por categoria
+  createdAt  DateTime @default(now())
+
   @@index([userId])
   @@index([createdAt])
 }
 
 model WeightLog {
-  id          String    @id @default(uuid())
-  userId      String
-  user        Profile   @relation(fields: [userId], references: [userId], onDelete: Cascade)
-  weight      Float     // Peso em kg
-  date        DateTime  @default(now())
-  notes       String?
-  
+  id     String   @id @default(uuid())
+  userId String
+  user   Profile  @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  weight Float // Peso em kg
+  date   DateTime @default(now())
+  notes  String?
+
   @@unique([userId, date])
   @@index([userId])
   @@index([date])
 }
 
 model UserPreferences {
-  id            String    @id @default(uuid())
-  userId        String    @unique
-  user          Profile   @relation(fields: [userId], references: [userId], onDelete: Cascade)
-  allergies     String[]  // Restrições/alergias alimentares (array)
-  dislikedFoods String[]  // Alimentos que não gosta (array)
-  preferredFoods String[] // Alimentos/culinárias que prefere (array)
-  maxPrepTime   Int?      // Minutos máximos de preparo
-  budgetLevel   String?   // "low", "medium", "high"
-  dietGoal      String?   // "perder peso", "ganhar massa", "manter"
+  id              String   @id @default(uuid())
+  userId          String   @unique
+  user            Profile  @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  allergies       String[] // Restrições/alergias alimentares (array)
+  dislikedFoods   String[] // Alimentos que não gosta (array)
+  preferredFoods  String[] // Alimentos/culinárias que prefere (array)
+  maxPrepTime     Int? // Minutos máximos de preparo
+  budgetLevel     String? // "low", "medium", "high"
+  dietGoal        String? // "perder peso", "ganhar massa", "manter"
   additionalNotes String? // Observações livres do usuário para a geração do plano
-  updatedAt     DateTime  @updatedAt
+  updatedAt       DateTime @updatedAt
 }
 
 model SharedPlan {
-  id          String    @id @default(uuid())
-  mealPlanId  String
-  mealPlan    MealPlan  @relation(fields: [mealPlanId], references: [id], onDelete: Cascade)
-  shareToken  String    @unique @default(uuid())
-  expiresAt   DateTime? // Se null, não expira
-  createdAt   DateTime  @default(now())
-  views       Int       @default(0)
-  
+  id         String    @id @default(uuid())
+  mealPlanId String
+  mealPlan   MealPlan  @relation(fields: [mealPlanId], references: [id], onDelete: Cascade)
+  shareToken String    @unique @default(uuid())
+  expiresAt  DateTime? // Se null, não expira
+  createdAt  DateTime  @default(now())
+  views      Int       @default(0)
+
   @@index([shareToken])
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// COMUNIDADE E GAMIFICAÇÃO
+// ══════════════════════════════════════════════════════════════════════════
+
+enum ProfileRole {
+  USER
+  MODERATOR
+  ADMIN
+}
+
+enum GroupMemberRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum FriendshipStatus {
+  PENDING
+  ACCEPTED
+}
+
+enum ChallengeScope {
+  GLOBAL
+  GROUP
+}
+
+enum ChallengeMetric {
+  ACTIVE_DAYS
+  MEAL_COMPLETIONS
+  STREAK_DAYS
+}
+
+enum PostType {
+  TEXT
+  ACHIEVEMENT
+  STREAK
+  CHALLENGE
+  PLAN_SHARE
+}
+
+enum ReactionType {
+  LIKE
+  FIRE
+  CLAP
+  STRONG
+}
+
+enum ReportTargetType {
+  POST
+  COMMENT
+  USER
+  AI_CONTENT
+}
+
+enum ReportReason {
+  SPAM
+  HARASSMENT
+  HATE
+  SEXUAL
+  DANGEROUS_HEALTH_ADVICE
+  MISINFORMATION
+  OTHER
+}
+
+enum ReportStatus {
+  PENDING
+  RESOLVED
+  DISMISSED
+}
+
+// Perfil público/social do usuário. Nunca deve expor dados de Profile como
+// peso, altura, objetivo, e-mail ou dados de assinatura.
+model SocialProfile {
+  id               String    @id @default(uuid())
+  userId           String    @unique
+  profile          Profile   @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  username         String    @unique
+  displayName      String
+  avatarUrl        String?
+  bio              String?
+  timezone         String    @default("UTC")
+  isDiscoverable   Boolean   @default(true)
+  showStreak       Boolean   @default(true)
+  showXp           Boolean   @default(true)
+  showAchievements Boolean   @default(true)
+  termsAcceptedAt  DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([username])
+}
+
+// Estado agregado de gamificação do usuário (totais e streak atuais).
+// A fonte da verdade para XP histórico/ranking é XpEvent, não totalXp.
+model UserGamification {
+  id                String    @id @default(uuid())
+  userId            String    @unique
+  profile           Profile   @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  totalXp           Int       @default(0)
+  currentStreak     Int       @default(0)
+  longestStreak     Int       @default(0)
+  lastQualifiedDate DateTime? @db.Date
+  level             Int       @default(1)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+}
+
+// Histórico imutável de eventos de XP. idempotencyKey impede XP duplicado
+// (ex.: marcar/desmarcar a mesma refeição repetidamente).
+model XpEvent {
+  id             String   @id @default(uuid())
+  userId         String
+  profile        Profile  @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  eventType      String
+  points         Int
+  idempotencyKey String   @unique
+  referenceType  String?
+  referenceId    String?
+  createdAt      DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+// Registro diário real de atividade (data local do usuário, não UTC puro).
+// Usado para calcular streak — não usar DayPlan.day (nome do dia da semana).
+model DailyActivity {
+  id                 String   @id @default(uuid())
+  userId             String
+  profile            Profile  @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  date               DateTime @db.Date
+  qualifyingActions  Int      @default(0)
+  xpEarned           Int      @default(0)
+  qualifiesForStreak Boolean  @default(false)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@unique([userId, date])
+  @@index([userId])
+}
+
+model UserAchievement {
+  id              String   @id @default(uuid())
+  userId          String
+  profile         Profile  @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  achievementCode String
+  unlockedAt      DateTime @default(now())
+
+  @@unique([userId, achievementCode])
+  @@index([userId])
+}
+
+// Amizade com par normalizado (userAId = menor id, userBId = maior id) para
+// impedir duplicidade A→B / B→A. requesterId identifica quem solicitou.
+// Recusar/cancelar/desfazer amizade remove a linha.
+model Friendship {
+  id          String           @id @default(uuid())
+  userAId     String
+  userBId     String
+  requesterId String
+  status      FriendshipStatus @default(PENDING)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@unique([userAId, userBId])
+  @@index([userAId])
+  @@index([userBId])
+  @@index([requesterId])
+}
+
+// Bloqueio direcional (A bloqueia B não implica B bloqueia A).
+model CommunityBlock {
+  id            String   @id @default(uuid())
+  blockerUserId String
+  blockedUserId String
+  createdAt     DateTime @default(now())
+
+  @@unique([blockerUserId, blockedUserId])
+  @@index([blockerUserId])
+  @@index([blockedUserId])
+}
+
+model CommunityGroup {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  ownerUserId String
+  owner       Profile  @relation(fields: [ownerUserId], references: [userId], onDelete: Cascade)
+  inviteCode  String   @unique @default(cuid())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  members    GroupMember[]
+  posts      CommunityPost[]
+  challenges Challenge[]
+
+  @@index([ownerUserId])
+}
+
+model GroupMember {
+  id       String          @id @default(uuid())
+  groupId  String
+  group    CommunityGroup  @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  userId   String
+  profile  Profile         @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  role     GroupMemberRole @default(MEMBER)
+  joinedAt DateTime        @default(now())
+
+  @@unique([groupId, userId])
+  @@index([userId])
+}
+
+model Challenge {
+  id            String          @id @default(uuid())
+  creatorUserId String?
+  creator       Profile?        @relation(fields: [creatorUserId], references: [userId], onDelete: SetNull)
+  groupId       String?
+  group         CommunityGroup? @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  scope         ChallengeScope
+  title         String
+  description   String?
+  metric        ChallengeMetric
+  target        Int
+  rewardXp      Int             @default(0)
+  startsAt      DateTime
+  endsAt        DateTime
+  createdAt     DateTime        @default(now())
+
+  participants ChallengeParticipant[]
+
+  @@index([scope])
+  @@index([groupId])
+  @@index([startsAt, endsAt])
+}
+
+model ChallengeParticipant {
+  id          String    @id @default(uuid())
+  challengeId String
+  challenge   Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  userId      String
+  profile     Profile   @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  progress    Int       @default(0)
+  joinedAt    DateTime  @default(now())
+  completedAt DateTime?
+
+  @@unique([challengeId, userId])
+  @@index([userId])
+}
+
+// Se groupId = null, pertence à comunidade geral; senão, visível só a membros.
+model CommunityPost {
+  id           String          @id @default(uuid())
+  authorUserId String
+  author       Profile         @relation(fields: [authorUserId], references: [userId], onDelete: Cascade)
+  groupId      String?
+  group        CommunityGroup? @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  type         PostType
+  text         String?
+  metadata     Json?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  deletedAt    DateTime?
+  hiddenAt     DateTime?
+
+  reactions CommunityReaction[]
+  comments  CommunityComment[]
+
+  @@index([createdAt])
+  @@index([groupId, createdAt])
+  @@index([authorUserId])
+}
+
+model CommunityReaction {
+  id        String        @id @default(uuid())
+  postId    String
+  post      CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId    String
+  profile   Profile       @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  type      ReactionType
+  createdAt DateTime      @default(now())
+
+  @@unique([postId, userId, type])
+  @@index([postId])
+}
+
+model CommunityComment {
+  id           String        @id @default(uuid())
+  postId       String
+  post         CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  authorUserId String
+  author       Profile       @relation(fields: [authorUserId], references: [userId], onDelete: Cascade)
+  text         String
+  createdAt    DateTime      @default(now())
+  deletedAt    DateTime?
+
+  @@index([postId, createdAt])
+}
+
+model ContentReport {
+  id             String           @id @default(uuid())
+  reporterUserId String
+  reporter       Profile          @relation(fields: [reporterUserId], references: [userId], onDelete: Cascade)
+  targetType     ReportTargetType
+  targetId       String
+  reason         ReportReason
+  details        String?
+  status         ReportStatus     @default(PENDING)
+  createdAt      DateTime         @default(now())
+  reviewedAt     DateTime?
+
+  @@index([status])
+  @@index([targetType, targetId])
 }

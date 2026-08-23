@@ -1,0 +1,84 @@
+// app/api/community/me/route.ts
+// GET: garante e retorna o SocialProfile + resumo de gamificação do usuário
+// autenticado (cria automaticamente no primeiro acesso à Comunidade).
+// PATCH: edita perfil social / privacidade / aceite dos termos.
+import { auth } from "@clerk/nextjs/server";
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { ensureSocialProfile } from "@/lib/community/social-profile";
+import { updateSocialProfileSchema } from "@/lib/community/validation";
+import { getLevelProgress } from "@/lib/community/achievements";
+
+export async function GET() {
+  const { userId } = await auth();
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const socialProfile = await ensureSocialProfile(userId);
+  const [gamification, achievementsCount, profileRole] = await Promise.all([
+    prisma.userGamification.findUnique({ where: { userId } }),
+    prisma.userAchievement.count({ where: { userId } }),
+    prisma.profile.findUnique({ where: { userId }, select: { role: true } }),
+  ]);
+
+  const totalXp = gamification?.totalXp ?? 0;
+  const { level, currentLevelXp, nextLevelXp } = getLevelProgress(totalXp);
+
+  return NextResponse.json({
+    profile: {
+      userId,
+      role: profileRole?.role ?? "USER",
+      username: socialProfile.username,
+      displayName: socialProfile.displayName,
+      avatarUrl: socialProfile.avatarUrl,
+      bio: socialProfile.bio,
+      timezone: socialProfile.timezone,
+      isDiscoverable: socialProfile.isDiscoverable,
+      showStreak: socialProfile.showStreak,
+      showXp: socialProfile.showXp,
+      showAchievements: socialProfile.showAchievements,
+      termsAcceptedAt: socialProfile.termsAcceptedAt,
+    },
+    gamification: {
+      totalXp,
+      currentStreak: gamification?.currentStreak ?? 0,
+      longestStreak: gamification?.longestStreak ?? 0,
+      level,
+      currentLevelXp,
+      nextLevelXp,
+      achievementsCount,
+    },
+  });
+}
+
+export async function PATCH(request: Request) {
+  const { userId } = await auth();
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const body = await request.json().catch(() => null);
+  const parsed = updateSocialProfileSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Dados inválidos", details: parsed.error.flatten() }, { status: 400 });
+  }
+
+  await ensureSocialProfile(userId);
+
+  const { acceptTerms, username, ...rest } = parsed.data;
+
+  if (username) {
+    const existing = await prisma.socialProfile.findUnique({ where: { username }, select: { userId: true } });
+    if (existing && existing.userId !== userId) {
+      return NextResponse.json({ error: "Nome de usuário já em uso" }, { status: 409 });
+    }
+  }
+
+  const updated = await prisma.socialProfile.update({
+    where: { userId },
+    data: {
+      ...rest,
+      ...(username ? { username } : {}),
+      ...(acceptTerms ? { termsAcceptedAt: new Date() } : {}),
+    },
+  });
+
+  return NextResponse.json({ profile: updated });
+}

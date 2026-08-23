@@ -3,17 +3,18 @@ import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
-type Params = { params: { id: string } };
+type Params = { params: Promise<{ id: string }> };
 
 /**
  * PATCH /api/shopping-list/[id]
  * Aceita: { items: Array<{ name, quantity, category, estimated_price, checked }> }
  */
-export async function PATCH(request: Request, { params }: Params) {
+export async function PATCH(request: Request, context: Params) {
   const { userId } = await auth();
   if (!userId)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  const params = await context.params;
   try {
     const body = await request.json();
     if (!Array.isArray(body.items))

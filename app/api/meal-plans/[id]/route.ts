@@ -4,13 +4,14 @@ import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { safeParse } from "@/lib/mealplan";
 
-type Params = { params: { id: string } };
+type Params = { params: Promise<{ id: string }> };
 
-export async function GET(_req: Request, { params }: Params) {
+export async function GET(_req: Request, context: Params) {
   const { userId } = await auth();
   if (!userId)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  const params = await context.params;
   try {
     const plan = await prisma.mealPlan.findUnique({
       where: { id: params.id, userId },
@@ -27,11 +28,12 @@ export async function GET(_req: Request, { params }: Params) {
   }
 }
 
-export async function DELETE(_req: Request, { params }: Params) {
+export async function DELETE(_req: Request, context: Params) {
   const { userId } = await auth();
   if (!userId)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  const params = await context.params;
   try {
     await prisma.mealPlan.delete({ where: { id: params.id, userId } });
     return NextResponse.json({ success: true });
@@ -46,11 +48,12 @@ export async function DELETE(_req: Request, { params }: Params) {
  * Aceita: { name?: string, favorite?: boolean }
  * Unifica o endpoint /favorite que existia separadamente.
  */
-export async function PATCH(request: Request, { params }: Params) {
+export async function PATCH(request: Request, context: Params) {
   const { userId } = await auth();
   if (!userId)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  const params = await context.params;
   try {
     const body = await request.json();
     const updateData: Record<string, any> = {};

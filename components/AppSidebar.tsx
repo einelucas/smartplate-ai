@@ -15,10 +15,10 @@ import {
   Leaf,
   Menu,
   X,
-  Bell,
   Sparkles,
   LogOut,
 } from "lucide-react";
+import NotificationsBell from "@/components/NotificationsBell";
 
 const navItems = [
   { href: "/", icon: Home, label: "Início" },
@@ -45,7 +45,11 @@ export default function AppSidebar({ children }: { children: React.ReactNode }) 
         className="flex-shrink-0 bg-white border-r border-slate-100 flex flex-col h-screen sticky top-0 overflow-hidden shadow-sm z-30"
       >
         {/* Logo */}
-        <div className="p-5 flex items-center gap-3 border-b border-slate-100">
+        <div
+          className={`border-b border-slate-100 flex ${
+            sidebarOpen ? "flex-row items-center gap-3 p-5" : "flex-col items-center gap-2 py-4"
+          }`}
+        >
           <div className="w-10 h-10 flex-shrink-0 bg-gradient-to-br from-[#007BFF] to-[#28A745] rounded-xl flex items-center justify-center shadow-md">
             <Leaf size={20} className="text-white" />
           </div>
@@ -60,7 +64,7 @@ export default function AppSidebar({ children }: { children: React.ReactNode }) 
           </AnimatePresence>
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="ml-auto p-1 rounded-lg hover:bg-slate-100 text-slate-400 flex-shrink-0"
+            className={`p-1 rounded-lg hover:bg-slate-100 text-slate-400 flex-shrink-0 ${sidebarOpen ? "ml-auto" : ""}`}
           >
             {sidebarOpen ? <X size={18} /> : <Menu size={18} />}
           </button>
@@ -152,10 +156,7 @@ export default function AppSidebar({ children }: { children: React.ReactNode }) 
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <button className="relative w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center hover:bg-slate-200 transition-colors">
-              <Bell size={18} className="text-slate-600" />
-              <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-[#28A745] rounded-full border-2 border-white" />
-            </button>
+            <NotificationsBell />
             <Link href="/profile">
               <div className="w-10 h-10 bg-gradient-to-br from-[#007BFF] to-[#28A745] rounded-full flex items-center justify-center text-lg cursor-pointer overflow-hidden">
                 {user?.imageUrl ? (

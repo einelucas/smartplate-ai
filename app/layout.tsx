@@ -6,6 +6,7 @@ import AppSidebar from "../components/AppSidebar";
 import { ClerkProvider, SignedIn, SignedOut } from "@clerk/nextjs";
 import { ReactQueryClientProvider } from "../components/react-query-client-provider";
 import CreateProfileOnSignIn from "@/components/create-profile";
+import PendingInviteRedirect from "@/components/PendingInviteRedirect";
 import { Toaster } from "react-hot-toast"; // 🔥 1. IMPORTE AQUI
 
 export const metadata: Metadata = {
@@ -24,6 +25,7 @@ export default function RootLayout({
         <ReactQueryClientProvider>
           <ClerkProvider>
             <CreateProfileOnSignIn />
+            <PendingInviteRedirect />
 
             {/* 🔥 2. COLOQUE O TOASTER AQUI - ANTES DO MAIN */}
             <Toaster

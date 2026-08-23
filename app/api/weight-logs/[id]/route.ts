@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } },
+  context: { params: Promise<{ id: string }> },
 ) {
   const { userId } = await auth();
 
@@ -12,6 +12,7 @@ export async function DELETE(
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
   }
 
+  const params = await context.params;
   try {
     // Verificar se o log pertence ao usuário
     const log = await prisma.weightLog.findUnique({

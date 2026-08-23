@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useUser } from "@clerk/nextjs";
 import { motion, AnimatePresence } from "framer-motion";
-import toast, { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
 import {
   Sparkles,
   Coffee,
@@ -23,6 +23,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import Link from "next/link";
+import { celebrateAchievements, celebrateStreakIfMilestone } from "@/components/social/AchievementCelebration";
 import GeneratePlanModal, { GeneratePlanFormData } from "./GeneratePlanModal";
 
 // ─── Tipos locais ─────────────────────────────────────────────────────────────
@@ -374,7 +375,11 @@ export default function MealPlanDashboard() {
       if (!res.ok) throw new Error("Erro ao atualizar refeição");
       return res.json();
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["meal-plans"] }),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["meal-plans"] });
+      celebrateAchievements(data?.gamification?.newlyUnlocked);
+      celebrateStreakIfMilestone(data?.gamification?.currentStreak);
+    },
     onError: (error: Error) => toast.error(error.message),
   });
 
@@ -453,8 +458,6 @@ export default function MealPlanDashboard() {
 
   return (
     <div className="p-4 sm:p-8">
-      <Toaster position="top-center" />
-
       {/* Header actions */}
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
         <div>

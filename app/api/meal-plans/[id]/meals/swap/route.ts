@@ -17,7 +17,7 @@ const MEAL_TYPE_LABELS: Record<string, string> = {
   snacks: "lanche",
 };
 
-type Params = { params: { id: string } };
+type Params = { params: Promise<{ id: string }> };
 
 function normalizeOption(opt: any) {
   return {
@@ -39,11 +39,12 @@ function normalizeOption(opt: any) {
  * Gera 3 sugestões de refeição alternativas via IA para substituir a refeição atual.
  * Body: { day: string, mealType: "breakfast"|"lunch"|"dinner"|"snacks", snackIndex?: number }
  */
-export async function POST(request: Request, { params }: Params) {
+export async function POST(request: Request, context: Params) {
   const { userId } = await auth();
   if (!userId)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  const params = await context.params;
   try {
     const { day, mealType, snackIndex } = await request.json();
     if (!day || !mealType)
