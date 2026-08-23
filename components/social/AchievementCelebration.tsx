@@ -6,21 +6,25 @@
 import { useState } from "react";
 import toast from "react-hot-toast";
 import { X } from "lucide-react";
+import { FireIcon } from "@phosphor-icons/react";
 import { useCreatePost } from "@/hooks/useCommunity";
 import { ACHIEVEMENTS, type AchievementCode } from "@/lib/community/achievements";
+import { resolveIcon } from "@/components/icon-registry";
 
 const STREAK_MILESTONES = [3, 7, 14, 30, 60, 100];
 
 function AchievementToastContent({ code, toastId }: { code: string; toastId: string }) {
-  const def = (ACHIEVEMENTS as Record<string, { title: string; description: string; emoji: string }>)[code];
+  const def = (ACHIEVEMENTS as Record<string, { title: string; description: string; icon: string }>)[code];
   const createPost = useCreatePost();
   const [shared, setShared] = useState(false);
 
   if (!def) return null;
 
+  const Icon = resolveIcon(def.icon);
+
   return (
     <div className="flex items-center gap-3 bg-white shadow-lg rounded-2xl p-4 border border-amber-100 max-w-sm">
-      <span className="text-2xl flex-shrink-0">{def.emoji}</span>
+      <Icon size={26} weight="duotone" className="text-amber-500 flex-shrink-0" />
       <div className="flex-1 min-w-0">
         <p className="text-sm font-bold text-slate-800">Nova conquista</p>
         <p className="text-xs text-slate-500 truncate">{def.title}</p>
@@ -51,7 +55,7 @@ function StreakToastContent({ milestone, toastId }: { milestone: number; toastId
 
   return (
     <div className="flex items-center gap-3 bg-white shadow-lg rounded-2xl p-4 border border-orange-100 max-w-sm">
-      <span className="text-2xl flex-shrink-0">🔥</span>
+      <FireIcon size={26} weight="duotone" className="text-orange-500 flex-shrink-0" />
       <div className="flex-1 min-w-0">
         <p className="text-sm font-bold text-slate-800">{milestone} dias de consistência!</p>
       </div>

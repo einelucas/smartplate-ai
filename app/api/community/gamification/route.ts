@@ -26,7 +26,7 @@ export async function GET() {
     achievements: unlockedAchievements.map((a) => ({
       code: a.achievementCode,
       unlockedAt: a.unlockedAt,
-      ...(ACHIEVEMENTS as Record<string, { title: string; description: string; emoji: string }>)[a.achievementCode],
+      ...(ACHIEVEMENTS as Record<string, { title: string; description: string; icon: string }>)[a.achievementCode],
     })),
   });
 }

@@ -26,6 +26,10 @@ model Profile {
   dietType      String? // tipo de dieta atual
   cookingLevel  String? // nível na cozinha
 
+  // Usados para personalizar o cálculo calórico (nunca expostos publicamente)
+  birthDate     DateTime? // data de nascimento — idade é sempre calculada dinamicamente
+  activityLevel String? // sedentary | light | moderate | active (ver lib/profile/options.ts)
+
   // Dica diária da IA (cacheada para não chamar o modelo a cada carregamento)
   dailyTip     String?
   dailyTipDate DateTime?
@@ -38,10 +42,12 @@ model Profile {
   onboardingVersion     Int       @default(0)
 
   // Relações
-  mealPlans     MealPlan[]
-  shoppingLists ShoppingList[]
-  weightLogs    WeightLog[]
-  preferences   UserPreferences?
+  mealPlans      MealPlan[]
+  shoppingLists  ShoppingList[]
+  weightLogs     WeightLog[]
+  preferences    UserPreferences?
+  progressPhotos ProgressPhoto[]
+  premiumGrants  PremiumGrant[]
 
   // Relações — Comunidade / Gamificação
   socialProfile           SocialProfile?
@@ -191,6 +197,81 @@ model WeightLog {
   @@unique([userId, date])
   @@index([userId])
   @@index([date])
+}
+
+// Fotos de progresso (Antes & Depois). Dado privado — nunca exposto pela
+// Comunidade. Adicionar uma foto NÃO cria WeightLog automaticamente; o peso
+// aqui é só um snapshot associado à foto.
+model ProgressPhoto {
+  id      String  @id @default(uuid())
+  userId  String
+  profile Profile @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  imageUrl String // caminho/URL do arquivo — nunca base64 no banco
+  weight   Float? // snapshot opcional do peso no momento da foto
+  takenAt  DateTime @default(now())
+  notes    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, takenAt])
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// BETA / ACESSO PREMIUM CONCEDIDO (não-Stripe)
+// ══════════════════════════════════════════════════════════════════════════
+
+enum PremiumGrantSource {
+  BETA_CODE
+  PROMO_CODE
+  ADMIN
+}
+
+// Concessão de acesso Premium fora do Stripe (hoje só códigos Beta). A
+// assinatura paga (Profile.subscriptionActive) permanece totalmente
+// independente — ver lib/premium/access.ts para a resolução combinada.
+model PremiumGrant {
+  id      String  @id @default(uuid())
+  userId  String
+  profile Profile @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  source PremiumGrantSource
+
+  startsAt  DateTime
+  expiresAt DateTime
+  revokedAt DateTime?
+
+  // Referência à origem (ex.: BetaCode.id). Único para garantir que uma
+  // mesma origem (um código Beta) nunca gere mais de um grant.
+  sourceRefId String? @unique
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, expiresAt])
+}
+
+// Código Beta de uso único. Nunca armazena o código em texto puro — apenas
+// o hash SHA-256 (ver lib/beta/codes.ts). redeemedByUserId é único: garante
+// no banco que um usuário não consiga resgatar dois códigos Beta.
+model BetaCode {
+  id String @id @default(uuid())
+
+  codeHash String  @unique
+  codeHint String? // últimos caracteres, só para conferência humana — nunca o código completo
+
+  durationDays Int @default(30)
+
+  isActive Boolean @default(true)
+
+  redeemUntil DateTime?
+
+  redeemedByUserId String?   @unique
+  redeemedAt       DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([isActive])
 }
 
 model UserPreferences {

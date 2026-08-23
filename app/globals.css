@@ -97,6 +97,25 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+/* Rede de segurança final contra overflow horizontal — não substitui corrigir
+   a origem em cada componente, mas garante que nenhum vazamento pontual
+   quebre a rolagem da página inteira em mobile. */
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+/* iOS aplica zoom automático em inputs com fonte < 16px. Força 16px só em
+   telas pequenas para não alterar a tipografia em desktop. */
+@media (max-width: 767px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
 /* 🔥 REMOVIDO O * QUE TAVA CAUSANDO ERRO */
 
 /* ===== ESTILOS DO REACT-CALENDAR (MANTIDOS) ===== */

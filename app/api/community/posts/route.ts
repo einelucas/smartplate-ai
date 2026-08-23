@@ -45,9 +45,9 @@ export async function POST(request: Request) {
       where: { userId_achievementCode: { userId, achievementCode: code } },
     });
     if (!unlocked) return NextResponse.json({ error: "Conquista não desbloqueada" }, { status: 403 });
-    const def = (ACHIEVEMENTS as Record<string, { title: string; description: string; emoji: string }>)[code];
+    const def = (ACHIEVEMENTS as Record<string, { title: string; description: string; icon: string }>)[code];
     if (!def) return NextResponse.json({ error: "Conquista inválida" }, { status: 400 });
-    metadata = { achievementCode: code, title: def.title, description: def.description, emoji: def.emoji };
+    metadata = { achievementCode: code, title: def.title, description: def.description, icon: def.icon };
   } else if (type === "STREAK") {
     const milestone = parsed.data.streakMilestone as number;
     const gamification = await prisma.userGamification.findUnique({ where: { userId } });

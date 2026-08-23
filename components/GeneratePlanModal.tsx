@@ -10,7 +10,7 @@ import { DIET_TYPES, DIET_GOALS, COOKING_LEVELS, BUDGET_LEVELS, ALLERGY_OPTIONS 
 export interface GeneratePlanFormData {
   dietType: string;
   dietGoal: string;
-  calories: number;
+  calories?: number; // undefined = calcular automaticamente a partir do Perfil
   cookingLevel: string;
   allergies: string[];
   dislikedFoods: string[];
@@ -113,7 +113,7 @@ export default function GeneratePlanModal({ isOpen, onClose, onSubmit, isPending
   const [form, setForm] = useState<GeneratePlanFormData>({
     dietType: "",
     dietGoal: "manter",
-    calories: 2000,
+    calories: undefined,
     cookingLevel: "",
     allergies: [],
     dislikedFoods: [],
@@ -220,12 +220,15 @@ export default function GeneratePlanModal({ isOpen, onClose, onSubmit, isPending
                   <label className="block text-sm font-medium text-slate-700 mb-2">Calorias Diárias</label>
                   <input
                     type="number"
-                    value={form.calories}
-                    onChange={(e) => setForm({ ...form, calories: Number(e.target.value) })}
+                    inputMode="numeric"
+                    value={form.calories ?? ""}
+                    onChange={(e) => setForm({ ...form, calories: e.target.value === "" ? undefined : Number(e.target.value) })}
+                    placeholder="Automático"
                     min={800}
                     max={5000}
                     className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#007BFF]"
                   />
+                  <p className="text-xs text-slate-400 mt-1">Deixe em branco para calcular a partir do seu Perfil</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">Nível na Cozinha</label>
@@ -282,6 +285,7 @@ export default function GeneratePlanModal({ isOpen, onClose, onSubmit, isPending
                   <label className="block text-sm font-medium text-slate-700 mb-2">Tempo Máx. de Preparo (min)</label>
                   <input
                     type="number"
+                    inputMode="numeric"
                     value={form.maxPrepTime}
                     onChange={(e) => setForm({ ...form, maxPrepTime: Number(e.target.value) })}
                     min={5}

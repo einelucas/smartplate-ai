@@ -7,6 +7,8 @@ export interface PhysicalData {
   currentWeight?: number; // kg
   dietType?: string;
   cookingLevel?: string;
+  birthDate?: string | null; // privado — nunca exposto pela Comunidade
+  activityLevel?: string | null; // privado — nunca exposto pela Comunidade
   onboardingCompletedAt?: string | null;
   onboardingVersion?: number;
 }

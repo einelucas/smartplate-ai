@@ -4,7 +4,7 @@
 // existente da Comunidade — não duplicar essa regra aqui.
 import { z } from "zod";
 import { usernameSchema } from "@/lib/community/validation";
-import { BUDGET_LEVEL_VALUES, COOKING_LEVEL_VALUES, DIET_GOAL_VALUES, DIET_TYPE_VALUES } from "./options";
+import { ACTIVITY_LEVEL_VALUES, BUDGET_LEVEL_VALUES, COOKING_LEVEL_VALUES, DIET_GOAL_VALUES, DIET_TYPE_VALUES } from "./options";
 
 export { usernameSchema };
 
@@ -48,6 +48,18 @@ export const dietGoalSchema = z.enum(DIET_GOAL_VALUES as [string, ...string[]]);
 export const dietTypeSchema = z.enum(DIET_TYPE_VALUES as [string, ...string[]]);
 export const cookingLevelSchema = z.enum(COOKING_LEVEL_VALUES as [string, ...string[]]);
 export const budgetLevelSchema = z.enum(BUDGET_LEVEL_VALUES as [string, ...string[]]);
+export const activityLevelSchema = z.enum(ACTIVITY_LEVEL_VALUES as [string, ...string[]]);
+
+// Nascimento plausível: entre 13 e 120 anos, nunca no futuro.
+export const birthDateSchema = z.coerce.date().refine(
+  (date) => {
+    const now = new Date();
+    const minDate = new Date(now.getFullYear() - 120, now.getMonth(), now.getDate());
+    const maxDate = new Date(now.getFullYear() - 13, now.getMonth(), now.getDate());
+    return date >= minDate && date <= maxDate;
+  },
+  { message: "Data de nascimento inválida" }
+);
 
 export const updatePhysicalDataSchema = z.object({
   height: heightCmSchema.optional(),
@@ -56,6 +68,8 @@ export const updatePhysicalDataSchema = z.object({
   startWeight: weightKgSchema.optional(),
   dietType: dietTypeSchema.optional(),
   cookingLevel: cookingLevelSchema.optional(),
+  birthDate: birthDateSchema.optional(),
+  activityLevel: activityLevelSchema.optional(),
 });
 
 // ─── Preferências ───────────────────────────────────────────────────────────
@@ -71,6 +85,25 @@ export const updatePreferencesSchema = z.object({
   dietGoal: dietGoalSchema.optional(),
   additionalNotes: z.string().trim().max(500).optional().nullable(),
 });
+
+// ─── Fotos de progresso (Antes & Depois) ────────────────────────────────────
+// imageUrl nunca vem do cliente — é definido pelo servidor após salvar o
+// arquivo enviado (multipart), nunca aceito como payload JSON arbitrário.
+
+export const createProgressPhotoSchema = z.object({
+  weight: weightKgSchema.optional().nullable(),
+  notes: z.string().trim().max(200).optional().nullable(),
+  takenAt: z.coerce.date().optional(),
+});
+
+export const updateProgressPhotoSchema = z.object({
+  weight: weightKgSchema.optional().nullable(),
+  notes: z.string().trim().max(200).optional().nullable(),
+  takenAt: z.coerce.date().optional(),
+});
+
+export const MAX_PROGRESS_PHOTO_BYTES = 5 * 1024 * 1024; // 5MB — mesmo limite do avatar
+export const ALLOWED_PROGRESS_PHOTO_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
 
 // ─── Registro de peso ───────────────────────────────────────────────────────
 
@@ -93,6 +126,8 @@ export const completeOnboardingSchema = z.object({
   currentWeight: weightKgSchema,
   targetWeight: weightKgSchema,
   dietGoal: dietGoalSchema,
+  birthDate: birthDateSchema,
+  activityLevel: activityLevelSchema,
   // Alimentação
   dietType: dietTypeSchema,
   allergies: foodListSchema.default([]),

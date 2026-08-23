@@ -26,7 +26,10 @@ export default function CreateProfileOnSignIn() {
           "Content-Type": "application/json",
         },
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        throw new Error(data?.error || "Erro ao criar perfil");
+      }
       return data as ApiResponse;
     },
     onError: (error) => {

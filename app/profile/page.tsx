@@ -7,11 +7,13 @@ import { useState } from "react";
 import { Toaster } from "react-hot-toast";
 import { useRouter } from "next/navigation";
 import { Spinner } from "@/components/spinner";
-import { motion } from "framer-motion";
-import { Camera, Scale, Ruler, Target, LogOut, Edit, Flame, Star, Trophy, Lock } from "lucide-react";
+import { Camera, Scale, Ruler, Target, LogOut, Edit, Flame, Star, Trophy } from "lucide-react";
 import WeightChart from "@/components/WeightChart";
 import AdherenceRing from "@/components/AdherenceRing";
 import EditProfileModal from "@/components/EditProfileModal";
+import BeforeAfterSection from "@/components/BeforeAfterSection";
+import BetaTesterBadge from "@/components/BetaTesterBadge";
+import AchievementsSummaryCard from "@/components/AchievementsSummaryCard";
 import { useProfile } from "@/hooks/useProfile";
 import { formatHeightMeters, findLabel, DIET_GOALS, DIET_TYPES, COOKING_LEVELS, BUDGET_LEVELS } from "@/lib/profile/options";
 
@@ -122,7 +124,6 @@ export default function ProfilePage() {
   const displayName = socialProfile?.displayName || user?.fullName || user?.firstName || "Usuário";
   const avatarUrl = socialProfile?.avatarUrl || user?.imageUrl;
 
-  const achievements = gamification?.achievements ?? [];
 
   const handleSignOut = () => {
     if (confirm("Deseja realmente sair?")) {
@@ -234,6 +235,8 @@ export default function ProfilePage() {
             )}
           </div>
 
+          <BetaTesterBadge />
+
           {/* Preferências */}
           <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
             <h3 className="font-semibold text-slate-800 mb-3">Preferências</h3>
@@ -344,26 +347,30 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          {/* Adesão */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
-            <h3 className="font-bold text-slate-800 mb-4">Adesão ao Plano</h3>
-            <div className="flex items-center justify-around flex-wrap gap-4">
-              <AdherenceRing percentage={adherence.percentage} size={120} />
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-[#007BFF]" />
-                  <span className="text-sm text-slate-600 flex-1">Refeições concluídas</span>
-                  <span className="text-sm font-bold text-slate-800">
-                    {adherence.completed}/{adherence.total}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-[#28A745]" />
-                  <span className="text-sm text-slate-600 flex-1">Favoritas</span>
-                  <span className="text-sm font-bold text-slate-800">{favoriteCount}</span>
+          {/* Adesão + Antes & Depois */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+              <h3 className="font-bold text-slate-800 mb-4">Adesão ao Plano</h3>
+              <div className="flex items-center justify-around flex-wrap gap-4">
+                <AdherenceRing percentage={adherence.percentage} size={120} />
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-[#007BFF]" />
+                    <span className="text-sm text-slate-600 flex-1">Refeições concluídas</span>
+                    <span className="text-sm font-bold text-slate-800">
+                      {adherence.completed}/{adherence.total}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-[#28A745]" />
+                    <span className="text-sm text-slate-600 flex-1">Planos favoritos</span>
+                    <span className="text-sm font-bold text-slate-800">{favoriteCount}</span>
+                  </div>
                 </div>
               </div>
             </div>
+
+            <BeforeAfterSection currentWeight={currentWeight} />
           </div>
 
           {/* Registrar novo peso */}
@@ -373,6 +380,7 @@ export default function ProfilePage() {
               <input
                 type="number"
                 step="0.1"
+                inputMode="decimal"
                 value={newWeight}
                 onChange={(e) => setNewWeight(e.target.value)}
                 placeholder="Registrar peso de hoje (kg)"
@@ -380,9 +388,11 @@ export default function ProfilePage() {
               />
               <button
                 onClick={() => {
-                  addWeightLog.mutate({ weight: parseFloat(newWeight) }, { onSuccess: () => setNewWeight("") });
+                  const weight = Number(newWeight);
+                  if (!newWeight.trim() || Number.isNaN(weight) || weight <= 0) return;
+                  addWeightLog.mutate({ weight }, { onSuccess: () => setNewWeight("") });
                 }}
-                disabled={!newWeight || addWeightLog.isPending}
+                disabled={!newWeight.trim() || Number.isNaN(Number(newWeight)) || addWeightLog.isPending}
                 className="bg-[#007BFF] hover:bg-[#0056b3] text-white text-sm font-medium px-4 py-2 rounded-xl disabled:opacity-50 transition-colors"
               >
                 {addWeightLog.isPending ? "..." : "Registrar"}
@@ -402,32 +412,7 @@ export default function ProfilePage() {
           )}
 
           {/* Conquistas */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
-            <div className="flex justify-between items-center mb-5">
-              <h3 className="font-bold text-slate-800">Conquistas</h3>
-              <span className="text-sm text-slate-400">{achievements.length} desbloqueadas</span>
-            </div>
-            {achievements.length === 0 ? (
-              <div className="text-center py-6">
-                <Lock className="mx-auto text-slate-300 mb-2" size={28} />
-                <p className="text-sm text-slate-500">Complete refeições e mantenha sua sequência para desbloquear conquistas.</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-3 sm:grid-cols-6 gap-4">
-                {achievements.map((ach) => (
-                  <motion.div
-                    key={ach.code}
-                    whileHover={{ scale: 1.05 }}
-                    className="flex flex-col items-center gap-2 p-4 rounded-2xl cursor-default bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-200"
-                    title={ach.description}
-                  >
-                    <span className="text-3xl">{ach.emoji}</span>
-                    <span className="text-xs text-center font-medium leading-tight text-slate-700">{ach.title}</span>
-                  </motion.div>
-                ))}
-              </div>
-            )}
-          </div>
+          <AchievementsSummaryCard />
         </div>
       </div>
 

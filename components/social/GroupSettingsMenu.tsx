@@ -71,7 +71,7 @@ export default function GroupSettingsMenu({
             initial={{ opacity: 0, y: -6 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -6 }}
-            className="absolute right-0 top-11 bg-white border border-slate-100 shadow-lg rounded-xl p-3 w-72 z-20"
+            className="fixed left-4 right-4 top-16 sm:absolute sm:left-auto sm:right-0 sm:top-11 sm:w-72 bg-white border border-slate-100 shadow-lg rounded-xl p-3 z-20"
           >
             {mode === "menu" && (
               <div className="space-y-1">

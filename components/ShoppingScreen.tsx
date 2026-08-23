@@ -153,7 +153,7 @@ export default function ShoppingScreen() {
           <h2 className="text-lg font-bold text-slate-800">{getWeekRange()}</h2>
           <p className="text-sm text-slate-500">{totalItems > 0 ? `${totalItems} itens no total` : "Gere sua lista com IA baseada no plano da semana"}</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
           {totalItems > 0 && (
             <>
               <button onClick={() => window.print()} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 flex items-center gap-2">
@@ -234,14 +234,14 @@ export default function ShoppingScreen() {
                                 key={item.originalIndex}
                                 className={`flex items-center justify-between p-3 rounded-xl transition-colors ${item.checked ? "bg-[#28A745]/8" : "bg-slate-50"}`}
                               >
-                                <label className="flex items-center gap-3 cursor-pointer">
-                                  <input type="checkbox" checked={item.checked} onChange={() => toggleItem(item.originalIndex)} className="w-5 h-5 accent-[#28A745] rounded" />
-                                  <div>
-                                    <p className={`font-medium ${item.checked ? "line-through text-slate-400" : "text-slate-700"}`}>{item.name}</p>
+                                <label className="flex items-center gap-3 cursor-pointer min-w-0 flex-1">
+                                  <input type="checkbox" checked={item.checked} onChange={() => toggleItem(item.originalIndex)} className="w-5 h-5 accent-[#28A745] rounded flex-shrink-0" />
+                                  <div className="min-w-0">
+                                    <p className={`font-medium break-words ${item.checked ? "line-through text-slate-400" : "text-slate-700"}`}>{item.name}</p>
                                     <p className="text-xs text-slate-400">{item.quantity}</p>
                                   </div>
                                 </label>
-                                <span className={`font-medium ${item.checked ? "text-slate-400 line-through" : "text-slate-700"}`}>
+                                <span className={`font-medium flex-shrink-0 ml-2 ${item.checked ? "text-slate-400 line-through" : "text-slate-700"}`}>
                                   {item.estimated_price ? `R$ ${item.estimated_price.toFixed(2)}` : ""}
                                 </span>
                               </div>

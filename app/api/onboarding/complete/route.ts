@@ -28,11 +28,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Este nome de usuário não está disponível" }, { status: 400 });
   }
 
+  // Fast-path: evita abrir transação para o caso comum (onboarding já
+  // concluído há tempo). A garantia real contra concorrência está no "claim"
+  // atômico dentro da transação abaixo, não nesta checagem.
   const currentProfile = await prisma.profile.findUnique({
     where: { userId },
-    select: { onboardingCompletedAt: true, startWeight: true },
+    select: { onboardingCompletedAt: true },
   });
-
   if (currentProfile?.onboardingCompletedAt) {
     return NextResponse.json({ success: true, alreadyCompleted: true });
   }
@@ -50,7 +52,34 @@ export async function POST(request: Request) {
   }
 
   try {
-    await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx) => {
+      const before = await tx.profile.findUnique({ where: { userId }, select: { startWeight: true } });
+
+      // "Claim" atômico: só quem conseguir mudar onboardingCompletedAt de
+      // null para uma data prossegue. Sob duplo clique/retry concorrentes, o
+      // Postgres serializa os dois UPDATEs — o segundo reavalia o WHERE após
+      // o primeiro commitar, não casa mais (já não é null) e count fica 0.
+      // Isso impede WeightLog duplicado e qualquer escrita parcial dupla.
+      const claim = await tx.profile.updateMany({
+        where: { userId, onboardingCompletedAt: null },
+        data: {
+          height: data.height,
+          currentWeight: data.currentWeight,
+          targetWeight: data.targetWeight,
+          startWeight: before?.startWeight ?? data.currentWeight,
+          dietType: data.dietType,
+          cookingLevel: data.cookingLevel,
+          birthDate: data.birthDate,
+          activityLevel: data.activityLevel,
+          onboardingCompletedAt: new Date(),
+          onboardingVersion: ONBOARDING_VERSION,
+        },
+      });
+
+      if (claim.count === 0) {
+        return { alreadyCompleted: true };
+      }
+
       await tx.socialProfile.update({
         where: { userId },
         data: {
@@ -58,20 +87,6 @@ export async function POST(request: Request) {
           username: data.username,
           bio: data.bio ?? null,
           ...(data.timezone ? { timezone: data.timezone } : {}),
-        },
-      });
-
-      await tx.profile.update({
-        where: { userId },
-        data: {
-          height: data.height,
-          currentWeight: data.currentWeight,
-          targetWeight: data.targetWeight,
-          startWeight: currentProfile?.startWeight ?? data.currentWeight,
-          dietType: data.dietType,
-          cookingLevel: data.cookingLevel,
-          onboardingCompletedAt: new Date(),
-          onboardingVersion: ONBOARDING_VERSION,
         },
       });
 
@@ -101,9 +116,11 @@ export async function POST(request: Request) {
       await tx.weightLog.create({
         data: { userId, weight: data.currentWeight, date: new Date() },
       });
+
+      return { alreadyCompleted: false };
     });
 
-    return NextResponse.json({ success: true, alreadyCompleted: false });
+    return NextResponse.json({ success: true, alreadyCompleted: result.alreadyCompleted });
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
       return NextResponse.json({ error: "Nome de usuário já em uso" }, { status: 409 });

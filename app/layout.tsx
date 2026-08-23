@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import PublicNavBar from "../components/PublicNavBar";
@@ -12,6 +12,14 @@ import { Toaster } from "react-hot-toast"; // 🔥 1. IMPORTE AQUI
 export const metadata: Metadata = {
   title: "AI Meal Plans | Simple SaaS Demo",
   description: "Generate personalized meal plans with OpenAI",
+};
+
+// viewportFit: "cover" é obrigatório para env(safe-area-inset-*) funcionar
+// de verdade em iPhones com notch/indicador Home (ver MobileBottomNav).
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({

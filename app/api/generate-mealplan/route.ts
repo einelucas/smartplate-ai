@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import OpenAI from "openai";
 import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
+import { calculateAge } from "@/lib/profile/options";
 
 const openai = new OpenAI({
   baseURL: "https://openrouter.ai/api/v1",
@@ -49,6 +50,8 @@ export async function POST(request: Request) {
           targetWeight: true,
           dietType: true,
           cookingLevel: true,
+          birthDate: true,
+          activityLevel: true,
         },
       }),
       prisma.userPreferences.findUnique({
@@ -109,9 +112,29 @@ export async function POST(request: Request) {
 
     const dietType = overrides.dietType || profile.dietType || "balanceada";
     const cookingLevel = overrides.cookingLevel || profile.cookingLevel || "intermediário";
-    const dailyCalories =
-      overrides.calories ||
-      calculateDailyCalories(profile.height || 170, profile.currentWeight, profile.targetWeight);
+
+    let dailyCalories: number;
+    if (overrides.calories) {
+      // Usuário definiu manualmente no modal — sempre tem prioridade.
+      dailyCalories = overrides.calories;
+    } else if (profile.height && profile.birthDate && profile.activityLevel) {
+      dailyCalories = calculateDailyCalories({
+        heightCm: profile.height,
+        currentWeight: profile.currentWeight,
+        targetWeight: profile.targetWeight,
+        birthDate: profile.birthDate,
+        activityLevel: profile.activityLevel,
+      });
+    } else {
+      // Nunca inventa idade/atividade em silêncio — pede para completar o Perfil.
+      return NextResponse.json(
+        {
+          error:
+            "Complete seus dados no Perfil (altura, data de nascimento e nível de atividade) para calcular sua meta calórica automaticamente, ou informe as calorias manualmente ao gerar o plano.",
+        },
+        { status: 400 }
+      );
+    }
 
     const userContext = {
       peso_atual_kg: profile.currentWeight,
@@ -176,20 +199,28 @@ export async function POST(request: Request) {
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
-// O app ainda não coleta idade nem nível de atividade do usuário. Até que
-// isso exista no onboarding, usamos médias documentadas (adulto jovem,
-// atividade moderada) em vez de números soltos na fórmula — decisão tomada
-// para não expandir o escopo desta tarefa apenas para remover o cálculo.
-const ASSUMED_AGE_YEARS = 30;
-const ASSUMED_ACTIVITY_FACTOR = 1.55; // atividade moderada (Mifflin-St Jeor)
+// Fatores de atividade padrão (Mifflin-St Jeor) por nível — ver
+// lib/profile/options.ts para os valores/labels de ACTIVITY_LEVELS.
+const ACTIVITY_FACTORS: Record<string, number> = {
+  sedentary: 1.2,
+  light: 1.375,
+  moderate: 1.55,
+  active: 1.725,
+};
 
-function calculateDailyCalories(
-  heightCm: number,
-  currentWeight: number,
-  targetWeight: number
-): number {
-  const bmr = 10 * currentWeight + 6.25 * heightCm - 5 * ASSUMED_AGE_YEARS + 5;
-  const maintenance = Math.round(bmr * ASSUMED_ACTIVITY_FACTOR);
+function calculateDailyCalories(params: {
+  heightCm: number;
+  currentWeight: number;
+  targetWeight: number;
+  birthDate: Date;
+  activityLevel: string;
+}): number {
+  const { heightCm, currentWeight, targetWeight, birthDate, activityLevel } = params;
+  const age = calculateAge(birthDate);
+  const activityFactor = ACTIVITY_FACTORS[activityLevel] ?? ACTIVITY_FACTORS.moderate;
+
+  const bmr = 10 * currentWeight + 6.25 * heightCm - 5 * age + 5;
+  const maintenance = Math.round(bmr * activityFactor);
   if (targetWeight < currentWeight) return Math.round(maintenance - 500);
   if (targetWeight > currentWeight) return Math.round(maintenance + 300);
   return maintenance;

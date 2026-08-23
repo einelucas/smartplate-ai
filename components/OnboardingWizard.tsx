@@ -31,9 +31,12 @@ import {
   DIET_GOALS,
   BUDGET_LEVELS,
   MAX_PREP_TIME_OPTIONS,
+  ACTIVITY_LEVELS,
 } from "@/lib/profile/options";
 import { useProfile } from "@/hooks/useProfile";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import BetaCodeSection from "@/components/BetaCodeSection";
+import { resolveIcon } from "@/components/icon-registry";
 
 const allergyIcons: Record<string, typeof Wheat> = {
   "Glúten": Wheat,
@@ -151,6 +154,8 @@ export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) 
   const [height, setHeight] = useState("");
   const [currentWeight, setCurrentWeight] = useState("");
   const [targetWeight, setTargetWeight] = useState("");
+  const [birthDate, setBirthDate] = useState("");
+  const [activityLevel, setActivityLevel] = useState("");
 
   // Etapa 3 — Alimentação
   const [dietType, setDietType] = useState("");
@@ -185,6 +190,8 @@ export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) 
       if (physicalData.targetWeight) setTargetWeight(String(physicalData.targetWeight));
       if (physicalData.dietType) setDietType(physicalData.dietType);
       if (physicalData.cookingLevel) setCookingLevel(physicalData.cookingLevel);
+      if (physicalData.birthDate) setBirthDate(physicalData.birthDate.slice(0, 10));
+      if (physicalData.activityLevel) setActivityLevel(physicalData.activityLevel);
     }
 
     if (preferences) {
@@ -278,6 +285,8 @@ export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) 
           height: Number(height),
           currentWeight: Number(currentWeight),
           targetWeight: Number(targetWeight),
+          birthDate,
+          activityLevel,
           dietGoal,
           dietType,
           allergies,
@@ -413,6 +422,7 @@ export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) 
               <label className="block text-xs font-medium text-slate-500 mb-1.5">Altura (cm)</label>
               <input
                 type="number"
+                inputMode="numeric"
                 value={height}
                 onChange={(e) => setHeight(e.target.value)}
                 placeholder="175"
@@ -424,6 +434,7 @@ export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) 
               <input
                 type="number"
                 step="0.1"
+                inputMode="decimal"
                 value={currentWeight}
                 onChange={(e) => setCurrentWeight(e.target.value)}
                 placeholder="80"
@@ -435,11 +446,42 @@ export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) 
               <input
                 type="number"
                 step="0.1"
+                inputMode="decimal"
                 value={targetWeight}
                 onChange={(e) => setTargetWeight(e.target.value)}
                 placeholder="75"
                 className="w-full px-3 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#007BFF]"
               />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-slate-500 mb-1.5">Data de nascimento</label>
+            <input
+              type="date"
+              value={birthDate}
+              max={new Date().toISOString().slice(0, 10)}
+              onChange={(e) => setBirthDate(e.target.value)}
+              className="w-full px-3 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#007BFF]"
+            />
+            <p className="text-xs text-slate-400 mt-1">Usada só para calcular sua meta calórica — nunca é pública.</p>
+          </div>
+
+          <div>
+            <p className="text-xs font-medium text-slate-500 mb-2">Nível de atividade</p>
+            <div className="grid grid-cols-2 gap-2">
+              {ACTIVITY_LEVELS.map((level) => (
+                <button
+                  key={level.value}
+                  type="button"
+                  onClick={() => setActivityLevel(level.value)}
+                  className={`px-3 py-2.5 rounded-xl text-sm font-medium border-2 transition-colors ${
+                    activityLevel === level.value ? "border-[#007BFF] bg-[#007BFF]/10 text-[#007BFF]" : "border-slate-200 text-slate-600 bg-white"
+                  }`}
+                >
+                  {level.label}
+                </button>
+              ))}
             </div>
           </div>
         </div>
@@ -525,29 +567,37 @@ export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) 
       ),
     },
     {
+      title: "Tem um código Beta?",
+      subtitle: "Opcional — pule se você não recebeu um convite",
+      content: <BetaCodeSection />,
+    },
+    {
       title: "Sua rotina na cozinha",
       subtitle: "Últimos detalhes para personalizar seus planos",
       content: (
         <div className="space-y-6">
           <div className="space-y-3">
-            {COOKING_LEVELS.map((level) => (
-              <motion.button
-                key={level.value}
-                type="button"
-                whileTap={{ scale: 0.98 }}
-                onClick={() => setCookingLevel(level.value)}
-                className={`w-full p-4 rounded-2xl border-2 flex items-center gap-4 transition-all ${
-                  cookingLevel === level.value ? "border-[#007BFF] bg-[#007BFF]/10" : "border-slate-200 bg-white"
-                }`}
-              >
-                <span className="text-3xl">{level.emoji}</span>
-                <div className="text-left">
-                  <h4 className="font-semibold text-slate-800">{level.label}</h4>
-                  <p className="text-sm text-slate-500">{level.desc}</p>
-                </div>
-                {cookingLevel === level.value && <Check size={20} className="text-[#007BFF] ml-auto" />}
-              </motion.button>
-            ))}
+            {COOKING_LEVELS.map((level) => {
+              const LevelIcon = resolveIcon(level.icon);
+              return (
+                <motion.button
+                  key={level.value}
+                  type="button"
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => setCookingLevel(level.value)}
+                  className={`w-full p-4 rounded-2xl border-2 flex items-center gap-4 transition-all ${
+                    cookingLevel === level.value ? "border-[#007BFF] bg-[#007BFF]/10" : "border-slate-200 bg-white"
+                  }`}
+                >
+                  <LevelIcon size={30} weight="duotone" className="text-[#007BFF] flex-shrink-0" />
+                  <div className="text-left">
+                    <h4 className="font-semibold text-slate-800">{level.label}</h4>
+                    <p className="text-sm text-slate-500">{level.desc}</p>
+                  </div>
+                  {cookingLevel === level.value && <Check size={20} className="text-[#007BFF] ml-auto" />}
+                </motion.button>
+              );
+            })}
           </div>
 
           <div>
@@ -606,12 +656,15 @@ export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) 
       case 0:
         return displayName.trim().length > 0 && username.trim().length >= 3 && availability?.available !== false;
       case 1:
-        return !!dietGoal && Number(height) > 0 && Number(currentWeight) > 0 && Number(targetWeight) > 0;
+        return !!dietGoal && Number(height) > 0 && Number(currentWeight) > 0 && Number(targetWeight) > 0 && !!birthDate && !!activityLevel;
       case 2:
         return !!dietType;
       case 3:
         return true;
       case 4:
+        // Etapa do código Beta é sempre pulável — nunca bloqueia o onboarding.
+        return true;
+      case 5:
         return !!cookingLevel && !!budgetLevel;
       default:
         return false;

@@ -7,11 +7,13 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "stripe:listen": "stripe isten --forward-to localhost:3000/api/webhook"
+    "stripe:listen": "stripe isten --forward-to localhost:3000/api/webhook",
+    "beta:generate": "node --env-file=.env scripts/generate-beta-codes.cjs"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.9.6",
     "@neondatabase/serverless": "^0.10.4",
+    "@phosphor-icons/react": "^2.1.10",
     "@prisma/adapter-neon": "^6.1.0",
     "@prisma/client": "^6.1.0",
     "@supabase/supabase-js": "^2.47.10",

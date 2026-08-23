@@ -15,22 +15,26 @@ import {
   Target,
   UtensilsCrossed,
 } from "lucide-react";
+import { ThumbsUpIcon, FireIcon, HandsClappingIcon, BarbellIcon, TrophyIcon, type Icon } from "@phosphor-icons/react";
 import { useBlockUser, useDeletePost, useToggleReaction, useUpdatePost } from "@/hooks/useCommunity";
 import { formatRelativeTime } from "@/lib/community/dates";
+import { resolveIcon } from "@/components/icon-registry";
 import type { CommunityPostSummary } from "@/types/community";
 import CommentSection from "./CommentSection";
 import ReportModal from "./ReportModal";
 
-const REACTIONS: { type: "LIKE" | "FIRE" | "CLAP" | "STRONG"; emoji: string }[] = [
-  { type: "LIKE", emoji: "👍" },
-  { type: "FIRE", emoji: "🔥" },
-  { type: "CLAP", emoji: "👏" },
-  { type: "STRONG", emoji: "💪" },
+const REACTIONS: { type: "LIKE" | "FIRE" | "CLAP" | "STRONG"; icon: Icon }[] = [
+  { type: "LIKE", icon: ThumbsUpIcon },
+  { type: "FIRE", icon: FireIcon },
+  { type: "CLAP", icon: HandsClappingIcon },
+  { type: "STRONG", icon: BarbellIcon },
 ];
 
 type Post = CommunityPostSummary;
 
-type AchievementMetadata = { title?: string; description?: string; emoji?: string };
+// `emoji` é lido para compatibilidade com posts antigos (persistidos antes da
+// migração para ícones) — posts novos gravam `icon` (chave de icon-registry).
+type AchievementMetadata = { title?: string; description?: string; icon?: string; emoji?: string };
 type StreakMetadata = { milestone?: number };
 type PlanShareMetadata = { shareToken?: string; planName?: string; dietType?: string };
 
@@ -158,11 +162,13 @@ export default function PostCard({
             <button
               key={r.type}
               onClick={() => toggleReaction.mutate({ postId: post.id, type: r.type })}
+              aria-label={r.type}
+              aria-pressed={active}
               className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-sm transition-colors ${
                 active ? "bg-[#007BFF]/10 text-[#007BFF]" : "text-slate-500 hover:bg-slate-100"
               }`}
             >
-              <span>{r.emoji}</span>
+              <r.icon size={16} weight={active ? "fill" : "regular"} />
               {count > 0 && <span className="text-xs font-medium">{count}</span>}
             </button>
           );
@@ -208,10 +214,17 @@ function PostBody({
   }
 
   if (post.type === "ACHIEVEMENT") {
-    const { title, description, emoji } = (post.metadata ?? {}) as AchievementMetadata;
+    const { title, description, icon, emoji } = (post.metadata ?? {}) as AchievementMetadata;
+    const AchievementIcon = icon ? resolveIcon(icon) : null;
     return (
       <div className="bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-100 rounded-xl p-4 flex items-center gap-3">
-        <span className="text-3xl">{emoji ?? "🏆"}</span>
+        {AchievementIcon ? (
+          <AchievementIcon size={30} weight="duotone" className="text-amber-500 flex-shrink-0" />
+        ) : emoji ? (
+          <span className="text-3xl flex-shrink-0">{emoji}</span>
+        ) : (
+          <TrophyIcon size={30} weight="duotone" className="text-amber-500 flex-shrink-0" />
+        )}
         <div>
           <p className="font-bold text-slate-800 text-sm">{title ?? "Nova conquista"}</p>
           <p className="text-xs text-slate-500">{description}</p>

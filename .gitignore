@@ -36,6 +36,12 @@ yarn-error.log*
 # vercel
 .vercel
 
+# uploads de usuário (fotos de progresso) — nunca versionar dados privados
+/public/uploads/
+
+# códigos Beta gerados em texto puro — nunca versionar/distribuir via git
+/generated/beta-codes-*.txt
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

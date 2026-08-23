@@ -139,7 +139,7 @@ export default function HomeDashboard() {
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-gradient-to-r from-[#007BFF] to-[#0056b3] rounded-3xl p-8 mb-8 text-white relative overflow-hidden"
+        className="bg-gradient-to-r from-[#007BFF] to-[#0056b3] rounded-3xl p-5 sm:p-8 mb-8 text-white relative overflow-hidden"
       >
         <div className="absolute right-0 top-0 w-64 h-full opacity-10">
           <div className="text-[180px] absolute -right-8 -top-4">🥗</div>
@@ -148,13 +148,13 @@ export default function HomeDashboard() {
           <p className="text-white/80 mb-1">
             {greeting}, {user?.firstName || "por aqui"}! 👋
           </p>
-          <h2 className="text-3xl font-bold mb-3">{latestPlan ? "Seu plano está atualizado" : "Vamos montar seu plano?"}</h2>
+          <h2 className="text-2xl sm:text-3xl font-bold mb-3">{latestPlan ? "Seu plano está atualizado" : "Vamos montar seu plano?"}</h2>
           <p className="text-white/80 max-w-xl">
             {latestPlan
               ? "Continue seguindo suas refeições de hoje — você está indo muito bem!"
               : "Gere um plano alimentar semanal personalizado com IA em segundos."}
           </p>
-          <div className="flex gap-3 mt-6">
+          <div className="flex flex-wrap gap-3 mt-6">
             {latestPlan ? (
               <Link href="/mealplan" className="bg-white text-[#007BFF] hover:bg-white/90 rounded-xl font-semibold px-4 py-2.5 flex items-center text-sm">
                 <Sparkles size={16} className="mr-2" />

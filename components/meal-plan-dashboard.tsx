@@ -143,13 +143,13 @@ function MealCard({ meal, type, onSwap, onFavorite, isFavorite, onComplete, isCo
         </div>
       </div>
 
-      <div className="p-8">
-        <div className="flex justify-between items-start mb-6">
-          <div>
-            <h3 className="text-2xl font-bold text-slate-800">{meal?.name}</h3>
-            <p className="text-slate-500 mt-1">{meal?.description}</p>
+      <div className="p-5 sm:p-8">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4 mb-6">
+          <div className="min-w-0">
+            <h3 className="text-xl sm:text-2xl font-bold text-slate-800 break-words">{meal?.name}</h3>
+            <p className="text-slate-500 mt-1 break-words">{meal?.description}</p>
           </div>
-          <div className="flex gap-4">
+          <div className="flex gap-4 flex-shrink-0">
             <div className="text-center">
               <div className="flex items-center gap-1 text-orange-500">
                 <Flame size={18} />
@@ -225,7 +225,7 @@ function SwapModal({ isOpen, onClose, onSelect, options, isLoading, isApplying }
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-8"
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 sm:p-8"
           onClick={onClose}
         >
           <motion.div
@@ -233,7 +233,7 @@ function SwapModal({ isOpen, onClose, onSelect, options, isLoading, isApplying }
             animate={{ scale: 1, y: 0 }}
             exit={{ scale: 0.9, y: 20 }}
             onClick={(e) => e.stopPropagation()}
-            className="bg-white rounded-3xl p-8 w-full max-w-lg shadow-2xl"
+            className="bg-white rounded-3xl p-5 sm:p-8 w-full max-w-lg max-h-[85vh] overflow-y-auto shadow-2xl"
           >
             <h3 className="text-xl font-bold text-slate-800 mb-2">Trocar Refeição</h3>
             <p className="text-slate-500 mb-6">Escolha uma alternativa sugerida pela IA:</p>
@@ -466,7 +466,7 @@ export default function MealPlanDashboard() {
           </h2>
           <p className="text-sm text-slate-500">{activePlan ? "Plano gerado pela IA com base nas suas preferências" : "Gere seu primeiro plano personalizado com IA"}</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
           {savedPlans.length > 0 && (
             <button
               onClick={() => setShowSavedPlans((v) => !v)}
@@ -524,14 +524,15 @@ export default function MealPlanDashboard() {
         )}
       </AnimatePresence>
 
-      {/* Day selector */}
-      <div className="flex gap-2 mb-8 bg-white rounded-2xl p-2 shadow-sm border border-slate-100">
+      {/* Day selector — scroll horizontal em telas estreitas para não espremer os 7 dias */}
+      <div className="flex gap-2 mb-8 bg-white rounded-2xl p-2 shadow-sm border border-slate-100 overflow-x-auto scrollbar-hide">
         {weekDays.map((day, i) => (
           <motion.button
             key={day.short}
             whileTap={{ scale: 0.96 }}
             onClick={() => setSelectedDay(i)}
-            className={`flex-1 py-3 rounded-xl transition-all ${selectedDay === i ? "bg-[#007BFF] text-white shadow-md shadow-[#007BFF]/30" : "text-slate-500 hover:bg-slate-50"}`}
+            aria-current={selectedDay === i ? "true" : undefined}
+            className={`flex-1 min-w-[52px] py-3 rounded-xl transition-all ${selectedDay === i ? "bg-[#007BFF] text-white shadow-md shadow-[#007BFF]/30" : "text-slate-500 hover:bg-slate-50"}`}
           >
             <p className="text-xs font-medium">{day.short}</p>
             <p className="text-lg font-bold mt-0.5">{day.date}</p>

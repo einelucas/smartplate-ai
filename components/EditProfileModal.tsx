@@ -8,7 +8,7 @@ import toast from "react-hot-toast";
 import Image from "next/image";
 import { useProfile } from "@/hooks/useProfile";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
-import { DIET_TYPES, ALLERGY_OPTIONS, FOOD_SUGGESTION_OPTIONS, COOKING_LEVELS, DIET_GOALS, BUDGET_LEVELS, MAX_PREP_TIME_OPTIONS } from "@/lib/profile/options";
+import { DIET_TYPES, ALLERGY_OPTIONS, FOOD_SUGGESTION_OPTIONS, COOKING_LEVELS, DIET_GOALS, BUDGET_LEVELS, MAX_PREP_TIME_OPTIONS, ACTIVITY_LEVELS } from "@/lib/profile/options";
 import type { PhysicalData, SocialProfileSummary, UserPreferences } from "@/types/profile";
 
 interface EditProfileModalProps {
@@ -36,6 +36,8 @@ export default function EditProfileModal({ isOpen, onClose, physicalData, prefer
   const [height, setHeight] = useState(String(physicalData?.height ?? ""));
   const [targetWeight, setTargetWeight] = useState(String(physicalData?.targetWeight ?? ""));
   const [dietGoal, setDietGoal] = useState(preferences?.dietGoal ?? "");
+  const [birthDate, setBirthDate] = useState(physicalData?.birthDate ? physicalData.birthDate.slice(0, 10) : "");
+  const [activityLevel, setActivityLevel] = useState(physicalData?.activityLevel ?? "");
 
   const [dietType, setDietType] = useState(physicalData?.dietType ?? "");
   const [allergies, setAllergies] = useState<string[]>(preferences?.allergies ?? []);
@@ -55,6 +57,8 @@ export default function EditProfileModal({ isOpen, onClose, physicalData, prefer
     setHeight(String(physicalData?.height ?? ""));
     setTargetWeight(String(physicalData?.targetWeight ?? ""));
     setDietGoal(preferences?.dietGoal ?? "");
+    setBirthDate(physicalData?.birthDate ? physicalData.birthDate.slice(0, 10) : "");
+    setActivityLevel(physicalData?.activityLevel ?? "");
     setDietType(physicalData?.dietType ?? "");
     setAllergies(preferences?.allergies ?? []);
     setPreferredFoods(preferences?.preferredFoods ?? []);
@@ -144,6 +148,8 @@ export default function EditProfileModal({ isOpen, onClose, physicalData, prefer
         targetWeight: targetWeight ? Number(targetWeight) : undefined,
         dietType: dietType || undefined,
         cookingLevel: cookingLevel || undefined,
+        birthDate: birthDate || undefined,
+        activityLevel: activityLevel || undefined,
       });
 
       await updatePreferences.mutateAsync({
@@ -286,6 +292,7 @@ export default function EditProfileModal({ isOpen, onClose, physicalData, prefer
                       <label className="block text-xs text-slate-500 mb-1">Altura (cm)</label>
                       <input
                         type="number"
+                        inputMode="numeric"
                         value={height}
                         onChange={(e) => setHeight(e.target.value)}
                         placeholder="175"
@@ -297,6 +304,7 @@ export default function EditProfileModal({ isOpen, onClose, physicalData, prefer
                       <input
                         type="number"
                         step="0.1"
+                        inputMode="decimal"
                         value={targetWeight}
                         onChange={(e) => setTargetWeight(e.target.value)}
                         className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#007BFF]"
@@ -320,6 +328,34 @@ export default function EditProfileModal({ isOpen, onClose, physicalData, prefer
                         </option>
                       ))}
                     </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs text-slate-500 mb-1">Data de nascimento</label>
+                    <input
+                      type="date"
+                      value={birthDate}
+                      max={new Date().toISOString().slice(0, 10)}
+                      onChange={(e) => setBirthDate(e.target.value)}
+                      className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#007BFF]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs text-slate-500 mb-1">Nível de atividade</label>
+                    <select
+                      value={activityLevel}
+                      onChange={(e) => setActivityLevel(e.target.value)}
+                      className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#007BFF]"
+                    >
+                      <option value="">Selecione</option>
+                      {ACTIVITY_LEVELS.map((a) => (
+                        <option key={a.value} value={a.value}>
+                          {a.label}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-slate-400 mt-1">Usados só para calcular sua meta calórica — nunca são públicos.</p>
                   </div>
 
                   <p className="text-xs text-slate-400">

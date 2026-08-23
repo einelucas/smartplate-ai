@@ -1,6 +1,8 @@
 // lib/community/achievements.ts
 // Definições de conquistas (código-fonte é a fonte da verdade, não o banco).
 // Nunca criar conquistas baseadas em peso/calorias/emagrecimento.
+// `icon` é uma chave de components/icon-registry.tsx (nunca emoji nem
+// componente direto — precisa ser serializável em JSON/metadata de post).
 
 export type AchievementCode =
   | "FIRST_ACTION"
@@ -14,17 +16,17 @@ export type AchievementCode =
   | "FIRST_CHALLENGE"
   | "FIRST_GROUP";
 
-export const ACHIEVEMENTS: Record<AchievementCode, { title: string; description: string; emoji: string }> = {
-  FIRST_ACTION: { title: "Primeiro passo", description: "Você registrou sua primeira ação na Comunidade.", emoji: "🌱" },
-  STREAK_3: { title: "3 dias de consistência", description: "Você manteve uma sequência de 3 dias.", emoji: "🔥" },
-  STREAK_7: { title: "7 dias de consistência", description: "Você manteve uma sequência de 7 dias.", emoji: "🔥" },
-  STREAK_14: { title: "14 dias de consistência", description: "Você manteve uma sequência de 14 dias.", emoji: "🔥" },
-  STREAK_30: { title: "30 dias de consistência", description: "Você manteve uma sequência de 30 dias.", emoji: "🏅" },
-  XP_100: { title: "100 XP", description: "Você acumulou 100 XP.", emoji: "⭐" },
-  XP_500: { title: "500 XP", description: "Você acumulou 500 XP.", emoji: "⭐" },
-  XP_1000: { title: "1000 XP", description: "Você acumulou 1000 XP.", emoji: "🌟" },
-  FIRST_CHALLENGE: { title: "Primeiro desafio", description: "Você completou seu primeiro desafio.", emoji: "🏆" },
-  FIRST_GROUP: { title: "Comunidade", description: "Você entrou ou criou seu primeiro grupo.", emoji: "👥" },
+export const ACHIEVEMENTS: Record<AchievementCode, { title: string; description: string; icon: string }> = {
+  FIRST_ACTION: { title: "Primeiro passo", description: "Você registrou sua primeira ação na Comunidade.", icon: "Plant" },
+  STREAK_3: { title: "3 dias de consistência", description: "Você manteve uma sequência de 3 dias.", icon: "Fire" },
+  STREAK_7: { title: "7 dias de consistência", description: "Você manteve uma sequência de 7 dias.", icon: "Fire" },
+  STREAK_14: { title: "14 dias de consistência", description: "Você manteve uma sequência de 14 dias.", icon: "Fire" },
+  STREAK_30: { title: "30 dias de consistência", description: "Você manteve uma sequência de 30 dias.", icon: "Medal" },
+  XP_100: { title: "100 XP", description: "Você acumulou 100 XP.", icon: "Star" },
+  XP_500: { title: "500 XP", description: "Você acumulou 500 XP.", icon: "Star" },
+  XP_1000: { title: "1000 XP", description: "Você acumulou 1000 XP.", icon: "Sparkle" },
+  FIRST_CHALLENGE: { title: "Primeiro desafio", description: "Você completou seu primeiro desafio.", icon: "Trophy" },
+  FIRST_GROUP: { title: "Comunidade", description: "Você entrou ou criou seu primeiro grupo.", icon: "UsersThree" },
 };
 
 const STREAK_THRESHOLDS: Array<[number, AchievementCode]> = [

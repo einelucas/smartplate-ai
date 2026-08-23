@@ -12,6 +12,8 @@ const READABLE_FIELDS = [
   "currentWeight",
   "dietType",
   "cookingLevel",
+  "birthDate",
+  "activityLevel",
   "onboardingCompletedAt",
   "onboardingVersion",
 ] as const;

@@ -6,29 +6,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useUser, SignOutButton } from "@clerk/nextjs";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  Home,
-  Calendar,
-  ShoppingCart,
-  Users,
-  User,
-  Leaf,
-  Menu,
-  X,
-  Sparkles,
-  LogOut,
-} from "lucide-react";
+import { Leaf, Menu, X, Sparkles, LogOut } from "lucide-react";
 import NotificationsBell from "@/components/NotificationsBell";
+import MobileBottomNav from "@/components/MobileBottomNav";
 import { useCommunityMe } from "@/hooks/useCommunity";
-
-const navItems = [
-  { href: "/", icon: Home, label: "Início" },
-  { href: "/mealplan", icon: Calendar, label: "Plano Semanal" },
-  { href: "/shopping", icon: ShoppingCart, label: "Lista de Compras" },
-  { href: "/community", icon: Users, label: "Comunidade" },
-  { href: "/profile", icon: User, label: "Perfil" },
-  { href: "/subscribe", icon: Sparkles, label: "Planos" },
-];
+import { NAV_ITEMS, findActiveNavItem } from "@/lib/navigation";
 
 export default function AppSidebar({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -36,7 +18,7 @@ export default function AppSidebar({ children }: { children: React.ReactNode }) 
   const pathname = usePathname();
   const { data: meData } = useCommunityMe();
 
-  const currentItem = navItems.find((item) => (item.href === "/" ? pathname === "/" : pathname.startsWith(item.href)));
+  const currentItem = findActiveNavItem(pathname);
 
   // Identidade pública (SocialProfile) é a fonte oficial; Clerk é usado como
   // fallback temporário enquanto a query carrega.
@@ -45,12 +27,13 @@ export default function AppSidebar({ children }: { children: React.ReactNode }) 
   const sidebarAvatarUrl = meData?.profile?.avatarUrl || user?.imageUrl;
 
   return (
-    <div className="min-h-screen bg-slate-50 flex">
-      {/* Sidebar */}
+    <div className="h-screen bg-slate-50 flex overflow-hidden">
+      {/* Sidebar — só em telas grandes (lg+). Em telas menores a navegação
+          principal é a MobileBottomNav, para não espremer tablets/celulares. */}
       <motion.aside
         animate={{ width: sidebarOpen ? 260 : 72 }}
         transition={{ duration: 0.3, ease: "easeInOut" }}
-        className="flex-shrink-0 bg-white border-r border-slate-100 flex flex-col h-screen sticky top-0 overflow-hidden shadow-sm z-30"
+        className="hidden lg:flex flex-shrink-0 bg-white border-r border-slate-100 flex-col h-screen sticky top-0 overflow-hidden shadow-sm z-30"
       >
         {/* Logo */}
         <div
@@ -98,7 +81,7 @@ export default function AppSidebar({ children }: { children: React.ReactNode }) 
 
         {/* Nav items */}
         <nav className="flex-1 py-4 px-3 space-y-1 mt-2">
-          {navItems.map((item) => {
+          {NAV_ITEMS.map((item) => {
             const isActive = currentItem?.href === item.href;
             return (
               <Link key={item.href} href={item.href}>
@@ -154,19 +137,19 @@ export default function AppSidebar({ children }: { children: React.ReactNode }) 
       </motion.aside>
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col min-h-screen overflow-hidden">
-        {/* Top bar */}
-        <header className="bg-white border-b border-slate-100 px-8 py-4 flex items-center justify-between sticky top-0 z-20 shadow-sm">
-          <div>
-            <h1 className="text-xl font-bold text-slate-800">{currentItem?.label || "SmartPlateAI"}</h1>
-            <p className="text-sm text-slate-400">
+      <div className="flex-1 flex flex-col h-screen overflow-hidden">
+        {/* Top bar — compacta em mobile, completa em desktop */}
+        <header className="bg-white border-b border-slate-100 px-4 py-3 sm:px-8 sm:py-4 flex items-center justify-between sticky top-0 z-20 shadow-sm">
+          <div className="min-w-0">
+            <h1 className="text-lg sm:text-xl font-bold text-slate-800 truncate">{currentItem?.label || "SmartPlateAI"}</h1>
+            <p className="hidden sm:block text-sm text-slate-400">
               {new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
             <NotificationsBell />
             <Link href="/profile">
-              <div className="w-10 h-10 bg-gradient-to-br from-[#007BFF] to-[#28A745] rounded-full flex items-center justify-center text-lg cursor-pointer overflow-hidden">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 bg-gradient-to-br from-[#007BFF] to-[#28A745] rounded-full flex items-center justify-center text-lg cursor-pointer overflow-hidden">
                 {sidebarAvatarUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={sidebarAvatarUrl} alt="Avatar" className="w-full h-full object-cover" />
@@ -178,9 +161,11 @@ export default function AppSidebar({ children }: { children: React.ReactNode }) 
           </div>
         </header>
 
-        {/* Page content */}
-        <main className="flex-1 overflow-auto">{children}</main>
+        {/* Page content — pb extra em telas < lg para nunca ficar atrás da MobileBottomNav */}
+        <main className="flex-1 overflow-auto pb-24 lg:pb-0">{children}</main>
       </div>
+
+      <MobileBottomNav />
     </div>
   );
 }
