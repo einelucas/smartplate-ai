@@ -39,7 +39,7 @@ export const updateSocialProfileSchema = z.object({
 
 // ─── Posts / reações / comentários ─────────────────────────────────────────
 
-export const postTypeSchema = z.enum(["TEXT", "ACHIEVEMENT", "STREAK", "CHALLENGE", "PLAN_SHARE"]);
+export const postTypeSchema = z.enum(["TEXT", "ACHIEVEMENT", "STREAK", "CHALLENGE", "PLAN_SHARE", "ACTIVITY"]);
 export const postTextSchema = z.string().trim().min(1, "Texto vazio").max(500, "Texto muito longo");
 
 export const createPostSchema = z
@@ -50,6 +50,7 @@ export const createPostSchema = z
     achievementCode: z.string().trim().max(32).optional(),
     streakMilestone: z.number().int().positive().max(10000).optional(),
     shareToken: z.string().trim().min(1).max(128).optional(),
+    activityLogId: z.string().trim().min(1).max(64).optional(),
   })
   .refine((data) => data.type !== "TEXT" || !!data.text, {
     message: "Texto é obrigatório para posts do tipo TEXT",
@@ -66,6 +67,10 @@ export const createPostSchema = z
   .refine((data) => data.type !== "PLAN_SHARE" || !!data.shareToken, {
     message: "shareToken é obrigatório para posts do tipo PLAN_SHARE",
     path: ["shareToken"],
+  })
+  .refine((data) => data.type !== "ACTIVITY" || !!data.activityLogId, {
+    message: "activityLogId é obrigatório para posts do tipo ACTIVITY",
+    path: ["activityLogId"],
   });
 
 export const commentTextSchema = z.object({

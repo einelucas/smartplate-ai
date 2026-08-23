@@ -48,6 +48,7 @@ model Profile {
   preferences    UserPreferences?
   progressPhotos ProgressPhoto[]
   premiumGrants  PremiumGrant[]
+  activityLogs   ActivityLog[]
 
   // Relações — Comunidade / Gamificação
   socialProfile           SocialProfile?
@@ -218,6 +219,39 @@ model ProgressPhoto {
   @@index([userId, takenAt])
 }
 
+// Registro de atividade física — privado por padrão (só some da esfera
+// privada quando o usuário compartilha explicitamente via CommunityPost).
+// `source`/`externalId` preparam integrações futuras (Strava, Garmin, Health
+// Connect, Apple/Samsung Health, Fitbit) sem implementá-las agora — cada
+// registro manual usa source="MANUAL" e externalId=null; o Postgres trata
+// múltiplos NULL como distintos numa unique constraint, então isso nunca
+// colide entre registros manuais.
+model ActivityLog {
+  id      String  @id @default(uuid())
+  userId  String
+  profile Profile @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  activityType       String // ver lib/activity/options.ts (WALKING, RUNNING, ... OTHER)
+  customActivityName String? // só quando activityType = OTHER
+  durationMin        Int
+  distanceKm         Float?
+  intensity          String? // LIGHT | MODERATE | HIGH — ver lib/activity/options.ts
+  notes              String?
+
+  source     String  @default("MANUAL")
+  externalId String?
+
+  performedAt DateTime
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sharedPost CommunityPost?
+
+  @@unique([source, externalId])
+  @@index([userId, performedAt])
+}
+
 // ══════════════════════════════════════════════════════════════════════════
 // BETA / ACESSO PREMIUM CONCEDIDO (não-Stripe)
 // ══════════════════════════════════════════════════════════════════════════
@@ -338,6 +372,7 @@ enum PostType {
   STREAK
   CHALLENGE
   PLAN_SHARE
+  ACTIVITY
 }
 
 enum ReactionType {
@@ -433,6 +468,15 @@ model DailyActivity {
   qualifyingActions  Int      @default(0)
   xpEarned           Int      @default(0)
   qualifiesForStreak Boolean  @default(false)
+
+  // Sinalizadores por tipo de ação — permitem detectar combinações no mesmo
+  // dia (ex.: refeição + atividade) sem precisar reprocessar XpEvent/ActivityLog.
+  mealCompleted             Boolean @default(false)
+  physicalActivityCompleted Boolean @default(false)
+  // XP ganho especificamente por ActivityLog no dia — usado para aplicar o
+  // teto diário de XP de atividade física, separado do xpEarned geral.
+  activityXpEarned          Int     @default(0)
+
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
@@ -562,6 +606,13 @@ model CommunityPost {
   updatedAt    DateTime        @updatedAt
   deletedAt    DateTime?
   hiddenAt     DateTime?
+
+  // Post ACTIVITY referencia o ActivityLog de origem (só para bookkeeping —
+  // ex.: saber se já foi compartilhado). O conteúdo exibido é sempre o
+  // snapshot em `metadata`, nunca um join ao vivo (ActivityLog pode ser
+  // editado/apagado depois; o post mantém seu registro histórico).
+  activityLogId String?      @unique
+  activityLog    ActivityLog? @relation(fields: [activityLogId], references: [id], onDelete: SetNull)
 
   reactions CommunityReaction[]
   comments  CommunityComment[]

@@ -98,12 +98,14 @@ export function useCreatePost(groupId?: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: {
-      type: "TEXT" | "ACHIEVEMENT" | "STREAK" | "CHALLENGE" | "PLAN_SHARE";
+      type: "TEXT" | "ACHIEVEMENT" | "STREAK" | "CHALLENGE" | "PLAN_SHARE" | "ACTIVITY";
       text?: string;
       achievementCode?: string;
       streakMilestone?: number;
       shareToken?: string;
-    }) => apiFetch("/api/community/posts", { method: "POST", body: JSON.stringify({ ...input, groupId }) }),
+      activityLogId?: string;
+      groupId?: string;
+    }) => apiFetch("/api/community/posts", { method: "POST", body: JSON.stringify({ ...input, groupId: input.groupId ?? groupId }) }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: keys.feed(groupId) });
       toast.success("Publicado na comunidade!");

@@ -47,7 +47,7 @@ export interface ModerationReportPreview {
   username?: string;
 }
 
-export type CommunityPostType = "TEXT" | "ACHIEVEMENT" | "STREAK" | "CHALLENGE" | "PLAN_SHARE";
+export type CommunityPostType = "TEXT" | "ACHIEVEMENT" | "STREAK" | "CHALLENGE" | "PLAN_SHARE" | "ACTIVITY";
 
 export interface CommunityPostSummary {
   id: string;

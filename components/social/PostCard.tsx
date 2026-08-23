@@ -19,6 +19,7 @@ import { ThumbsUpIcon, FireIcon, HandsClappingIcon, BarbellIcon, TrophyIcon, typ
 import { useBlockUser, useDeletePost, useToggleReaction, useUpdatePost } from "@/hooks/useCommunity";
 import { formatRelativeTime } from "@/lib/community/dates";
 import { resolveIcon } from "@/components/icon-registry";
+import { ACTIVITY_TYPE_ICON_KEY, findActivityIntensityLabel, findActivityTypeLabel } from "@/lib/activity/options";
 import type { CommunityPostSummary } from "@/types/community";
 import CommentSection from "./CommentSection";
 import ReportModal from "./ReportModal";
@@ -37,6 +38,18 @@ type Post = CommunityPostSummary;
 type AchievementMetadata = { title?: string; description?: string; icon?: string; emoji?: string };
 type StreakMetadata = { milestone?: number };
 type PlanShareMetadata = { shareToken?: string; planName?: string; dietType?: string };
+// Snapshot seguro no momento do compartilhamento — nunca dados privados de
+// Profile (peso, altura, objetivo). Ver POST /api/community/posts.
+type ActivityMetadata = {
+  activityType?: string;
+  customActivityName?: string | null;
+  durationMin?: number;
+  distanceKm?: number | null;
+  intensity?: string | null;
+  notes?: string | null;
+  performedAt?: string;
+  xpAwarded?: number;
+};
 
 export default function PostCard({
   post,
@@ -273,6 +286,41 @@ function PostBody({
             <p className="text-xs text-slate-400">{dietType || "Ver plano compartilhado"}</p>
           </div>
         </Link>
+      </div>
+    );
+  }
+
+  if (post.type === "ACTIVITY") {
+    const meta = (post.metadata ?? {}) as ActivityMetadata;
+    const ActivityIcon = resolveIcon(ACTIVITY_TYPE_ICON_KEY[meta.activityType ?? ""]);
+    const displayName =
+      meta.activityType === "OTHER" && meta.customActivityName ? meta.customActivityName : findActivityTypeLabel(meta.activityType ?? "");
+    const intensityLabel = findActivityIntensityLabel(meta.intensity);
+
+    return (
+      <div className="bg-gradient-to-br from-[#007BFF]/5 to-[#28A745]/5 border border-[#007BFF]/10 rounded-xl p-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-[#007BFF]/10 rounded-xl flex items-center justify-center flex-shrink-0">
+            <ActivityIcon size={20} weight="duotone" className="text-[#007BFF]" />
+          </div>
+          <div className="min-w-0">
+            <p className="font-semibold text-slate-800 text-sm truncate">
+              {displayName}
+              {meta.durationMin ? ` • ${meta.durationMin} min` : ""}
+              {meta.distanceKm ? ` • ${meta.distanceKm} km` : ""}
+            </p>
+            <p className="text-xs text-slate-400">
+              {meta.performedAt ? new Date(meta.performedAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" }) : null}
+              {intensityLabel ? `${meta.performedAt ? " • " : ""}Intensidade ${intensityLabel.toLowerCase()}` : ""}
+            </p>
+          </div>
+        </div>
+        {meta.notes && <p className="text-sm text-slate-600 italic mt-2">&ldquo;{meta.notes}&rdquo;</p>}
+        {!!meta.xpAwarded && (
+          <p className="text-xs font-semibold text-orange-500 flex items-center gap-1 mt-2">
+            <FireIcon size={14} weight="fill" /> +{meta.xpAwarded} XP
+          </p>
+        )}
       </div>
     );
   }

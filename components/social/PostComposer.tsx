@@ -5,8 +5,10 @@ import { useState } from "react";
 import { useUser } from "@clerk/nextjs";
 import Image from "next/image";
 import { Send, UtensilsCrossed } from "lucide-react";
+import { PersonSimpleRunIcon } from "@phosphor-icons/react";
 import { useCreatePost } from "@/hooks/useCommunity";
 import SharePlanModal from "./SharePlanModal";
+import RegisterActivityModal from "../RegisterActivityModal";
 
 export default function PostComposer({
   groupId,
@@ -18,6 +20,7 @@ export default function PostComposer({
   const { user } = useUser();
   const [text, setText] = useState("");
   const [showShare, setShowShare] = useState(false);
+  const [showActivity, setShowActivity] = useState(false);
   const createPost = useCreatePost(groupId);
 
   const submit = () => {
@@ -46,6 +49,13 @@ export default function PostComposer({
           className="flex-1 bg-slate-100 rounded-xl px-4 py-3 text-sm text-slate-700 outline-none"
         />
         <button
+          onClick={() => onRequireTerms(() => setShowActivity(true))}
+          className="w-9 h-9 bg-[#007BFF]/10 hover:bg-[#007BFF]/20 rounded-xl flex items-center justify-center text-[#007BFF] flex-shrink-0"
+          title="Registrar atividade"
+        >
+          <PersonSimpleRunIcon size={16} weight="bold" />
+        </button>
+        <button
           onClick={() => onRequireTerms(() => setShowShare(true))}
           className="w-9 h-9 bg-[#28A745]/10 hover:bg-[#28A745]/20 rounded-xl flex items-center justify-center text-[#28A745] flex-shrink-0"
           title="Compartilhar um plano alimentar"
@@ -62,6 +72,7 @@ export default function PostComposer({
       </div>
 
       {showShare && <SharePlanModal groupId={groupId} onClose={() => setShowShare(false)} />}
+      <RegisterActivityModal isOpen={showActivity} onClose={() => setShowActivity(false)} defaultGroupId={groupId} />
     </div>
   );
 }

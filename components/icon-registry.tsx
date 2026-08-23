@@ -52,6 +52,15 @@ import {
   BabyIcon,
   ChefHatIcon,
   QuestionIcon,
+  PersonSimpleWalkIcon,
+  BicycleIcon,
+  PersonSimpleSwimIcon,
+  SoccerBallIcon,
+  BasketballIcon,
+  FlowerLotusIcon,
+  PersonSimpleTaiChiIcon,
+  PulseIcon,
+  DotsThreeOutlineIcon,
   type Icon,
 } from "@phosphor-icons/react";
 
@@ -96,6 +105,16 @@ export const ICON_REGISTRY = {
   Barbell: BarbellIcon,
   Baby: BabyIcon,
   ChefHat: ChefHatIcon,
+  // Tipos de atividade física (ver lib/activity/options.ts)
+  PersonSimpleWalk: PersonSimpleWalkIcon,
+  Bicycle: BicycleIcon,
+  PersonSimpleSwim: PersonSimpleSwimIcon,
+  SoccerBall: SoccerBallIcon,
+  Basketball: BasketballIcon,
+  FlowerLotus: FlowerLotusIcon,
+  PersonSimpleTaiChi: PersonSimpleTaiChiIcon,
+  Pulse: PulseIcon,
+  DotsThreeOutline: DotsThreeOutlineIcon,
 } satisfies Record<string, Icon>;
 
 export type IconKey = keyof typeof ICON_REGISTRY;

@@ -65,6 +65,32 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Link de compartilhamento expirado" }, { status: 403 });
     }
     metadata = { shareToken, planName: shared.mealPlan.name ?? null, dietType: shared.mealPlan.dietType };
+  } else if (type === "ACTIVITY") {
+    const activityLogId = parsed.data.activityLogId as string;
+    const activityLog = await prisma.activityLog.findUnique({ where: { id: activityLogId }, include: { sharedPost: { select: { id: true } } } });
+    if (!activityLog || activityLog.userId !== userId) {
+      return NextResponse.json({ error: "Atividade não encontrada" }, { status: 403 });
+    }
+    if (activityLog.sharedPost) {
+      return NextResponse.json({ error: "Esta atividade já foi compartilhada" }, { status: 409 });
+    }
+    // Snapshot seguro — só campos do próprio ActivityLog, nunca dados
+    // privados de Profile (peso, altura, objetivo, birthDate etc.). XP
+    // exibido é o realmente concedido (soma de XpEvent), nunca hardcoded.
+    const xpSum = await prisma.xpEvent.aggregate({
+      where: { userId, referenceType: "ActivityLog", referenceId: activityLogId },
+      _sum: { points: true },
+    });
+    metadata = {
+      activityType: activityLog.activityType,
+      customActivityName: activityLog.customActivityName,
+      durationMin: activityLog.durationMin,
+      distanceKm: activityLog.distanceKm,
+      intensity: activityLog.intensity,
+      notes: activityLog.notes,
+      performedAt: activityLog.performedAt,
+      xpAwarded: xpSum._sum.points ?? 0,
+    };
   }
 
   const post = await prisma.communityPost.create({
@@ -74,6 +100,7 @@ export async function POST(request: Request) {
       type,
       text: text ?? null,
       metadata: metadata as Prisma.InputJsonObject,
+      ...(type === "ACTIVITY" ? { activityLogId: parsed.data.activityLogId as string } : {}),
     },
   });
 

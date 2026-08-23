@@ -3,6 +3,7 @@
 
 import { useUser } from "@clerk/nextjs";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 import toast from "react-hot-toast";
 import { motion } from "framer-motion";
 import { Sparkles, Flame, Droplets, Target, ChefHat, PlayCircle, RefreshCw, Star } from "lucide-react";
@@ -10,6 +11,10 @@ import Link from "next/link";
 import StatCard from "./StatCard";
 import AdherenceRing from "./AdherenceRing";
 import WeightChart from "./WeightChart";
+import RegisterActivityModal from "./RegisterActivityModal";
+import { useActivitySummary } from "@/hooks/useActivities";
+import { ACTIVITY_TYPE_ICON_KEY, findActivityTypeLabel } from "@/lib/activity/options";
+import { resolveIcon } from "@/components/icon-registry";
 
 const DAY_ORDER = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 const MEAL_TIMES: Record<string, string> = { breakfast: "07:30", lunch: "12:30", snack: "15:30", dinner: "19:30" };
@@ -18,6 +23,8 @@ const MEAL_LABELS: Record<string, string> = { breakfast: "Café da Manhã", lunc
 export default function HomeDashboard() {
   const { user } = useUser();
   const queryClient = useQueryClient();
+  const [showActivityModal, setShowActivityModal] = useState(false);
+  const { data: activitySummary } = useActivitySummary();
 
   const today = new Date();
   const hour = today.getHours();
@@ -267,6 +274,36 @@ export default function HomeDashboard() {
             </div>
           </div>
 
+          {/* Atividade física */}
+          <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
+            <h3 className="font-bold text-slate-800 mb-4">Atividade</h3>
+            <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Esta semana</p>
+            <p className="text-2xl font-bold text-slate-800 mt-1">{activitySummary?.thisWeek.count ?? 0} atividades</p>
+            <p className="text-sm text-slate-500">{activitySummary?.thisWeek.minutes ?? 0} min ativos</p>
+
+            {activitySummary?.lastActivity && (
+              <div className="flex items-center gap-2 mt-4 pt-4 border-t border-slate-100">
+                {(() => {
+                  const LastIcon = resolveIcon(ACTIVITY_TYPE_ICON_KEY[activitySummary.lastActivity.activityType]);
+                  return <LastIcon size={18} weight="duotone" className="text-[#007BFF] flex-shrink-0" />;
+                })()}
+                <p className="text-sm text-slate-600 truncate">
+                  {activitySummary.lastActivity.activityType === "OTHER" && activitySummary.lastActivity.customActivityName
+                    ? activitySummary.lastActivity.customActivityName
+                    : findActivityTypeLabel(activitySummary.lastActivity.activityType)}{" "}
+                  • {activitySummary.lastActivity.durationMin} min
+                </p>
+              </div>
+            )}
+
+            <button
+              onClick={() => setShowActivityModal(true)}
+              className="mt-4 w-full bg-[#007BFF] hover:bg-[#0056b3] rounded-xl text-white text-sm font-medium py-2.5 transition-colors"
+            >
+              Registrar atividade
+            </button>
+          </div>
+
           {/* AI tip */}
           <div className="bg-gradient-to-br from-[#28A745]/10 to-[#007BFF]/10 rounded-3xl p-6 border border-[#28A745]/20">
             <div className="flex items-center gap-2 mb-3">
@@ -298,6 +335,8 @@ export default function HomeDashboard() {
           </motion.div>
         </div>
       </div>
+
+      <RegisterActivityModal isOpen={showActivityModal} onClose={() => setShowActivityModal(false)} />
     </div>
   );
 }

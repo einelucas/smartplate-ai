@@ -14,6 +14,7 @@ import EditProfileModal from "@/components/EditProfileModal";
 import BeforeAfterSection from "@/components/BeforeAfterSection";
 import BetaTesterBadge from "@/components/BetaTesterBadge";
 import AchievementsSummaryCard from "@/components/AchievementsSummaryCard";
+import ActivitySummaryCard from "@/components/ActivitySummaryCard";
 import { useProfile } from "@/hooks/useProfile";
 import { formatHeightMeters, findLabel, DIET_GOALS, DIET_TYPES, COOKING_LEVELS, BUDGET_LEVELS } from "@/lib/profile/options";
 
@@ -372,6 +373,8 @@ export default function ProfilePage() {
 
             <BeforeAfterSection currentWeight={currentWeight} />
           </div>
+
+          <ActivitySummaryCard />
 
           {/* Registrar novo peso */}
           <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">

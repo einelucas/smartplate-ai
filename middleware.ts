@@ -31,8 +31,6 @@ export default clerkMiddleware(async (auth, req) => {
   const { userId } = userAuth;
   const { pathname, origin } = req.nextUrl;
 
-  console.log("Lucas", pathname, isPublicRoute(req), userId);
-
   // If it's the check-subscription route, skip logic to avoid loops
   if (pathname === "/api/check-subscription") {
     return NextResponse.next();

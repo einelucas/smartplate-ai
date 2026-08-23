@@ -21,34 +21,34 @@
 
 ## P0 — Estrutura base
 
-- [ ] Criar entidade `ActivityLog`
-- [ ] Relacionar `ActivityLog` ao usuário/Profile
-- [ ] Permitir registrar atividade manualmente
-- [ ] Salvar data/hora da atividade
-- [ ] Salvar tipo da atividade
-- [ ] Salvar duração
-- [ ] Salvar intensidade
-- [ ] Salvar observação opcional
-- [ ] Permitir distância opcional
-- [ ] Criar histórico de atividades
-- [ ] Permitir editar atividade
-- [ ] Permitir excluir atividade
-- [ ] Criar validação backend com Zod
-- [ ] Garantir que atividades sejam privadas por padrão
+- [x] Criar entidade `ActivityLog`
+- [x] Relacionar `ActivityLog` ao usuário/Profile
+- [x] Permitir registrar atividade manualmente
+- [x] Salvar data/hora da atividade
+- [x] Salvar tipo da atividade
+- [x] Salvar duração
+- [x] Salvar intensidade
+- [x] Salvar observação opcional
+- [x] Permitir distância opcional
+- [x] Criar histórico de atividades
+- [x] Permitir editar atividade
+- [x] Permitir excluir atividade
+- [x] Criar validação backend com Zod
+- [x] Garantir que atividades sejam privadas por padrão
 
 ## Tipos iniciais de atividade
 
-- [ ] Caminhada
-- [ ] Corrida
-- [ ] Ciclismo
-- [ ] Musculação
-- [ ] Natação
-- [ ] Futebol
-- [ ] Esportes
-- [ ] Yoga
-- [ ] Mobilidade
-- [ ] HIIT
-- [ ] Outra atividade personalizada
+- [x] Caminhada
+- [x] Corrida
+- [x] Ciclismo
+- [x] Musculação
+- [x] Natação
+- [x] Futebol
+- [x] Esportes
+- [x] Yoga
+- [x] Mobilidade
+- [x] HIIT
+- [x] Outra atividade personalizada
 
 ## Campos sugeridos
 
@@ -82,24 +82,24 @@ Criar um único componente reutilizável de registro de atividade.
 
 ## Início
 
-- [ ] Adicionar ação rápida `Registrar atividade`
-- [ ] Mostrar resumo de atividade recente
-- [ ] Mostrar minutos ativos da semana
-- [ ] Mostrar quantidade de atividades no período
+- [x] Adicionar ação rápida `Registrar atividade`
+- [x] Mostrar resumo de atividade recente
+- [x] Mostrar minutos ativos da semana
+- [x] Mostrar quantidade de atividades no período
 
 ## Comunidade
 
-- [ ] Adicionar opção `Registrar atividade`
-- [ ] Permitir registrar e decidir se deseja compartilhar
-- [ ] Permitir compartilhar uma atividade registrada anteriormente
+- [x] Adicionar opção `Registrar atividade`
+- [x] Permitir registrar e decidir se deseja compartilhar
+- [x] Permitir compartilhar uma atividade registrada anteriormente
 
 ## Perfil
 
-- [ ] Mostrar resumo de atividades
-- [ ] Exibir quantidade de atividades no mês
-- [ ] Exibir minutos ativos
-- [ ] Adicionar acesso ao histórico
-- [ ] Mostrar evolução de consistência
+- [x] Mostrar resumo de atividades
+- [x] Exibir quantidade de atividades no mês
+- [x] Exibir minutos ativos
+- [x] Adicionar acesso ao histórico
+- [x] Mostrar evolução de consistência
 
 ---
 
@@ -107,7 +107,7 @@ Criar um único componente reutilizável de registro de atividade.
 
 ## Novo tipo de publicação
 
-- [ ] Adicionar `ACTIVITY` em `PostType`
+- [x] Adicionar `ACTIVITY` em `PostType`
 
 Exemplo:
 
@@ -124,30 +124,30 @@ enum PostType {
 
 ## Compartilhamento
 
-- [ ] Compartilhar atividade manualmente
-- [ ] Nunca publicar automaticamente
-- [ ] Permitir escolher destino
+- [x] Compartilhar atividade manualmente
+- [x] Nunca publicar automaticamente
+- [x] Permitir escolher destino
 
 Opções:
 
-- [ ] Não compartilhar
-- [ ] Comunidade geral
-- [ ] Grupo específico
+- [x] Não compartilhar
+- [x] Comunidade geral
+- [x] Grupo específico
 
 ## Card de atividade
 
 Exibir:
 
-- [ ] Tipo
-- [ ] Ícone
-- [ ] Duração
-- [ ] Distância, quando existir
-- [ ] Data
-- [ ] Intensidade
-- [ ] Observação
-- [ ] XP recebido
-- [ ] Reações
-- [ ] Comentários
+- [x] Tipo
+- [x] Ícone
+- [x] Duração
+- [x] Distância, quando existir
+- [x] Data
+- [x] Intensidade
+- [x] Observação
+- [x] XP recebido
+- [x] Reações
+- [x] Comentários
 
 Exemplo:
 
@@ -170,27 +170,27 @@ Intensidade moderada
 
 ## Regras
 
-- [ ] Criar eventos de XP para atividades
-- [ ] Usar `XpEvent`
-- [ ] Criar `idempotencyKey` para impedir XP duplicado
-- [ ] Definir limite diário
-- [ ] Não recompensar excessivamente volume/performance
+- [x] Criar eventos de XP para atividades
+- [x] Usar `XpEvent`
+- [x] Criar `idempotencyKey` para impedir XP duplicado
+- [x] Definir limite diário
+- [x] Não recompensar excessivamente volume/performance
 
 ## Possível regra inicial
 
-- [ ] Registrar atividade válida: +10 XP
-- [ ] Atividade com 30+ minutos: +5 XP
-- [ ] Primeira atividade do dia: +5 XP
-- [ ] Concluir desafio: XP bônus
-- [ ] Conquista: XP bônus
+- [x] Registrar atividade válida: +10 XP
+- [x] Atividade com 30+ minutos: +5 XP
+- [x] Primeira atividade do dia: +5 XP
+- [x] Concluir desafio: XP bônus — já real via `recordChallengeCompletion` (motor de desafios existente), confirmado nesta tarefa
+- [ ] Conquista: XP bônus — deliberadamente adiado na sessão de conquistas (XP por achievement fica para o motor de XP definitivo)
 
 ## Anti-abuso
 
-- [ ] Máximo de XP diário por atividade
-- [ ] Duração mínima para receber XP
-- [ ] Impedir editar atividade repetidamente para ganhar XP
-- [ ] Remover/reverter XP quando necessário
-- [ ] Impedir atividades duplicadas vindas de integrações externas
+- [x] Máximo de XP diário por atividade
+- [x] Duração mínima para receber XP
+- [x] Impedir editar atividade repetidamente para ganhar XP
+- [x] Remover/reverter XP quando necessário — decisão: XP nunca é revertido (XpEvent é ledger imutável); o teto diário de `activityXpEarned` nunca é decrementado, o que já impede o abuso criar→excluir→criar
+- [x] Impedir atividades duplicadas vindas de integrações externas — `@@unique([source, externalId])` pronto (integrações em si ainda não implementadas)
 
 ---
 
@@ -200,19 +200,19 @@ Expandir o conceito de sequência do SmartPlate.
 
 ## Ações que podem qualificar um dia
 
-- [ ] Completar refeição
-- [ ] Registrar atividade física
-- [ ] Participar de desafio
-- [ ] Registrar progresso
+- [x] Completar refeição
+- [x] Registrar atividade física
+- [ ] Participar de desafio — desafios ainda não disparam `qualifyDayForStreak`
+- [ ] Registrar progresso — peso/foto ainda não disparam `qualifyDayForStreak` (fora do escopo desta tarefa, focada em atividade)
 - [ ] Outras ações relevantes no futuro
 
 ## Regras
 
-- [ ] Não exigir exercício todos os dias
-- [ ] Representar consistência geral no SmartPlate
-- [ ] Integrar com `DailyActivity`
-- [ ] Garantir timezone correto
-- [ ] Evitar dupla contagem de ações
+- [x] Não exigir exercício todos os dias
+- [x] Representar consistência geral no SmartPlate
+- [x] Integrar com `DailyActivity`
+- [x] Garantir timezone correto
+- [x] Evitar dupla contagem de ações
 
 ---
 
@@ -220,37 +220,62 @@ Expandir o conceito de sequência do SmartPlate.
 
 ## Atividade física
 
-- [ ] Primeiros Passos — primeira atividade
-- [ ] Em Movimento — 10 atividades
-- [ ] 50 Atividades
-- [ ] 100 Atividades
-- [ ] Semana Ativa — atividade em 3 dias da semana
-- [ ] Consistência — atividade em várias semanas diferentes
-- [ ] 30 Dias em Movimento
-- [ ] Explorador — registrar diferentes tipos de atividade
+- [x] Primeiros Passos — primeira atividade (`FIRST_ACTIVITY`)
+- [x] Em Movimento — 10 atividades (`ACTIVITIES_10`)
+- [x] 50 Atividades (`ACTIVITIES_50`)
+- [x] 100 Atividades (`ACTIVITIES_100`)
+- [x] Semana Ativa — atividade em 3 dias da semana (`ACTIVE_3_DAYS_WEEK`)
+- [x] Consistência — atividade em várias semanas diferentes (`ACTIVITY_WEEKS_CONSISTENCY`, código novo)
+- [x] 30 Dias em Movimento (`ACTIVE_30_DAYS_TOTAL`, código novo)
+- [x] Explorador — registrar diferentes tipos de atividade (`ACTIVITY_EXPLORER`)
 
 ## Alimentação + atividade
 
-- [ ] Rotina Completa — refeição + atividade no mesmo dia
-- [ ] Semana Equilibrada — alimentação + atividade em 5 dias
-- [ ] Consistência Total
-- [ ] Evolução — manter rotina por determinado período
+- [x] Rotina Completa — refeição + atividade no mesmo dia (`COMPLETE_ROUTINE`, código novo)
+- [x] Semana Equilibrada — alimentação + atividade em 5 dias (`BALANCED_ROUTINE_WEEK`, código novo)
+- [x] Consistência Total (`CONSISTENT_ROUTINE`, código novo)
+- [ ] Evolução — manter rotina por determinado período — regra não implementada por ser vaga demais para uma heurística segura/não-gameável; deixada de fora conscientemente (não virou `COMING_SOON` no catálogo por não ter sido criado o código)
 
 ## Progresso
 
-- [ ] Primeira foto de progresso
-- [ ] Primeiro registro de peso
-- [ ] 10 registros de peso
-- [ ] Primeira meta atingida
-- [ ] Sequência de registros de progresso
+- [x] Primeira foto de progresso (`FIRST_PROGRESS_PHOTO`, já existia)
+- [x] Primeiro registro de peso (`FIRST_WEIGHT_LOG`, já existia)
+- [x] 10 registros de peso (`WEIGHT_LOGS_10`, já existia)
+- [ ] Primeira meta atingida — `PERSONAL_GOAL_REACHED` permanece `COMING_SOON`: sem sistema real de metas pessoais (decisão já tomada na sessão de conquistas, reconfirmada aqui)
+- [x] Sequência de registros de progresso (`PROGRESS_WEEKS_CONSISTENCY`, código novo)
 
 ## Social
 
-- [ ] Primeira publicação
-- [ ] Primeiro amigo
-- [ ] Entrar em primeiro grupo
-- [ ] Participar de primeiro desafio
-- [ ] Concluir primeiro desafio
+- [x] Primeira publicação (`FIRST_POST`, já existia)
+- [x] Primeiro amigo (`FIRST_FRIEND`, já existia)
+- [x] Entrar em primeiro grupo (`FIRST_GROUP`, já existia)
+- [x] Participar de primeiro desafio (`FIRST_CHALLENGE_JOINED`, código novo)
+- [x] Concluir primeiro desafio (`FIRST_CHALLENGE_COMPLETED`, ativado nesta tarefa — motor de desafios confirmado real)
+
+---
+
+### Status da implementação de atividades físicas
+
+Data: 2026-08-23
+
+Principais entregas:
+- `ActivityLog` persistente (privado por padrão), relacionado a `Profile`, com `source`/`externalId` preparados para integrações futuras (`@@unique([source, externalId])`, nunca colide em registros manuais);
+- CRUD completo (`GET/POST /api/activities`, `PATCH/DELETE /api/activities/[id]`) com Zod centralizado (`lib/activity/validation.ts`) e dono sempre resolvido via autenticação;
+- componente único de registro (`RegisterActivityModal`) reutilizado em Início, Perfil e Comunidade — nunca duplicado;
+- histórico real com editar/excluir (`ActivityHistoryModal`);
+- resumo real no Início (semana local) e Perfil (mês local + dias ativos), via `GET /api/activities/summary`;
+- `PostType.ACTIVITY` real, reaproveitando o endpoint único de posts, reações e comentários já existentes; snapshot seguro em `metadata` (nunca dado privado de Profile) + referência opcional a `ActivityLogId` (`onDelete: SetNull`) só para bookkeeping de "já compartilhado";
+- compartilhamento sempre manual e explícito (padrão "Não compartilhar"), com Comunidade geral ou grupo específico (validado no servidor via `requireGroupMembership`);
+- XP idempotente via `XpEvent` (chaves `activity:base/duration/first-of-day`), nunca reavaliado em edição, teto diário de 40 XP (`DailyActivity.activityXpEarned`, nunca decrementado — é o que impede o abuso criar→excluir→criar);
+- integração real com `DailyActivity` (novos campos `mealCompleted`/`physicalActivityCompleted`/`activityXpEarned`) e streak (helper único `qualifyDayForStreak`, compartilhado entre refeição e atividade — nunca duplicado por tipo de ação);
+- 15 conquistas de atividade/rotina ativadas ou criadas (7 já existentes no catálogo + 7 códigos novos + `FIRST_CHALLENGE_COMPLETED`/`FIRST_CHALLENGE_JOINED`), com reconciliação retroativa automática (contas antigas com ActivityLog já existente não precisam repetir a ação).
+
+Pendências:
+- "Evolução" (seção 6) — regra não definida por ser vaga demais para uma heurística segura;
+- "Primeira meta atingida" — sem sistema real de metas pessoais;
+- desafio/registro de progresso ainda não qualificam um dia para streak (só refeição e atividade nesta tarefa);
+- XP por conquista — deliberadamente fora de escopo (motor de XP definitivo é sessão futura);
+- limite diário de XP tem uma janela de corrida rara sob dupla submissão verdadeiramente concorrente (não o padrão criar→excluir→criar, que está coberto) — documentado no código, não bloqueante para uso real.
 
 ---
 

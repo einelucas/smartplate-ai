@@ -1,17 +1,18 @@
 // lib/community/achievement-engine.ts
-// Avaliação e desbloqueio das 50 conquistas do catálogo novo
+// Avaliação e desbloqueio das conquistas do catálogo novo
 // (achievement-catalog.ts). Backend é a única autoridade: tudo aqui deriva
 // de dados já persistidos, nunca de algo enviado pelo cliente.
 //
 // Estratégia: reconciliação em tempo de consulta (reconcileAchievements),
 // chamada sempre que GET /api/achievements roda. Isso cobre tanto o caso
 // "ação real acabou de acontecer" quanto retroatividade para contas antigas
-// (seções 55-57 do checklist) sem precisar espalhar chamadas de avaliação
-// em cada endpoint que toca refeições/peso/fotos/social — a mesma
-// verificação idempotente resolve os dois casos.
+// (seções 55-57 do checklist de conquistas) sem precisar espalhar chamadas
+// de avaliação em cada endpoint que toca refeições/peso/fotos/social/
+// atividade — a mesma verificação idempotente resolve os dois casos.
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { safeParse } from "@/lib/mealplan";
+import { getLocalDateString, getLocalWeekRange } from "./dates";
 import type { Db } from "./types";
 import { ACHIEVEMENT_CATALOG, type AchievementDefinition } from "./achievement-catalog";
 
@@ -36,7 +37,7 @@ export async function unlockAchievement(db: Db, userId: string, code: string) {
   }
 }
 
-// ─── Coleta agrupada de estatísticas reais (uma leva de queries, não 50) ───
+// ─── Coleta agrupada de estatísticas reais (uma leva de queries, não dezenas) ─
 
 interface RawStats {
   onboardingCompleted: boolean;
@@ -51,12 +52,26 @@ interface RawStats {
   weightLogCount: number;
   photoCount: number;
   photoDaySpan: number; // dias entre a foto mais antiga e a mais recente
+  progressWeeksCount: number; // semanas locais distintas com >= 1 foto
   betaRedeemedEver: boolean;
   postCount: number;
   friendCount: number;
   groupCount: number;
   reactionsReceived: number;
   commentsReceived: number;
+  // Atividade física
+  activityCount: number;
+  activityMinutesTotal: number;
+  activityDistinctTypesCount: number;
+  activityDistinctDaysTotal: number; // dias locais distintos com atividade, todo o histórico
+  activeDaysThisWeekCount: number; // dias locais com atividade na semana local atual
+  activityWeeksWith2PlusDaysCount: number; // semanas (histórico limitado) com >=2 dias de atividade
+  // Alimentação + atividade
+  completeRoutineDaysCount: number; // dias com refeição concluída E atividade
+  balancedWeeksCount: number; // semanas com >=5 dias "rotina completa"
+  // Desafios
+  challengeJoinedCount: number;
+  challengeCompletedCount: number;
 }
 
 interface MealSlot {
@@ -103,6 +118,15 @@ function computeMealStats(
   return { total, breakfast, lunch, dinner, fullDays };
 }
 
+/** Conta quantas chaves de semana (Map<mondayStr, valor>) atingem o limiar informado. */
+function countWeeksAtLeast(weekMap: Map<string, number>, threshold: number): number {
+  let count = 0;
+  for (const value of weekMap.values()) {
+    if (value >= threshold) count += 1;
+  }
+  return count;
+}
+
 async function getRawStats(userId: string): Promise<RawStats> {
   const [
     profile,
@@ -117,10 +141,17 @@ async function getRawStats(userId: string): Promise<RawStats> {
     reactionsReceived,
     commentsReceived,
     dayPlans,
+    activityLogs,
+    dailyActivities,
+    challengeJoinedCount,
+    challengeCompletedCount,
   ] = await Promise.all([
     prisma.profile.findUnique({ where: { userId }, select: { onboardingCompletedAt: true, dietType: true } }),
     prisma.userPreferences.findUnique({ where: { userId }, select: { dietGoal: true } }),
-    prisma.socialProfile.findUnique({ where: { userId }, select: { displayName: true, username: true, avatarUrl: true, bio: true } }),
+    prisma.socialProfile.findUnique({
+      where: { userId },
+      select: { displayName: true, username: true, avatarUrl: true, bio: true, timezone: true },
+    }),
     prisma.weightLog.count({ where: { userId } }),
     prisma.progressPhoto.findMany({ where: { userId }, select: { takenAt: true }, orderBy: { takenAt: "asc" } }),
     prisma.premiumGrant.count({ where: { userId, source: "BETA_CODE" } }),
@@ -133,8 +164,16 @@ async function getRawStats(userId: string): Promise<RawStats> {
       where: { mealPlan: { userId } },
       select: { breakfast: true, lunch: true, dinner: true, snacks: true },
     }),
+    prisma.activityLog.findMany({ where: { userId }, select: { activityType: true, durationMin: true, performedAt: true } }),
+    prisma.dailyActivity.findMany({
+      where: { userId },
+      select: { date: true, mealCompleted: true, physicalActivityCompleted: true },
+    }),
+    prisma.challengeParticipant.count({ where: { userId } }),
+    prisma.challengeParticipant.count({ where: { userId, completedAt: { not: null } } }),
   ]);
 
+  const timezone = socialProfile?.timezone;
   const mealStats = computeMealStats(dayPlans);
 
   const profileComplete = Boolean(
@@ -151,6 +190,51 @@ async function getRawStats(userId: string): Promise<RawStats> {
     photoDaySpan = Math.floor((newest - oldest) / (24 * 60 * 60 * 1000));
   }
 
+  const progressWeeks = new Set<string>();
+  for (const photo of photos) {
+    const localDate = getLocalDateString(photo.takenAt, timezone);
+    progressWeeks.add(getLocalWeekRange(localDate).mondayStr);
+  }
+
+  // ── Atividade física ──
+  const activityDistinctTypes = new Set<string>();
+  let activityMinutesTotal = 0;
+  const activityLocalDays = new Set<string>();
+  const activityDaysPerWeek = new Map<string, Set<string>>(); // mondayStr -> Set<localDateStr>
+
+  for (const activity of activityLogs) {
+    activityDistinctTypes.add(activity.activityType);
+    activityMinutesTotal += activity.durationMin;
+    const localDate = getLocalDateString(activity.performedAt, timezone);
+    activityLocalDays.add(localDate);
+    const mondayStr = getLocalWeekRange(localDate).mondayStr;
+    if (!activityDaysPerWeek.has(mondayStr)) activityDaysPerWeek.set(mondayStr, new Set());
+    activityDaysPerWeek.get(mondayStr)!.add(localDate);
+  }
+
+  const activityWeeksDayCount = new Map<string, number>();
+  for (const [week, days] of activityDaysPerWeek) activityWeeksDayCount.set(week, days.size);
+  const activityWeeksWith2PlusDaysCount = countWeeksAtLeast(activityWeeksDayCount, 2);
+
+  const now = new Date();
+  const todayLocalStr = getLocalDateString(now, timezone);
+  const { mondayStr: currentMonday, sundayStr: currentSunday } = getLocalWeekRange(todayLocalStr);
+  const activeDaysThisWeekCount = [...activityLocalDays].filter((d) => d >= currentMonday && d <= currentSunday).length;
+
+  // ── Alimentação + atividade (via DailyActivity, já bucketado por dia local) ──
+  let completeRoutineDaysCount = 0;
+  const balancedDaysPerWeek = new Map<string, number>(); // mondayStr -> dias com rotina completa
+
+  for (const daily of dailyActivities) {
+    if (daily.mealCompleted && daily.physicalActivityCompleted) {
+      completeRoutineDaysCount += 1;
+      const localDateStr = daily.date.toISOString().slice(0, 10);
+      const mondayStr = getLocalWeekRange(localDateStr).mondayStr;
+      balancedDaysPerWeek.set(mondayStr, (balancedDaysPerWeek.get(mondayStr) ?? 0) + 1);
+    }
+  }
+  const balancedWeeksCount = countWeeksAtLeast(balancedDaysPerWeek, 5);
+
   return {
     onboardingCompleted: !!profile?.onboardingCompletedAt,
     profileComplete,
@@ -164,12 +248,23 @@ async function getRawStats(userId: string): Promise<RawStats> {
     weightLogCount,
     photoCount: photos.length,
     photoDaySpan,
+    progressWeeksCount: progressWeeks.size,
     betaRedeemedEver: betaGrantCount > 0,
     postCount,
     friendCount,
     groupCount,
     reactionsReceived,
     commentsReceived,
+    activityCount: activityLogs.length,
+    activityMinutesTotal,
+    activityDistinctTypesCount: activityDistinctTypes.size,
+    activityDistinctDaysTotal: activityLocalDays.size,
+    activeDaysThisWeekCount,
+    activityWeeksWith2PlusDaysCount,
+    completeRoutineDaysCount,
+    balancedWeeksCount,
+    challengeJoinedCount,
+    challengeCompletedCount,
   };
 }
 
@@ -213,6 +308,8 @@ function computeProgress(code: string, target: number, stats: RawStats): { progr
       return count(stats.photoCount);
     case "PROGRESS_30_DAYS":
       return count(stats.photoDaySpan);
+    case "PROGRESS_WEEKS_CONSISTENCY":
+      return count(stats.progressWeeksCount);
     case "FIRST_POST":
       return count(stats.postCount);
     case "FIRST_FRIEND":
@@ -223,6 +320,31 @@ function computeProgress(code: string, target: number, stats: RawStats): { progr
       return count(stats.reactionsReceived);
     case "FIRST_COMMENT_RECEIVED":
       return count(stats.commentsReceived);
+    case "FIRST_ACTIVITY":
+    case "ACTIVITIES_10":
+    case "ACTIVITIES_50":
+    case "ACTIVITIES_100":
+      return count(stats.activityCount);
+    case "ACTIVE_3_DAYS_WEEK":
+      return count(stats.activeDaysThisWeekCount);
+    case "ACTIVE_MINUTES_150":
+      return count(stats.activityMinutesTotal);
+    case "ACTIVITY_EXPLORER":
+      return count(stats.activityDistinctTypesCount);
+    case "ACTIVITY_WEEKS_CONSISTENCY":
+      return count(stats.activityWeeksWith2PlusDaysCount);
+    case "ACTIVE_30_DAYS_TOTAL":
+      return count(stats.activityDistinctDaysTotal);
+    case "COMPLETE_ROUTINE":
+      return count(stats.completeRoutineDaysCount);
+    case "BALANCED_ROUTINE_WEEK":
+      return bool(stats.balancedWeeksCount >= 1);
+    case "CONSISTENT_ROUTINE":
+      return count(stats.balancedWeeksCount);
+    case "FIRST_CHALLENGE_JOINED":
+      return count(stats.challengeJoinedCount);
+    case "FIRST_CHALLENGE_COMPLETED":
+      return count(stats.challengeCompletedCount);
     default:
       return { progress: 0, achieved: false };
   }

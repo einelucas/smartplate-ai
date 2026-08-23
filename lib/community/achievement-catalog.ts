@@ -66,9 +66,7 @@ export interface AchievementDefinition {
 }
 
 const WATER_REASON = "Disponível quando o registro de hidratação for lançado no SmartPlate.";
-const ACTIVITY_REASON = "Disponível quando o registro de atividades físicas for lançado no SmartPlate.";
 const STREAK_REASON = "Disponível quando a regra definitiva de sequência (dia ativo) for formalizada.";
-const CHALLENGE_REASON = "Disponível quando o módulo de desafios estiver pronto para valer conquistas.";
 
 function def(entry: AchievementDefinition): AchievementDefinition {
   return entry;
@@ -461,6 +459,16 @@ export const ACHIEVEMENT_CATALOG: Record<string, AchievementDefinition> = {
     availability: "COMING_SOON",
     comingSoonReason: "Disponível quando o sistema definitivo de metas pessoais for implementado.",
   }),
+  PROGRESS_WEEKS_CONSISTENCY: def({
+    code: "PROGRESS_WEEKS_CONSISTENCY",
+    title: "Sequência de Progresso",
+    description: "Registrou seu progresso visual em várias semanas diferentes.",
+    unlockDescription: "Adicione uma foto em Antes & Depois em pelo menos 4 semanas diferentes.",
+    category: "PROGRESS",
+    icon: "Images",
+    target: 4,
+    availability: "AVAILABLE",
+  }),
 
   // ── Atividade física ───────────────────────────────────────────────────
   FIRST_ACTIVITY: def({
@@ -471,8 +479,7 @@ export const ACHIEVEMENT_CATALOG: Record<string, AchievementDefinition> = {
     category: "ACTIVITY",
     icon: "PersonSimpleRun",
     target: 1,
-    availability: "COMING_SOON",
-    comingSoonReason: ACTIVITY_REASON,
+    availability: "AVAILABLE",
   }),
   ACTIVITIES_10: def({
     code: "ACTIVITIES_10",
@@ -482,8 +489,7 @@ export const ACHIEVEMENT_CATALOG: Record<string, AchievementDefinition> = {
     category: "ACTIVITY",
     icon: "PersonSimpleRun",
     target: 10,
-    availability: "COMING_SOON",
-    comingSoonReason: ACTIVITY_REASON,
+    availability: "AVAILABLE",
   }),
   ACTIVITIES_50: def({
     code: "ACTIVITIES_50",
@@ -493,8 +499,7 @@ export const ACHIEVEMENT_CATALOG: Record<string, AchievementDefinition> = {
     category: "ACTIVITY",
     icon: "Medal",
     target: 50,
-    availability: "COMING_SOON",
-    comingSoonReason: ACTIVITY_REASON,
+    availability: "AVAILABLE",
   }),
   ACTIVITIES_100: def({
     code: "ACTIVITIES_100",
@@ -504,8 +509,7 @@ export const ACHIEVEMENT_CATALOG: Record<string, AchievementDefinition> = {
     category: "ACTIVITY",
     icon: "Trophy",
     target: 100,
-    availability: "COMING_SOON",
-    comingSoonReason: ACTIVITY_REASON,
+    availability: "AVAILABLE",
   }),
   ACTIVE_3_DAYS_WEEK: def({
     code: "ACTIVE_3_DAYS_WEEK",
@@ -515,8 +519,7 @@ export const ACHIEVEMENT_CATALOG: Record<string, AchievementDefinition> = {
     category: "ACTIVITY",
     icon: "CalendarCheck",
     target: 3,
-    availability: "COMING_SOON",
-    comingSoonReason: ACTIVITY_REASON,
+    availability: "AVAILABLE",
   }),
   ACTIVE_MINUTES_150: def({
     code: "ACTIVE_MINUTES_150",
@@ -526,8 +529,7 @@ export const ACHIEVEMENT_CATALOG: Record<string, AchievementDefinition> = {
     category: "ACTIVITY",
     icon: "Timer",
     target: 150,
-    availability: "COMING_SOON",
-    comingSoonReason: ACTIVITY_REASON,
+    availability: "AVAILABLE",
   }),
   ACTIVITY_EXPLORER: def({
     code: "ACTIVITY_EXPLORER",
@@ -537,8 +539,59 @@ export const ACHIEVEMENT_CATALOG: Record<string, AchievementDefinition> = {
     category: "ACTIVITY",
     icon: "Compass",
     target: 5,
-    availability: "COMING_SOON",
-    comingSoonReason: ACTIVITY_REASON,
+    availability: "AVAILABLE",
+  }),
+  ACTIVITY_WEEKS_CONSISTENCY: def({
+    code: "ACTIVITY_WEEKS_CONSISTENCY",
+    title: "Consistência",
+    description: "Manteve atividade física regular ao longo de várias semanas.",
+    unlockDescription: "Registre atividade física em pelo menos 2 dias diferentes por semana, durante 4 semanas diferentes.",
+    category: "ACTIVITY",
+    icon: "CalendarCheck",
+    target: 4,
+    availability: "AVAILABLE",
+  }),
+  ACTIVE_30_DAYS_TOTAL: def({
+    code: "ACTIVE_30_DAYS_TOTAL",
+    title: "30 Dias em Movimento",
+    description: "Registrou atividade física em 30 dias diferentes.",
+    unlockDescription: "Registre atividade física em 30 dias diferentes — não precisam ser consecutivos.",
+    category: "ACTIVITY",
+    icon: "Trophy",
+    target: 30,
+    availability: "AVAILABLE",
+  }),
+
+  // ── Alimentação + atividade ────────────────────────────────────────────
+  COMPLETE_ROUTINE: def({
+    code: "COMPLETE_ROUTINE",
+    title: "Rotina Completa",
+    description: "Combinou alimentação e atividade física no mesmo dia.",
+    unlockDescription: "Conclua uma refeição planejada e registre uma atividade física válida no mesmo dia.",
+    category: "SPECIAL",
+    icon: "SealCheck",
+    target: 1,
+    availability: "AVAILABLE",
+  }),
+  BALANCED_ROUTINE_WEEK: def({
+    code: "BALANCED_ROUTINE_WEEK",
+    title: "Semana Equilibrada",
+    description: "Combinou alimentação e atividade física em vários dias da mesma semana.",
+    unlockDescription: "Em uma mesma semana, combine refeição concluída e atividade física em pelo menos 5 dias diferentes.",
+    category: "SPECIAL",
+    icon: "Scales",
+    target: 1,
+    availability: "AVAILABLE",
+  }),
+  CONSISTENT_ROUTINE: def({
+    code: "CONSISTENT_ROUTINE",
+    title: "Consistência Total",
+    description: "Manteve uma rotina equilibrada de alimentação e atividade por várias semanas.",
+    unlockDescription: "Alcance uma Semana Equilibrada em pelo menos 4 semanas diferentes.",
+    category: "SPECIAL",
+    icon: "Sparkle",
+    target: 4,
+    availability: "AVAILABLE",
   }),
 
   // ── Social ─────────────────────────────────────────────────────────────
@@ -594,6 +647,16 @@ export const ACHIEVEMENT_CATALOG: Record<string, AchievementDefinition> = {
   }),
 
   // ── Desafios e especiais ───────────────────────────────────────────────
+  FIRST_CHALLENGE_JOINED: def({
+    code: "FIRST_CHALLENGE_JOINED",
+    title: "No Desafio",
+    description: "Participou do primeiro desafio da Comunidade.",
+    unlockDescription: "Entre em um desafio disponível na Comunidade.",
+    category: "CHALLENGE",
+    icon: "FlagCheckered",
+    target: 1,
+    availability: "AVAILABLE",
+  }),
   FIRST_CHALLENGE_COMPLETED: def({
     code: "FIRST_CHALLENGE_COMPLETED",
     title: "Primeiro Desafio",
@@ -602,8 +665,7 @@ export const ACHIEVEMENT_CATALOG: Record<string, AchievementDefinition> = {
     category: "CHALLENGE",
     icon: "Target",
     target: 1,
-    availability: "COMING_SOON",
-    comingSoonReason: CHALLENGE_REASON,
+    availability: "AVAILABLE",
   }),
   BALANCED_WEEK: def({
     code: "BALANCED_WEEK",
@@ -614,7 +676,7 @@ export const ACHIEVEMENT_CATALOG: Record<string, AchievementDefinition> = {
     icon: "Sparkle",
     target: 1,
     availability: "COMING_SOON",
-    comingSoonReason: "Disponível quando hidratação e atividade física (ActivityLog) estiverem prontas.",
+    comingSoonReason: "Disponível quando hidratação estiver pronta (atividade física já é considerada).",
   }),
 };
 

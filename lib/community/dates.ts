@@ -53,6 +53,31 @@ export function getUtcWeekWindow(now: Date = new Date()): { start: Date; end: Da
   return { start, end };
 }
 
+/**
+ * Semana local (segunda a domingo) que contém a data local informada
+ * ("YYYY-MM-DD"). Faz aritmética de calendário pura sobre a string — nunca
+ * calcula o instante UTC da meia-noite local (evitaria lidar com offset/DST
+ * sem biblioteca de timezone); a entrada já deve vir de getLocalDateString.
+ */
+export function getLocalWeekRange(localDateStr: string): { mondayStr: string; sundayStr: string } {
+  const asUtc = new Date(`${localDateStr}T00:00:00.000Z`);
+  const day = asUtc.getUTCDay(); // 0 = domingo
+  const diffToMonday = day === 0 ? 6 : day - 1;
+  const monday = new Date(asUtc);
+  monday.setUTCDate(asUtc.getUTCDate() - diffToMonday);
+  const sunday = new Date(monday);
+  sunday.setUTCDate(monday.getUTCDate() + 6);
+  return { mondayStr: monday.toISOString().slice(0, 10), sundayStr: sunday.toISOString().slice(0, 10) };
+}
+
+/** Primeiro e último dia (strings "YYYY-MM-DD") do mês local que contém a data informada. */
+export function getLocalMonthRange(localDateStr: string): { firstStr: string; lastStr: string } {
+  const [year, month] = localDateStr.split("-").map(Number);
+  const first = new Date(Date.UTC(year, month - 1, 1));
+  const last = new Date(Date.UTC(year, month, 0)); // dia 0 do mês seguinte = último dia do mês atual
+  return { firstStr: first.toISOString().slice(0, 10), lastStr: last.toISOString().slice(0, 10) };
+}
+
 /** Tempo relativo em pt-BR para timestamps do feed (ex.: "2h atrás"). */
 export function formatRelativeTime(date: Date | string): string {
   const target = typeof date === "string" ? new Date(date) : date;
