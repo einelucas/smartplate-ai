@@ -3,6 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { deleteUploadedImage } from "@/lib/storage/local-file-storage";
+import { deletePrivateImage, isLocalUploadPath } from "@/lib/storage/blob";
 import { updateProgressPhotoSchema } from "@/lib/profile/validation";
 
 type Params = { params: Promise<{ id: string }> };
@@ -43,7 +44,11 @@ export async function DELETE(_request: Request, context: Params) {
   }
 
   await prisma.progressPhoto.delete({ where: { id: params.id } });
-  await deleteUploadedImage(photo.imageUrl);
+  if (isLocalUploadPath(photo.imageUrl)) {
+    await deleteUploadedImage(photo.imageUrl);
+  } else {
+    await deletePrivateImage(photo.imageUrl);
+  }
 
   return NextResponse.json({ success: true });
 }

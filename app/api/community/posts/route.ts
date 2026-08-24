@@ -98,7 +98,7 @@ export async function POST(request: Request) {
     // precisa ter sido gerada pelo upload deste MESMO usuário (nunca aceitar
     // a URL de upload de outra pessoa).
     const imageUrl = parsed.data.externalShareImageUrl;
-    if (imageUrl && !imageUrl.startsWith(`/uploads/community-share-${userId}/`)) {
+    if (imageUrl && !imageUrl.startsWith(`external-shares/${userId}/`)) {
       return NextResponse.json({ error: "Imagem inválida" }, { status: 403 });
     }
     metadata = {

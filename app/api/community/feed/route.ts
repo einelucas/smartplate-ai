@@ -6,6 +6,17 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { AuthzError, getBlockedUserIds, requireGroupMembership } from "@/lib/community/authz";
 import { cursorPaginationSchema } from "@/lib/community/validation";
+import { isLocalUploadPath } from "@/lib/storage/blob";
+
+type ExternalShareMetadata = { imageUrl?: string | null; [key: string]: unknown };
+
+/** Pathname de Blob privado nunca vai pro cliente como está — vira a rota-proxy. Path antigo (/uploads/...) já é servido direto. */
+function resolvePostMetadata(post: { id: string; type: string; metadata: unknown }) {
+  if (post.type !== "EXTERNAL_SHARE" || !post.metadata) return post.metadata;
+  const meta = post.metadata as ExternalShareMetadata;
+  if (!meta.imageUrl || isLocalUploadPath(meta.imageUrl)) return meta;
+  return { ...meta, imageUrl: `/api/community/posts/${post.id}/image` };
+}
 
 export async function GET(request: Request) {
   const { userId } = await auth();
@@ -68,7 +79,7 @@ export async function GET(request: Request) {
       id: post.id,
       type: post.type,
       text: post.text,
-      metadata: post.metadata,
+      metadata: resolvePostMetadata(post),
       groupId: post.groupId,
       createdAt: post.createdAt,
       author: byId.get(post.authorUserId) ?? {

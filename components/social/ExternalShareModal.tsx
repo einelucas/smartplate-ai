@@ -32,7 +32,10 @@ export default function ExternalShareModal({
   const [provider, setProvider] = useState(defaultProvider);
   const [url, setUrl] = useState("");
   const [caption, setCaption] = useState("");
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  // imagePathname = valor enviado ao criar o post (pathname do Blob).
+  // imagePreviewUrl = rota-proxy renderizável (só o próprio uploader acessa).
+  const [imagePathname, setImagePathname] = useState<string | null>(null);
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
@@ -45,7 +48,8 @@ export default function ExternalShareModal({
       const res = await fetch("/api/community/external-share/upload", { method: "POST", body: formData });
       const data = await res.json().catch(() => null);
       if (!res.ok) throw new Error(data?.error || "Erro ao enviar imagem");
-      setImageUrl(data.url);
+      setImagePathname(data.pathname);
+      setImagePreviewUrl(data.previewUrl);
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : "Erro ao enviar imagem");
     } finally {
@@ -53,7 +57,7 @@ export default function ExternalShareModal({
     }
   };
 
-  const canSubmit = !!(url.trim() || imageUrl || caption.trim());
+  const canSubmit = !!(url.trim() || imagePathname || caption.trim());
 
   const handleSubmit = () => {
     if (!canSubmit) return;
@@ -62,7 +66,7 @@ export default function ExternalShareModal({
         type: "EXTERNAL_SHARE",
         externalShareProvider: provider,
         externalShareUrl: url.trim() || undefined,
-        externalShareImageUrl: imageUrl ?? undefined,
+        externalShareImageUrl: imagePathname ?? undefined,
         text: caption.trim() || undefined,
         groupId,
       },
@@ -125,11 +129,17 @@ export default function ExternalShareModal({
               <label className="text-xs font-medium text-slate-500 mb-1.5 block flex items-center gap-1">
                 <ImageIcon size={12} /> Imagem (opcional)
               </label>
-              {imageUrl ? (
+              {imagePreviewUrl ? (
                 <div className="relative">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={imageUrl} alt="" className="w-full h-40 object-cover rounded-xl" />
-                  <button onClick={() => setImageUrl(null)} className="absolute top-2 right-2 bg-black/60 text-white rounded-full p-1">
+                  <img src={imagePreviewUrl} alt="" className="w-full h-40 object-cover rounded-xl" />
+                  <button
+                    onClick={() => {
+                      setImagePathname(null);
+                      setImagePreviewUrl(null);
+                    }}
+                    className="absolute top-2 right-2 bg-black/60 text-white rounded-full p-1"
+                  >
                     <X size={14} />
                   </button>
                 </div>

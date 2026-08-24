@@ -24,6 +24,7 @@
     "@prisma/client": "^6.1.0",
     "@supabase/supabase-js": "^2.47.10",
     "@tanstack/react-query": "^5.62.11",
+    "@vercel/blob": "^2.8.0",
     "chart.js": "^4.5.1",
     "framer-motion": "^12.34.3",
     "lucide-react": "^0.575.0",
