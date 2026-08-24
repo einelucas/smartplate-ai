@@ -8,12 +8,14 @@ import { AuthzError, getBlockedUserIds, requireGroupMembership } from "@/lib/com
 import { cursorPaginationSchema } from "@/lib/community/validation";
 import { isLocalUploadPath } from "@/lib/storage/blob";
 
-type ExternalShareMetadata = { imageUrl?: string | null; [key: string]: unknown };
+type PostImageMetadata = { imageUrl?: string | null; [key: string]: unknown };
+
+const IMAGE_CAPABLE_TYPES = new Set(["TEXT", "ACTIVITY", "EXTERNAL_SHARE", "ACHIEVEMENT", "PLAN_SHARE"]);
 
 /** Pathname de Blob privado nunca vai pro cliente como está — vira a rota-proxy. Path antigo (/uploads/...) já é servido direto. */
 function resolvePostMetadata(post: { id: string; type: string; metadata: unknown }) {
-  if (post.type !== "EXTERNAL_SHARE" || !post.metadata) return post.metadata;
-  const meta = post.metadata as ExternalShareMetadata;
+  if (!IMAGE_CAPABLE_TYPES.has(post.type) || !post.metadata) return post.metadata;
+  const meta = post.metadata as PostImageMetadata;
   if (!meta.imageUrl || isLocalUploadPath(meta.imageUrl)) return meta;
   return { ...meta, imageUrl: `/api/community/posts/${post.id}/image` };
 }

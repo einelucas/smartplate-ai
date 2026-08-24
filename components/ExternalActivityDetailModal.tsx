@@ -6,17 +6,14 @@
 // duração/distância/nome para o post).
 "use client";
 
-import { useState } from "react";
-import dynamic from "next/dynamic";
-import { motion, AnimatePresence } from "framer-motion";
-import { X, Lock, ArrowUpRight, Share2 } from "lucide-react";
 import { resolveIcon } from "@/components/icon-registry";
 import ProviderIcon from "@/components/ProviderIcon";
-import { getProviderDisplay, getShareHeading } from "@/lib/integrations/provider-display";
+import { getProviderDisplay } from "@/lib/integrations/provider-display";
 import { ACTIVITY_TYPE_ICON_KEY } from "@/lib/activity/options";
+import { useOpenPostComposer } from "@/components/social/PostComposerProvider";
+import { motion, AnimatePresence } from "framer-motion";
+import { X, Lock, ArrowUpRight, Share2 } from "lucide-react";
 import type { ActivityHistoryItem } from "@/hooks/useActivityHistory";
-
-const ExternalShareModal = dynamic(() => import("./social/ExternalShareModal"), { ssr: false });
 
 function formatFullDate(iso: string): string {
   return new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" });
@@ -30,7 +27,7 @@ function formatDuration(min: number): string {
 }
 
 export default function ExternalActivityDetailModal({ item, onClose }: { item: ActivityHistoryItem; onClose: () => void }) {
-  const [showShare, setShowShare] = useState(false);
+  const openComposer = useOpenPostComposer();
   const display = getProviderDisplay(item.source);
   const Icon = resolveIcon(ACTIVITY_TYPE_ICON_KEY[item.activityType] ?? display.icon);
 
@@ -124,7 +121,10 @@ export default function ExternalActivityDetailModal({ item, onClose }: { item: A
               )}
               {item.isPrivateExternal && (
                 <button
-                  onClick={() => setShowShare(true)}
+                  onClick={() => {
+                    openComposer({ attachment: { type: "EXTERNAL_SHARE", provider: item.source } });
+                    onClose();
+                  }}
                   className="flex items-center justify-center gap-1.5 bg-[#007BFF] hover:bg-[#0056b3] text-white rounded-xl py-2.5 text-sm font-semibold"
                 >
                   <Share2 size={14} /> Compartilhar na Comunidade
@@ -134,17 +134,6 @@ export default function ExternalActivityDetailModal({ item, onClose }: { item: A
           </div>
         </motion.div>
       </motion.div>
-
-      {showShare && (
-        <ExternalShareModal
-          defaultProvider={item.source}
-          heading={getShareHeading(item.source)}
-          onClose={() => {
-            setShowShare(false);
-            onClose();
-          }}
-        />
-      )}
     </AnimatePresence>
   );
 }

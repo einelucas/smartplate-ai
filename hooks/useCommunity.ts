@@ -108,6 +108,7 @@ export function useCreatePost(groupId?: string) {
     mutationFn: (input: {
       type: "TEXT" | "ACHIEVEMENT" | "STREAK" | "CHALLENGE" | "PLAN_SHARE" | "ACTIVITY" | "EXTERNAL_SHARE";
       text?: string;
+      imageUrl?: string;
       achievementCode?: string;
       streakMilestone?: number;
       shareToken?: string;

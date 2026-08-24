@@ -9,6 +9,7 @@ import { prisma } from "@/lib/prisma";
 import { createPostSchema } from "@/lib/community/validation";
 import { AuthzError, requireGroupMembership } from "@/lib/community/authz";
 import { ACHIEVEMENTS } from "@/lib/community/achievements";
+import { deletePrivateImage } from "@/lib/storage/blob";
 
 export async function POST(request: Request) {
   const { userId } = await auth();
@@ -39,7 +40,18 @@ export async function POST(request: Request) {
 
   let metadata: Record<string, unknown> = {};
 
-  if (type === "ACHIEVEMENT") {
+  // Foto genérica (TEXT e ACTIVITY) — precisa ter sido enviada por este MESMO
+  // usuário (pathname sempre "{folder}/{userId}/...", nunca aceitar de outra
+  // pessoa). Upload em si já aconteceu antes desta chamada (ver
+  // /api/community/media/upload); aqui só validamos e referenciamos.
+  const genericImageUrl = parsed.data.imageUrl;
+  if (genericImageUrl && genericImageUrl.split("/")[1] !== userId) {
+    return NextResponse.json({ error: "Imagem inválida" }, { status: 403 });
+  }
+
+  if (type === "TEXT") {
+    if (genericImageUrl) metadata = { imageUrl: genericImageUrl };
+  } else if (type === "ACHIEVEMENT") {
     const code = parsed.data.achievementCode as string;
     const unlocked = await prisma.userAchievement.findUnique({
       where: { userId_achievementCode: { userId, achievementCode: code } },
@@ -47,7 +59,13 @@ export async function POST(request: Request) {
     if (!unlocked) return NextResponse.json({ error: "Conquista não desbloqueada" }, { status: 403 });
     const def = (ACHIEVEMENTS as Record<string, { title: string; description: string; icon: string }>)[code];
     if (!def) return NextResponse.json({ error: "Conquista inválida" }, { status: 400 });
-    metadata = { achievementCode: code, title: def.title, description: def.description, icon: def.icon };
+    metadata = {
+      achievementCode: code,
+      title: def.title,
+      description: def.description,
+      icon: def.icon,
+      ...(genericImageUrl ? { imageUrl: genericImageUrl } : {}),
+    };
   } else if (type === "STREAK") {
     const milestone = parsed.data.streakMilestone as number;
     const gamification = await prisma.userGamification.findUnique({ where: { userId } });
@@ -64,7 +82,12 @@ export async function POST(request: Request) {
     if (shared.expiresAt && shared.expiresAt.getTime() < Date.now()) {
       return NextResponse.json({ error: "Link de compartilhamento expirado" }, { status: 403 });
     }
-    metadata = { shareToken, planName: shared.mealPlan.name ?? null, dietType: shared.mealPlan.dietType };
+    metadata = {
+      shareToken,
+      planName: shared.mealPlan.name ?? null,
+      dietType: shared.mealPlan.dietType,
+      ...(genericImageUrl ? { imageUrl: genericImageUrl } : {}),
+    };
   } else if (type === "ACTIVITY") {
     const activityLogId = parsed.data.activityLogId as string;
     const activityLog = await prisma.activityLog.findUnique({ where: { id: activityLogId }, include: { sharedPost: { select: { id: true } } } });
@@ -90,6 +113,10 @@ export async function POST(request: Request) {
       notes: activityLog.notes,
       performedAt: activityLog.performedAt,
       xpAwarded: xpSum._sum.points ?? 0,
+      // Imagem é sempre escolhida manualmente pelo usuário no momento do
+      // compartilhamento — nunca copiada de dado privado do ActivityLog/API
+      // externa (Strava permanece privado; ver provider-policy.ts).
+      ...(genericImageUrl ? { imageUrl: genericImageUrl } : {}),
     };
   } else if (type === "EXTERNAL_SHARE") {
     // Conteúdo é sempre o que o próprio usuário forneceu — nunca buscamos
@@ -108,16 +135,25 @@ export async function POST(request: Request) {
     };
   }
 
-  const post = await prisma.communityPost.create({
-    data: {
-      authorUserId: userId,
-      groupId: groupId ?? null,
-      type,
-      text: text ?? null,
-      metadata: metadata as Prisma.InputJsonObject,
-      ...(type === "ACTIVITY" ? { activityLogId: parsed.data.activityLogId as string } : {}),
-    },
-  });
+  try {
+    const post = await prisma.communityPost.create({
+      data: {
+        authorUserId: userId,
+        groupId: groupId ?? null,
+        type,
+        text: text ?? null,
+        metadata: metadata as Prisma.InputJsonObject,
+        ...(type === "ACTIVITY" ? { activityLogId: parsed.data.activityLogId as string } : {}),
+      },
+    });
 
-  return NextResponse.json({ post }, { status: 201 });
+    return NextResponse.json({ post }, { status: 201 });
+  } catch (error) {
+    // Upload do Blob já aconteceu antes desta chamada — se o insert falhar,
+    // remove o arquivo pra não deixar órfão (mesmo padrão de progress-photos).
+    const orphanImageUrl = (metadata as { imageUrl?: string | null }).imageUrl;
+    if (orphanImageUrl) await deletePrivateImage(orphanImageUrl);
+    console.error("Erro ao criar post:", error);
+    return NextResponse.json({ error: "Não foi possível publicar." }, { status: 500 });
+  }
 }

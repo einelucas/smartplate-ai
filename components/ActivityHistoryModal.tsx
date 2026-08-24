@@ -9,10 +9,10 @@ import { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Trash2, Pencil, Check, Share2, CalendarX } from "lucide-react";
-import { findActivityIntensityLabel, ACTIVITY_TYPE_ICON_KEY } from "@/lib/activity/options";
+import { findActivityIntensityLabel, ACTIVITY_TYPE_ICON_KEY, findActivityTypeLabel } from "@/lib/activity/options";
 import { resolveIcon } from "@/components/icon-registry";
 import { useDeleteActivity, useUpdateActivity, type ActivityLogEntry } from "@/hooks/useActivities";
-import { useCreatePost, useMyGroups } from "@/hooks/useCommunity";
+import { useOpenPostComposer } from "@/components/social/PostComposerProvider";
 import { useConnectedApps } from "@/hooks/useConnectedApps";
 import { useActivityHistory, type ActivityHistoryItem } from "@/hooks/useActivityHistory";
 import { getProviderDisplay } from "@/lib/integrations/provider-display";
@@ -24,82 +24,24 @@ function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" });
 }
 
-function ShareRow({ activity, onDone }: { activity: ActivityLogEntry; onDone: () => void }) {
-  const createPost = useCreatePost();
-  const { data: myGroups } = useMyGroups();
-  const groups = myGroups?.groups ?? [];
-  const [destination, setDestination] = useState<"GENERAL" | "GROUP">("GENERAL");
-  const [groupId, setGroupId] = useState("");
-
-  const handleConfirm = () => {
-    if (destination === "GROUP" && !groupId) return;
-    createPost.mutate(
-      { type: "ACTIVITY", activityLogId: activity.id, groupId: destination === "GROUP" ? groupId : undefined },
-      { onSuccess: onDone }
-    );
-  };
-
-  return (
-    <div className="mt-2 p-3 bg-slate-50 rounded-xl space-y-2">
-      <div className="flex gap-2">
-        <button
-          type="button"
-          onClick={() => setDestination("GENERAL")}
-          className={`flex-1 py-1.5 rounded-lg text-xs font-medium border-2 ${destination === "GENERAL" ? "border-[#007BFF] bg-[#007BFF]/10 text-[#007BFF]" : "border-slate-200 text-slate-500"}`}
-        >
-          Comunidade geral
-        </button>
-        {groups.length > 0 && (
-          <button
-            type="button"
-            onClick={() => setDestination("GROUP")}
-            className={`flex-1 py-1.5 rounded-lg text-xs font-medium border-2 ${destination === "GROUP" ? "border-[#007BFF] bg-[#007BFF]/10 text-[#007BFF]" : "border-slate-200 text-slate-500"}`}
-          >
-            Grupo específico
-          </button>
-        )}
-      </div>
-      {destination === "GROUP" && (
-        <select
-          value={groupId}
-          onChange={(e) => setGroupId(e.target.value)}
-          className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs"
-        >
-          <option value="">Selecione um grupo</option>
-          {groups.map((g) => (
-            <option key={g.id} value={g.id}>
-              {g.name}
-            </option>
-          ))}
-        </select>
-      )}
-      <div className="flex gap-2">
-        <button type="button" onClick={onDone} className="flex-1 py-1.5 text-xs text-slate-500 font-medium">
-          Cancelar
-        </button>
-        <button
-          type="button"
-          onClick={handleConfirm}
-          disabled={createPost.isPending || (destination === "GROUP" && !groupId)}
-          className="flex-1 py-1.5 bg-[#007BFF] text-white rounded-lg text-xs font-semibold disabled:opacity-50"
-        >
-          Publicar
-        </button>
-      </div>
-    </div>
-  );
-}
-
 function ActivityRow({ item }: { item: ActivityHistoryItem }) {
   const activity = item.raw as ActivityLogEntry;
   const updateActivity = useUpdateActivity();
   const deleteActivity = useDeleteActivity();
+  const openComposer = useOpenPostComposer();
   const [editing, setEditing] = useState(false);
-  const [sharing, setSharing] = useState(false);
   const [durationMin, setDurationMin] = useState(String(activity.durationMin));
   const [notes, setNotes] = useState(activity.notes ?? "");
 
   const Icon = resolveIcon(ACTIVITY_TYPE_ICON_KEY[activity.activityType]);
+
+  const handleShare = () => {
+    const label =
+      activity.activityType === "OTHER" && activity.customActivityName
+        ? activity.customActivityName
+        : findActivityTypeLabel(activity.activityType);
+    openComposer({ attachment: { type: "ACTIVITY", activityId: activity.id, preview: { label, durationMin: activity.durationMin } } });
+  };
 
   const handleSave = () => {
     const duration = Number(durationMin);
@@ -165,7 +107,7 @@ function ActivityRow({ item }: { item: ActivityHistoryItem }) {
             <>
               {!activity.sharedPost && (
                 <button
-                  onClick={() => setSharing((v) => !v)}
+                  onClick={handleShare}
                   title="Compartilhar"
                   aria-label="Compartilhar atividade"
                   className="p-2 text-slate-400 hover:text-[#007BFF] hover:bg-[#007BFF]/10 rounded-lg"
@@ -183,8 +125,6 @@ function ActivityRow({ item }: { item: ActivityHistoryItem }) {
           )}
         </div>
       </div>
-
-      {sharing && !editing && <ShareRow activity={activity} onDone={() => setSharing(false)} />}
     </div>
   );
 }

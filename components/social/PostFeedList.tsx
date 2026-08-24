@@ -29,7 +29,7 @@ export default function PostFeedList({ groupId }: { groupId?: string }) {
 
   return (
     <div className="space-y-4">
-      <PostComposer groupId={groupId} onRequireTerms={guard} />
+      <PostComposer groupId={groupId} />
 
       <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1">
         {FEED_FILTERS.map((f) => (

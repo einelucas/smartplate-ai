@@ -26,6 +26,7 @@ import CommentSection from "./CommentSection";
 import ExternalProviderBadge from "./ExternalProviderBadge";
 
 const ReportModal = dynamic(() => import("./ReportModal"), { ssr: false });
+const ImageViewerDialog = dynamic(() => import("./ImageViewerDialog"), { ssr: false });
 
 const REACTIONS: { type: "LIKE" | "FIRE" | "CLAP" | "STRONG"; icon: Icon }[] = [
   { type: "LIKE", icon: ThumbsUpIcon },
@@ -42,7 +43,9 @@ type AchievementMetadata = { title?: string; description?: string; icon?: string
 type StreakMetadata = { milestone?: number };
 type PlanShareMetadata = { shareToken?: string; planName?: string; dietType?: string };
 // Snapshot seguro no momento do compartilhamento — nunca dados privados de
-// Profile (peso, altura, objetivo). Ver POST /api/community/posts.
+// Profile (peso, altura, objetivo). Ver POST /api/community/posts. `imageUrl`
+// é sempre uma foto escolhida manualmente pelo usuário ao compartilhar —
+// nunca copiada de provider externo (Strava permanece privado).
 type ActivityMetadata = {
   activityType?: string;
   customActivityName?: string | null;
@@ -52,10 +55,22 @@ type ActivityMetadata = {
   notes?: string | null;
   performedAt?: string;
   xpAwarded?: number;
+  imageUrl?: string | null;
 };
+type TextMetadata = { imageUrl?: string | null };
 // Conteúdo é sempre o que o usuário forneceu — nunca dado obtido via API
 // (ver POST /api/community/posts, ramo EXTERNAL_SHARE).
 type ExternalShareMetadata = { provider?: string; url?: string | null; imageUrl?: string | null };
+
+/** Container de imagem do feed — respeita a proporção do crop do usuário; só limita altura em casos extremos (Livre muito alto), com viewer completo ao tocar. */
+function PostImage({ src, onOpen }: { src: string; onOpen: () => void }) {
+  return (
+    <button type="button" onClick={onOpen} className="block w-full">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={src} alt="" className="w-full h-auto max-h-[70vh] object-cover rounded-xl" />
+    </button>
+  );
+}
 
 export default function PostCard({
   post,
@@ -221,6 +236,8 @@ function PostBody({
   editText: string;
   setEditText: (v: string) => void;
 }) {
+  const [viewerSrc, setViewerSrc] = useState<string | null>(null);
+
   if (editing) {
     return (
       <textarea
@@ -327,6 +344,13 @@ function PostBody({
             <FireIcon size={14} weight="fill" /> +{meta.xpAwarded} XP
           </p>
         )}
+        {post.text && <p className="text-sm text-slate-700 mt-2">{post.text}</p>}
+        {meta.imageUrl && (
+          <div className="mt-3">
+            <PostImage src={meta.imageUrl} onOpen={() => setViewerSrc(meta.imageUrl!)} />
+          </div>
+        )}
+        {viewerSrc && <ImageViewerDialog src={viewerSrc} onClose={() => setViewerSrc(null)} />}
       </div>
     );
   }
@@ -336,10 +360,7 @@ function PostBody({
     return (
       <div className="border border-slate-100 rounded-xl overflow-hidden">
         {post.text && <p className="text-slate-700 text-sm whitespace-pre-wrap break-words p-3 pb-0">{post.text}</p>}
-        {meta.imageUrl && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={meta.imageUrl} alt="" className="w-full max-h-80 object-cover" />
-        )}
+        {meta.imageUrl && <PostImage src={meta.imageUrl} onOpen={() => setViewerSrc(meta.imageUrl!)} />}
         <div className="p-3 flex items-center justify-between gap-2">
           <ExternalProviderBadge provider={meta.provider} />
           {meta.url && (
@@ -353,9 +374,23 @@ function PostBody({
             </a>
           )}
         </div>
+        {viewerSrc && <ImageViewerDialog src={viewerSrc} onClose={() => setViewerSrc(null)} />}
       </div>
     );
   }
 
-  return <p className="text-slate-700 text-sm whitespace-pre-wrap break-words">{post.text}</p>;
+  // TEXT (padrão) — texto opcional + foto opcional (item 7-9: qualquer
+  // combinação é válida, já garantida pelo backend via createPostSchema).
+  const { imageUrl } = (post.metadata ?? {}) as TextMetadata;
+  return (
+    <div>
+      {post.text && <p className="text-slate-700 text-sm whitespace-pre-wrap break-words">{post.text}</p>}
+      {imageUrl && (
+        <div className={post.text ? "mt-3" : ""}>
+          <PostImage src={imageUrl} onOpen={() => setViewerSrc(imageUrl)} />
+        </div>
+      )}
+      {viewerSrc && <ImageViewerDialog src={viewerSrc} onClose={() => setViewerSrc(null)} />}
+    </div>
+  );
 }

@@ -58,12 +58,23 @@ async function tryCreateXpEvent(
     referenceId?: string;
   }
 ): Promise<boolean> {
+  // Checa ANTES de inserir (em vez de só tentar e capturar P2002): dentro de
+  // uma transação interativa do Postgres, um erro de constraint capturado
+  // ainda deixa a transação "aborted" para qualquer query seguinte na MESMA
+  // transação (25P02 "current transaction is aborted") — foi exatamente isso
+  // que quebrou o registro de atividade quando a chave de idempotência do
+  // dia (ex.: primeira atividade do dia) já existia de um registro apagado
+  // antes: o create() seguinte (creditXp) explodia com "transaction is
+  // aborted", mascarando o erro real. Checar antes evita gerar esse erro.
+  const existing = await db.xpEvent.findUnique({ where: { idempotencyKey: data.idempotencyKey }, select: { id: true } });
+  if (existing) return false;
+
   try {
     await db.xpEvent.create({ data });
     return true;
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-      return false; // idempotência: evento já concedido antes
+      return false; // corrida rara: outra requisição criou entre o check e o create
     }
     throw error;
   }
@@ -133,12 +144,21 @@ export async function checkAndUnlockAchievements(
 
   const newlyUnlocked: AchievementCode[] = [];
   for (const code of candidates) {
+    // Mesmo motivo do check em tryCreateXpEvent acima: capturar P2002 e
+    // seguir o loop tentando criar a PRÓXIMA conquista, dentro da mesma
+    // transação, deixaria a transação "aborted" pro Postgres. Checa antes.
+    const existing = await db.userAchievement.findUnique({
+      where: { userId_achievementCode: { userId, achievementCode: code } },
+      select: { id: true },
+    });
+    if (existing) continue;
+
     try {
       await db.userAchievement.create({ data: { userId, achievementCode: code } });
       newlyUnlocked.push(code);
     } catch (error) {
       if (!(error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002")) throw error;
-      // já desbloqueada — ignora
+      // corrida rara: outra requisição criou entre o check e o create — ignora
     }
   }
   return newlyUnlocked;

@@ -8,6 +8,7 @@ import toast from "react-hot-toast";
 import { X } from "lucide-react";
 import { FireIcon } from "@phosphor-icons/react";
 import { useCreatePost } from "@/hooks/useCommunity";
+import { openPostComposer } from "./PostComposerProvider";
 import { ACHIEVEMENTS, type AchievementCode } from "@/lib/community/achievements";
 import { resolveIcon } from "@/components/icon-registry";
 
@@ -15,8 +16,6 @@ const STREAK_MILESTONES = [3, 7, 14, 30, 60, 100];
 
 function AchievementToastContent({ code, toastId }: { code: string; toastId: string }) {
   const def = (ACHIEVEMENTS as Record<string, { title: string; description: string; icon: string }>)[code];
-  const createPost = useCreatePost();
-  const [shared, setShared] = useState(false);
 
   if (!def) return null;
 
@@ -29,19 +28,17 @@ function AchievementToastContent({ code, toastId }: { code: string; toastId: str
         <p className="text-sm font-bold text-slate-800">Nova conquista</p>
         <p className="text-xs text-slate-500 truncate">{def.title}</p>
       </div>
-      {!shared ? (
-        <button
-          onClick={() => {
-            createPost.mutate({ type: "ACHIEVEMENT", achievementCode: code as AchievementCode });
-            setShared(true);
-          }}
-          className="text-xs font-semibold text-[#007BFF] flex-shrink-0"
-        >
-          Compartilhar
-        </button>
-      ) : (
-        <span className="text-xs text-[#28A745] flex-shrink-0">Compartilhado!</span>
-      )}
+      <button
+        onClick={() => {
+          toast.dismiss(toastId);
+          openPostComposer({
+            attachment: { type: "ACHIEVEMENT", achievementCode: code as AchievementCode, preview: { title: def.title, icon: def.icon } },
+          });
+        }}
+        className="text-xs font-semibold text-[#007BFF] flex-shrink-0"
+      >
+        Compartilhar
+      </button>
       <button onClick={() => toast.dismiss(toastId)} className="text-slate-300 hover:text-slate-500 flex-shrink-0">
         <X size={14} />
       </button>

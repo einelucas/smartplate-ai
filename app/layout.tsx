@@ -7,6 +7,7 @@ import { ClerkProvider, SignedIn, SignedOut } from "@clerk/nextjs";
 import { ReactQueryClientProvider } from "../components/react-query-client-provider";
 import CreateProfileOnSignIn from "@/components/create-profile";
 import PendingInviteRedirect from "@/components/PendingInviteRedirect";
+import { PostComposerProvider } from "@/components/social/PostComposerProvider";
 import { Toaster } from "react-hot-toast"; // 🔥 1. IMPORTE AQUI
 
 export const metadata: Metadata = {
@@ -54,7 +55,9 @@ export default function RootLayout({
               </main>
             </SignedOut>
             <SignedIn>
-              <AppSidebar>{children}</AppSidebar>
+              <PostComposerProvider>
+                <AppSidebar>{children}</AppSidebar>
+              </PostComposerProvider>
             </SignedIn>
           </ClerkProvider>
         </ReactQueryClientProvider>

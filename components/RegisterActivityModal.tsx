@@ -7,10 +7,11 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Loader2 } from "lucide-react";
-import { ACTIVITY_INTENSITIES, ACTIVITY_TYPES, ACTIVITY_TYPE_ICON_KEY } from "@/lib/activity/options";
+import { ACTIVITY_INTENSITIES, ACTIVITY_TYPES, ACTIVITY_TYPE_ICON_KEY, findActivityTypeLabel } from "@/lib/activity/options";
 import { resolveIcon } from "@/components/icon-registry";
 import { useCreateActivity } from "@/hooks/useActivities";
-import { useCreatePost, useMyGroups } from "@/hooks/useCommunity";
+import { useMyGroups } from "@/hooks/useCommunity";
+import { useOpenPostComposer } from "@/components/social/PostComposerProvider";
 
 type ShareDestination = "NONE" | "GENERAL" | "GROUP";
 
@@ -39,7 +40,7 @@ export default function RegisterActivityModal({
   defaultGroupId?: string;
 }) {
   const createActivity = useCreateActivity();
-  const createPost = useCreatePost();
+  const openComposer = useOpenPostComposer();
   const { data: myGroups } = useMyGroups();
 
   const [activityType, setActivityType] = useState("WALKING");
@@ -53,7 +54,7 @@ export default function RegisterActivityModal({
   const [shareTo, setShareTo] = useState<ShareDestination>("NONE");
   const [groupId, setGroupId] = useState(defaultGroupId ?? "");
 
-  const isSaving = createActivity.isPending || createPost.isPending;
+  const isSaving = createActivity.isPending;
 
   const reset = () => {
     setActivityType("WALKING");
@@ -101,9 +102,12 @@ export default function RegisterActivityModal({
       {
         onSuccess: (result) => {
           if (shareTo !== "NONE") {
-            createPost.mutate({
-              type: "ACTIVITY",
-              activityLogId: result.activity.id,
+            const label =
+              activityType === "OTHER" && customActivityName.trim()
+                ? customActivityName.trim()
+                : findActivityTypeLabel(activityType);
+            openComposer({
+              attachment: { type: "ACTIVITY", activityId: result.activity.id, preview: { label, durationMin: duration } },
               groupId: shareTo === "GROUP" ? groupId : undefined,
             });
           }
@@ -293,6 +297,11 @@ export default function RegisterActivityModal({
                           </option>
                         ))}
                       </select>
+                    )}
+                    {shareTo !== "NONE" && (
+                      <p className="text-xs text-slate-400 mt-2">
+                        Depois de salvar, o post abre pronto pra você adicionar legenda e foto antes de publicar.
+                      </p>
                     )}
                   </div>
                 )}

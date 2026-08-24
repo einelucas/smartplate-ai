@@ -70,17 +70,21 @@ export const externalShareUrlSchema = z
   .max(500)
   .refine(isSafeExternalShareUrl, { message: "Informe um link https válido" });
 
-// Reaproveita os mesmos limites de imagem já usados em ProgressPhoto/avatar
-// (ver lib/profile/validation.ts) — não é um storage novo, só outro
-// consumidor de lib/storage/local-file-storage.ts.
+// Limites de imagem reutilizados por qualquer upload de mídia da Comunidade
+// (post de texto, atividade, external share) — todos passam pelo mesmo
+// crop/preview no client antes do upload, então o mesmo conjunto de tipos
+// aceitos vale para todos (sem GIF: o crop já achata pra um frame único).
 export const EXTERNAL_SHARE_MAX_IMAGE_BYTES = 5 * 1024 * 1024;
-export const EXTERNAL_SHARE_ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+export const EXTERNAL_SHARE_ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 
 export const createPostSchema = z
   .object({
     type: postTypeSchema,
     groupId: z.string().trim().min(1).max(64).optional(),
     text: z.string().trim().max(500).optional(),
+    // Foto genérica (pathname do Blob) — TEXT e ACTIVITY. EXTERNAL_SHARE
+    // continua com seu próprio campo abaixo (fluxo/validação já estabelecidos).
+    imageUrl: z.string().trim().min(1).max(300).optional(),
     achievementCode: z.string().trim().max(32).optional(),
     streakMilestone: z.number().int().positive().max(10000).optional(),
     shareToken: z.string().trim().min(1).max(128).optional(),
@@ -89,8 +93,8 @@ export const createPostSchema = z
     externalShareUrl: externalShareUrlSchema.optional(),
     externalShareImageUrl: z.string().trim().min(1).max(300).optional(),
   })
-  .refine((data) => data.type !== "TEXT" || !!data.text, {
-    message: "Texto é obrigatório para posts do tipo TEXT",
+  .refine((data) => data.type !== "TEXT" || !!data.text || !!data.imageUrl, {
+    message: "Escreva algo ou adicione uma imagem",
     path: ["text"],
   })
   .refine((data) => data.type !== "ACHIEVEMENT" || !!data.achievementCode, {

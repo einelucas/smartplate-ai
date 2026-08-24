@@ -1,8 +1,10 @@
-// app/api/community/external-share/preview/route.ts
-// Preview do upload ANTES do post existir — só o próprio uploader pode ver
-// (valida que o pathname pertence a ele, prefixo external-shares/{userId}/).
-// Depois que o post é criado, a leitura passa a ser por
-// /api/community/posts/[id]/image (autorização por visibilidade do post).
+// app/api/community/media/preview/route.ts
+// Preview de upload ANTES do post existir — só o próprio uploader pode ver.
+// Pathname sempre no formato "{folder}/{userId}/{uuid}.ext"; ownership é
+// sempre o segundo segmento, então funciona pra qualquer folder (community,
+// external-shares) sem precisar rota por folder. Depois que o post existe, a
+// leitura passa a ser por /api/community/posts/[id]/image (autorização por
+// visibilidade do post, não por dono do arquivo).
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { streamPrivateImage } from "@/lib/storage/blob";
@@ -12,7 +14,8 @@ export async function GET(request: Request) {
   if (!userId) return NextResponse.json({ error: "Não autorizado." }, { status: 401 });
 
   const pathname = new URL(request.url).searchParams.get("pathname");
-  if (!pathname || !pathname.startsWith(`external-shares/${userId}/`)) {
+  const owner = pathname?.split("/")[1];
+  if (!pathname || owner !== userId) {
     return NextResponse.json({ error: "Não autorizado." }, { status: 403 });
   }
 

@@ -1,7 +1,8 @@
 // app/api/community/posts/[id]/image/route.ts
-// Proxy autenticado da imagem de um post EXTERNAL_SHARE. Só serve para quem
-// pode ver o post (mesma regra do feed: post não excluído/oculto, membro do
-// grupo se for post de grupo, sem bloqueio entre autor e quem pede).
+// Proxy autenticado da imagem de um post (TEXT, ACTIVITY ou EXTERNAL_SHARE —
+// qualquer tipo que possa carregar uma foto em metadata.imageUrl). Só serve
+// para quem pode ver o post (mesma regra do feed: post não excluído/oculto,
+// membro do grupo se for post de grupo, sem bloqueio entre autor e quem pede).
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
@@ -9,7 +10,9 @@ import { isBlockedEitherWay, requireGroupMembership } from "@/lib/community/auth
 import { streamPrivateImage } from "@/lib/storage/blob";
 
 type Params = { params: Promise<{ id: string }> };
-type ExternalShareMetadata = { imageUrl?: string | null };
+type PostImageMetadata = { imageUrl?: string | null };
+
+const IMAGE_CAPABLE_TYPES = new Set(["TEXT", "ACTIVITY", "EXTERNAL_SHARE", "ACHIEVEMENT", "PLAN_SHARE"]);
 
 export async function GET(_request: Request, context: Params) {
   const { userId } = await auth();
@@ -17,7 +20,7 @@ export async function GET(_request: Request, context: Params) {
 
   const params = await context.params;
   const post = await prisma.communityPost.findUnique({ where: { id: params.id } });
-  if (!post || post.deletedAt || post.hiddenAt || post.type !== "EXTERNAL_SHARE") {
+  if (!post || post.deletedAt || post.hiddenAt || !IMAGE_CAPABLE_TYPES.has(post.type)) {
     return NextResponse.json({ error: "Não autorizado." }, { status: 404 });
   }
 
@@ -31,7 +34,7 @@ export async function GET(_request: Request, context: Params) {
     return NextResponse.json({ error: "Não autorizado." }, { status: 403 });
   }
 
-  const imageUrl = (post.metadata as ExternalShareMetadata | null)?.imageUrl;
+  const imageUrl = (post.metadata as PostImageMetadata | null)?.imageUrl;
   if (!imageUrl) return NextResponse.json({ error: "Imagem não encontrada." }, { status: 404 });
 
   const result = await streamPrivateImage(imageUrl);
