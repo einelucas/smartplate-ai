@@ -1,5 +1,8 @@
 // components/social/PostFeedList.tsx
-// Feed reutilizável (comunidade geral ou grupo). Sempre dados reais — sem mocks.
+// Feed reutilizável (comunidade geral ou grupo). Sempre dados reais — sem
+// mocks. "Para você | Amigos" só existe na comunidade geral (sem groupId) —
+// grupo continua sempre cronológico, sem personalização (checklist item 24:
+// não criar mais um nível confuso de tabs).
 "use client";
 
 import { useState } from "react";
@@ -8,7 +11,7 @@ import { useCommunityFeed } from "@/hooks/useCommunity";
 import { useCommunityTermsGate } from "./CommunityTermsGate";
 import PostComposer from "./PostComposer";
 import PostCard from "./PostCard";
-import type { CommunityPostType } from "@/types/community";
+import type { CommunityPostType, FeedTab } from "@/types/community";
 
 type FeedFilter = "ALL" | "ACTIVITY" | "ACHIEVEMENT" | "EXTERNAL_SHARE";
 
@@ -19,8 +22,16 @@ const FEED_FILTERS: { key: FeedFilter; label: string }[] = [
   { key: "EXTERNAL_SHARE", label: "Compartilhados" },
 ];
 
+const AUDIENCE_TABS: { key: FeedTab; label: string }[] = [
+  { key: "for-you", label: "Para você" },
+  { key: "friends", label: "Amigos" },
+];
+
 export default function PostFeedList({ groupId }: { groupId?: string }) {
-  const { data, isLoading, isError, fetchNextPage, hasNextPage, isFetchingNextPage } = useCommunityFeed(groupId);
+  const [audience, setAudience] = useState<FeedTab>("for-you");
+  const effectiveTab: FeedTab = groupId ? "chronological" : audience;
+
+  const { data, isLoading, isError, fetchNextPage, hasNextPage, isFetchingNextPage } = useCommunityFeed(groupId, effectiveTab);
   const { guard, modal } = useCommunityTermsGate();
   const [filter, setFilter] = useState<FeedFilter>("ALL");
 
@@ -30,6 +41,22 @@ export default function PostFeedList({ groupId }: { groupId?: string }) {
   return (
     <div className="space-y-4">
       <PostComposer groupId={groupId} />
+
+      {!groupId && (
+        <div className="flex bg-white border border-slate-200 p-1 rounded-xl w-full sm:w-fit">
+          {AUDIENCE_TABS.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setAudience(tab.key)}
+              className={`flex-1 sm:flex-none px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                audience === tab.key ? "bg-[#007BFF] text-white" : "text-slate-600 hover:bg-slate-50"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1">
         {FEED_FILTERS.map((f) => (
@@ -76,6 +103,11 @@ export default function PostFeedList({ groupId }: { groupId?: string }) {
           </div>
           {filter !== "ALL" && allPosts.length > 0 ? (
             <p className="font-semibold text-slate-700">Nenhum post desse tipo por aqui ainda.</p>
+          ) : effectiveTab === "friends" ? (
+            <>
+              <p className="font-semibold text-slate-700">Nenhum post de amigos ainda.</p>
+              <p className="text-sm text-slate-500 mt-1">Adicione amigos ou publique você mesmo para começar.</p>
+            </>
           ) : (
             <>
               <p className="font-semibold text-slate-700">

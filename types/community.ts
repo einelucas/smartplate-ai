@@ -107,6 +107,20 @@ export interface ChallengeSummary {
   myCompletedAt: string | null;
 }
 
+export type FeedTab = "chronological" | "for-you" | "friends";
+
+export interface HashtagSuggestion {
+  slug: string;
+  name: string;
+  postCount: number;
+}
+
+export interface HashtagDetail {
+  slug: string;
+  name: string;
+  postCount: number;
+}
+
 export interface ModerationReportEntry {
   id: string;
   targetType: "POST" | "COMMENT" | "USER";

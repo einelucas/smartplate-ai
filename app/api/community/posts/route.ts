@@ -10,6 +10,7 @@ import { createPostSchema } from "@/lib/community/validation";
 import { AuthzError, requireGroupMembership } from "@/lib/community/authz";
 import { ACHIEVEMENTS } from "@/lib/community/achievements";
 import { deletePrivateImage } from "@/lib/storage/blob";
+import { exceedsHashtagLimit, syncPostHashtags, MAX_HASHTAGS_PER_POST } from "@/lib/community/hashtags";
 
 export async function POST(request: Request) {
   const { userId } = await auth();
@@ -28,6 +29,10 @@ export async function POST(request: Request) {
   }
 
   const { type, groupId, text } = parsed.data;
+
+  if (exceedsHashtagLimit(text)) {
+    return NextResponse.json({ error: `Máximo de ${MAX_HASHTAGS_PER_POST} hashtags por publicação` }, { status: 400 });
+  }
 
   if (groupId) {
     try {
@@ -136,15 +141,19 @@ export async function POST(request: Request) {
   }
 
   try {
-    const post = await prisma.communityPost.create({
-      data: {
-        authorUserId: userId,
-        groupId: groupId ?? null,
-        type,
-        text: text ?? null,
-        metadata: metadata as Prisma.InputJsonObject,
-        ...(type === "ACTIVITY" ? { activityLogId: parsed.data.activityLogId as string } : {}),
-      },
+    const post = await prisma.$transaction(async (tx) => {
+      const created = await tx.communityPost.create({
+        data: {
+          authorUserId: userId,
+          groupId: groupId ?? null,
+          type,
+          text: text ?? null,
+          metadata: metadata as Prisma.InputJsonObject,
+          ...(type === "ACTIVITY" ? { activityLogId: parsed.data.activityLogId as string } : {}),
+        },
+      });
+      await syncPostHashtags(tx, created.id, text);
+      return created;
     });
 
     return NextResponse.json({ post }, { status: 201 });

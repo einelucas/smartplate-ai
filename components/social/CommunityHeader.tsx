@@ -5,35 +5,43 @@ import { motion } from "framer-motion";
 import { Flame, Star, Trophy } from "lucide-react";
 import { useCommunityMe } from "@/hooks/useCommunity";
 
+/** Sem formatter compacto pré-existente no projeto — números grandes de XP nunca podem ser cortados (ex.: 12850 -> "12,9 mil"). */
+function formatXp(value: number): string {
+  if (value < 10000) return value.toLocaleString("pt-BR");
+  if (value < 1000000) return `${(value / 1000).toFixed(1).replace(".", ",")} mil`;
+  return `${(value / 1000000).toFixed(1).replace(".", ",")} mi`;
+}
+
 export default function CommunityHeader() {
   const { data, isLoading } = useCommunityMe();
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-3 gap-3 mb-6">
+      <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-6">
         {[0, 1, 2].map((i) => (
-          <div key={i} className="h-[68px] bg-slate-100 rounded-2xl animate-pulse" />
+          <div key={i} className="h-[84px] bg-slate-100 rounded-2xl animate-pulse" />
         ))}
       </div>
     );
   }
 
   const gamification = data?.gamification;
+  const streak = gamification?.currentStreak ?? 0;
 
   const cards = [
     {
       icon: Flame,
       color: "text-orange-500",
       bg: "bg-orange-50",
-      value: gamification?.currentStreak ?? 0,
-      label: "dias seguidos",
+      value: `${streak} ${streak === 1 ? "dia" : "dias"}`,
+      label: "Sequência",
     },
     {
       icon: Star,
       color: "text-[#007BFF]",
       bg: "bg-[#007BFF]/10",
-      value: gamification?.totalXp ?? 0,
-      label: "XP total",
+      value: formatXp(gamification?.totalXp ?? 0),
+      label: "XP",
     },
     {
       icon: Trophy,
@@ -45,22 +53,20 @@ export default function CommunityHeader() {
   ];
 
   return (
-    <div className="grid grid-cols-3 gap-3 mb-6">
+    <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-6">
       {cards.map((card, i) => (
         <motion.div
           key={card.label}
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: i * 0.05 }}
-          className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex items-center gap-3"
+          className="min-w-0 bg-white rounded-2xl p-3 sm:p-4 shadow-sm border border-slate-100 flex flex-col items-start"
         >
-          <div className={`w-10 h-10 ${card.bg} rounded-xl flex items-center justify-center flex-shrink-0`}>
-            <card.icon size={20} className={card.color} />
+          <div className={`w-9 h-9 sm:w-11 sm:h-11 ${card.bg} rounded-xl flex items-center justify-center flex-shrink-0 mb-2`}>
+            <card.icon size={18} className={card.color} />
           </div>
-          <div className="min-w-0">
-            <p className="text-xl font-bold text-slate-800 leading-none truncate">{card.value}</p>
-            <p className="text-xs text-slate-400 mt-1 truncate">{card.label}</p>
-          </div>
+          <p className="w-full text-base sm:text-xl font-bold text-slate-800 leading-tight break-words">{card.value}</p>
+          <p className="w-full text-[11px] sm:text-xs text-slate-400 mt-0.5 break-words">{card.label}</p>
         </motion.div>
       ))}
     </div>

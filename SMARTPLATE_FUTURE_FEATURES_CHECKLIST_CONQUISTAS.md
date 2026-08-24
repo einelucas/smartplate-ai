@@ -15,7 +15,19 @@
 - **P2** — evolução
 - **P3** — futuro / experimental
 
+## Como este arquivo está organizado
+
+Reorganizado em três partes, pra separar claramente o que já existe do que é próximo passo real e do que é ideia de backlog sem data:
+
+- **PARTE 1 — ✅ Já implementado**: seções com funcionalidade real, persistida, testada ou verificada diretamente no código nesta revisão. Detalhes e exceções pontuais continuam marcados `[ ]` dentro de cada seção — "já implementado" descreve a seção como um todo, não que 100% de cada checkbox interno esteja marcado.
+- **PARTE 2 — 🔜 Ainda vai ser trabalhado**: itens com escopo concreto, já identificados como próximo passo, que dependem só de execução (não de uma decisão de produto ainda em aberto).
+- **PARTE 3 — ⏸️ Pendente para depois**: ideias de backlog, evoluções de longo prazo, ou itens onde o próprio texto original já dizia "futuro"/"não definir ainda"/"evolução futura" — sem compromisso de quando.
+
+Esta reorganização corrigiu algumas seções que estavam desatualizadas (marcadas como backlog futuro mas cuja funcionalidade já existe de verdade no código — conquistas/streak compartilháveis, moderação, grupos, progresso coletivo de desafios). Onde isso aconteceu, há uma nota explícita "(corrigido nesta reorganização)".
+
 ---
+
+# PARTE 1 — ✅ Já implementado
 
 # 1. Atividades físicas
 
@@ -181,16 +193,16 @@ Intensidade moderada
 - [x] Registrar atividade válida: +10 XP
 - [x] Atividade com 30+ minutos: +5 XP
 - [x] Primeira atividade do dia: +5 XP
-- [x] Concluir desafio: XP bônus — já real via `recordChallengeCompletion` (motor de desafios existente), confirmado nesta tarefa
-- [ ] Conquista: XP bônus — deliberadamente adiado na sessão de conquistas (XP por achievement fica para o motor de XP definitivo)
+- [x] Concluir desafio: XP bônus — real via `recordChallengeCompletion` (motor de desafios)
+- [ ] Conquista: XP bônus — na prática **já existe** via `unlockAchievement`/`ACHIEVEMENT_RARITY_XP` (ver seção 57); este item específico "atividade gerar bônus extra ao desbloquear uma conquista de atividade" continua não sendo um bônus adicional separado — o XP da conquista em si já é concedido normalmente.
 
 ## Anti-abuso
 
 - [x] Máximo de XP diário por atividade
 - [x] Duração mínima para receber XP
 - [x] Impedir editar atividade repetidamente para ganhar XP
-- [x] Remover/reverter XP quando necessário — decisão: XP nunca é revertido (XpEvent é ledger imutável); o teto diário de `activityXpEarned` nunca é decrementado, o que já impede o abuso criar→excluir→criar
-- [x] Impedir atividades duplicadas vindas de integrações externas — `@@unique([source, externalId])` pronto (integrações em si ainda não implementadas)
+- [x] Remover/reverter XP quando necessário — decisão: XP nunca é revertido (`XpEvent` é ledger imutável); o teto diário de `activityXpEarned` nunca é decrementado, o que já impede o abuso criar→excluir→criar
+- [x] Impedir atividades duplicadas vindas de integrações externas — `@@unique([source, externalId])` pronto
 
 ---
 
@@ -203,8 +215,8 @@ Expandir o conceito de sequência do SmartPlate.
 - [x] Completar refeição
 - [x] Registrar atividade física
 - [ ] Participar de desafio — desafios ainda não disparam `qualifyDayForStreak`
-- [ ] Registrar progresso — peso/foto ainda não disparam `qualifyDayForStreak` (fora do escopo desta tarefa, focada em atividade)
-- [ ] Outras ações relevantes no futuro
+- [ ] Registrar progresso — peso/foto ainda não disparam `qualifyDayForStreak`
+- [ ] Outras ações relevantes no futuro (ex.: hidratação, quando existir)
 
 ## Regras
 
@@ -225,77 +237,56 @@ Expandir o conceito de sequência do SmartPlate.
 - [x] 50 Atividades (`ACTIVITIES_50`)
 - [x] 100 Atividades (`ACTIVITIES_100`)
 - [x] Semana Ativa — atividade em 3 dias da semana (`ACTIVE_3_DAYS_WEEK`)
-- [x] Consistência — atividade em várias semanas diferentes (`ACTIVITY_WEEKS_CONSISTENCY`, código novo)
-- [x] 30 Dias em Movimento (`ACTIVE_30_DAYS_TOTAL`, código novo)
+- [x] Consistência — atividade em várias semanas diferentes (`ACTIVITY_WEEKS_CONSISTENCY`)
+- [x] 30 Dias em Movimento (`ACTIVE_30_DAYS_TOTAL`)
 - [x] Explorador — registrar diferentes tipos de atividade (`ACTIVITY_EXPLORER`)
 
 ## Alimentação + atividade
 
-- [x] Rotina Completa — refeição + atividade no mesmo dia (`COMPLETE_ROUTINE`, código novo)
-- [x] Semana Equilibrada — alimentação + atividade em 5 dias (`BALANCED_ROUTINE_WEEK`, código novo)
-- [x] Consistência Total (`CONSISTENT_ROUTINE`, código novo)
-- [ ] Evolução — manter rotina por determinado período — regra não implementada por ser vaga demais para uma heurística segura/não-gameável; deixada de fora conscientemente (não virou `COMING_SOON` no catálogo por não ter sido criado o código)
+- [x] Rotina Completa — refeição + atividade no mesmo dia (`COMPLETE_ROUTINE`)
+- [x] Semana Equilibrada — alimentação + atividade em 5 dias (`BALANCED_ROUTINE_WEEK`)
+- [x] Consistência Total (`CONSISTENT_ROUTINE`)
+- [ ] Evolução — manter rotina por determinado período — regra não definida por ser vaga demais para uma heurística segura/não-gameável; deixada de fora conscientemente
 
 ## Progresso
 
-- [x] Primeira foto de progresso (`FIRST_PROGRESS_PHOTO`, já existia)
-- [x] Primeiro registro de peso (`FIRST_WEIGHT_LOG`, já existia)
-- [x] 10 registros de peso (`WEIGHT_LOGS_10`, já existia)
-- [ ] Primeira meta atingida — `PERSONAL_GOAL_REACHED` permanece `COMING_SOON`: sem sistema real de metas pessoais (decisão já tomada na sessão de conquistas, reconfirmada aqui)
-- [x] Sequência de registros de progresso (`PROGRESS_WEEKS_CONSISTENCY`, código novo)
+- [x] Primeira foto de progresso (`FIRST_PROGRESS_PHOTO`)
+- [x] Primeiro registro de peso (`FIRST_WEIGHT_LOG`)
+- [x] 10 registros de peso (`WEIGHT_LOGS_10`)
+- [x] Primeira meta atingida (`PERSONAL_GOAL_REACHED`) — **corrigido nesta reorganização**: sistema real de metas semanais (`ActivityGoal`) foi implementado; conquista virou `AVAILABLE`, deixou de ser `COMING_SOON`
+- [x] Sequência de registros de progresso (`PROGRESS_WEEKS_CONSISTENCY`)
 
 ## Social
 
-- [x] Primeira publicação (`FIRST_POST`, já existia)
-- [x] Primeiro amigo (`FIRST_FRIEND`, já existia)
-- [x] Entrar em primeiro grupo (`FIRST_GROUP`, já existia)
-- [x] Participar de primeiro desafio (`FIRST_CHALLENGE_JOINED`, código novo)
-- [x] Concluir primeiro desafio (`FIRST_CHALLENGE_COMPLETED`, ativado nesta tarefa — motor de desafios confirmado real)
-
----
+- [x] Primeira publicação (`FIRST_POST`)
+- [x] Primeiro amigo (`FIRST_FRIEND`)
+- [x] Entrar em primeiro grupo (`FIRST_GROUP`)
+- [x] Participar de primeiro desafio (`FIRST_CHALLENGE_JOINED`)
+- [x] Concluir primeiro desafio (`FIRST_CHALLENGE_COMPLETED`)
 
 ### Status da implementação de atividades físicas
 
 Data: 2026-08-23
 
-Principais entregas:
-- `ActivityLog` persistente (privado por padrão), relacionado a `Profile`, com `source`/`externalId` preparados para integrações futuras (`@@unique([source, externalId])`, nunca colide em registros manuais);
-- CRUD completo (`GET/POST /api/activities`, `PATCH/DELETE /api/activities/[id]`) com Zod centralizado (`lib/activity/validation.ts`) e dono sempre resolvido via autenticação;
-- componente único de registro (`RegisterActivityModal`) reutilizado em Início, Perfil e Comunidade — nunca duplicado;
-- histórico real com editar/excluir (`ActivityHistoryModal`);
-- resumo real no Início (semana local) e Perfil (mês local + dias ativos), via `GET /api/activities/summary`;
-- `PostType.ACTIVITY` real, reaproveitando o endpoint único de posts, reações e comentários já existentes; snapshot seguro em `metadata` (nunca dado privado de Profile) + referência opcional a `ActivityLogId` (`onDelete: SetNull`) só para bookkeeping de "já compartilhado";
-- compartilhamento sempre manual e explícito (padrão "Não compartilhar"), com Comunidade geral ou grupo específico (validado no servidor via `requireGroupMembership`);
-- XP idempotente via `XpEvent` (chaves `activity:base/duration/first-of-day`), nunca reavaliado em edição, teto diário de 40 XP (`DailyActivity.activityXpEarned`, nunca decrementado — é o que impede o abuso criar→excluir→criar);
-- integração real com `DailyActivity` (novos campos `mealCompleted`/`physicalActivityCompleted`/`activityXpEarned`) e streak (helper único `qualifyDayForStreak`, compartilhado entre refeição e atividade — nunca duplicado por tipo de ação);
-- 15 conquistas de atividade/rotina ativadas ou criadas (7 já existentes no catálogo + 7 códigos novos + `FIRST_CHALLENGE_COMPLETED`/`FIRST_CHALLENGE_JOINED`), com reconciliação retroativa automática (contas antigas com ActivityLog já existente não precisam repetir a ação).
+Principais entregas: `ActivityLog` persistente e privado por padrão; CRUD completo com Zod centralizado; componente único de registro reutilizado em Início/Perfil/Comunidade; histórico real; resumo real no Início e Perfil; `PostType.ACTIVITY` real com snapshot seguro; XP idempotente com teto diário; integração com `DailyActivity`/streak via helper único `qualifyDayForStreak`; 15+ conquistas de atividade/rotina, com reconciliação retroativa automática.
 
-Pendências:
-- "Evolução" (seção 6) — regra não definida por ser vaga demais para uma heurística segura;
-- "Primeira meta atingida" — sem sistema real de metas pessoais;
-- desafio/registro de progresso ainda não qualificam um dia para streak (só refeição e atividade nesta tarefa);
-- XP por conquista — deliberadamente fora de escopo (motor de XP definitivo é sessão futura);
-- limite diário de XP tem uma janela de corrida rara sob dupla submissão verdadeiramente concorrente (não o padrão criar→excluir→criar, que está coberto) — documentado no código, não bloqueante para uso real.
+Pendências reais (ver Parte 2/3): desafio/registro de progresso ainda não qualificam dia pra streak; regra "Evolução" (conquista) não definida por ser vaga; limite diário de XP tem uma janela de corrida rara sob dupla submissão verdadeiramente concorrente (documentado no código, não bloqueante).
 
 ---
 
 > **Status desta rodada (seções 7-12):** Desafios (novas métricas + grupo) e
 > Ranking (períodos/escopos) implementados, testados end-to-end contra o banco
-> real (migration aplicada, `npm run challenges:seed` criou os 7 desafios reais,
-> `npx tsc`/`npm run build` limpos). Connected Apps (arquitetura + criptografia +
-> tela) e Compartilhamento externo genérico implementados e testados
-> estruturalmente. Integração Strava: toda a arquitetura (OAuth, refresh,
-> sync, webhook, disconnect) está implementada e revisada contra a
-> documentação oficial do Strava, mas **não há credenciais Strava configuradas
-> neste ambiente** — por isso "conectar de verdade", "sincronizar atividades
-> reais" e "webhook real" continuam `[ ]` até serem testados contra uma conta
-> Strava de verdade, conforme o critério combinado para esta tarefa.
+> real. Connected Apps (arquitetura + criptografia + tela) e Compartilhamento
+> externo genérico implementados e testados estruturalmente. Integração
+> Strava: toda a arquitetura (OAuth, refresh, sync, webhook, disconnect) está
+> implementada e revisada contra a documentação oficial, **e uma conta Strava
+> real chegou a ser conectada e sincronizada** (ver seção 11) — mas renovação
+> automática de token, desconexão e webhooks ao vivo ainda não foram
+> exercitados de ponta a ponta (ver Parte 2).
 
 # 7. Desafios
 
 ## Novas métricas
-
-Adicionar futuramente:
 
 ```text
 ACTIVE_DAYS
@@ -303,11 +294,6 @@ ACTIVITY_COUNT
 ACTIVITY_MINUTES
 MEAL_COMPLETIONS
 STREAK_DAYS
-```
-
-Possíveis evoluções:
-
-```text
 WALKING_DAYS
 RUNNING_DAYS
 CYCLING_DAYS
@@ -326,18 +312,16 @@ BALANCED_DAYS
 - [x] Alimentação + atividade em 5 dias
 
 > Os 7 desafios acima foram realmente criados no banco (`npm run challenges:seed`,
-> idempotente) como `Challenge.scope = GLOBAL` com as métricas/metas/janelas
-> correspondentes — confirmado consultando o banco após rodar o script duas vezes
-> (segunda vez: 0 criados, 7 já existentes).
+> idempotente) como `Challenge.scope = GLOBAL`, confirmado consultando o banco.
 
 ## Grupos
 
-- [x] Permitir desafios exclusivos de grupos (já existia antes desta tarefa; comportamento preservado)
-- [x] Ranking interno (novo: `GET /api/community/challenges/[id]/ranking`, critério progresso → percentual → tempo de conclusão como desempate)
-- [x] Progresso individual (já existia)
-- [x] Progresso coletivo (novo: campo `collective` no endpoint acima, soma do progresso de cada participante sem reprocessar o mesmo evento)
-- [x] XP de recompensa (já existia — continua via `XpEvent`, nunca `totalXp +=`)
-- [x] Notificação ao completar (novo: model `Notification` + integração real no `NotificationsBell`, sem toggle falso)
+- [x] Permitir desafios exclusivos de grupos
+- [x] Ranking interno (`GET /api/community/challenges/[id]/ranking`, critério progresso → percentual → tempo de conclusão como desempate)
+- [x] Progresso individual
+- [x] Progresso coletivo (campo `collective`, soma do progresso de cada participante sem reprocessar o mesmo evento)
+- [x] XP de recompensa (via `XpEvent`, nunca `totalXp +=`)
+- [x] Notificação ao completar (model `Notification` + `NotificationsBell` real)
 
 ---
 
@@ -353,14 +337,13 @@ Fontes de XP:
 
 - [x] Alimentação
 - [x] Atividade
-- [x] Sequência (novo: XP de marco de streak — 7/14/30/60/100 dias, uma vez por marco, nunca por dia)
-- [x] Conquistas (novo: XP por raridade no desbloqueio de conquista do catálogo novo — `achievement-engine.ts`)
+- [x] Sequência (XP de marco de streak — 7/14/30/60/100 dias, uma vez por marco)
+- [x] Conquistas (XP por raridade no desbloqueio — `achievement-engine.ts`)
 - [x] Desafios
 
-> `getXpBreakdown()` expõe a soma por fonte (FOOD/ACTIVITY/STREAK/ACHIEVEMENT/CHALLENGE)
-> via `GET /api/community/gamification` (`xpBreakdown`) — sem duplicar `XpEvent`,
-> só agrupando o que já existe por `eventType`. Ainda sem um gráfico dedicado no
-> frontend para essa quebra (fica exposta na API, não visualizada).
+> `getXpBreakdown()` expõe a soma por fonte via `GET /api/community/gamification`
+> (`xpBreakdown`). Ainda sem um gráfico dedicado no frontend para essa quebra
+> (fica exposta na API, não visualizada) — ver Parte 3.
 
 ## Períodos
 
@@ -370,7 +353,7 @@ Fontes de XP:
 
 ## Escopo
 
-- [x] Comunidade geral (agora também exclui usuários bloqueados em qualquer direção — gap encontrado e corrigido nesta tarefa)
+- [x] Comunidade geral (exclui usuários bloqueados em qualquer direção)
 - [x] Amigos
 - [x] Grupo
 
@@ -378,12 +361,10 @@ Fontes de XP:
 
 # 9. Connected Apps / Aplicativos conectados
 
-Criar uma arquitetura genérica para integrações externas.
-
 ## P1 — Base
 
 - [x] Criar módulo `Connected Apps`
-- [x] Criar tela de integrações (`/profile/connected-apps`, acessível pelo Perfil — sem sexto item na BottomNav)
+- [x] Criar tela de integrações (`/profile/connected-apps`, acessível pelo Perfil)
 - [x] Criar entidade `ConnectedApp`
 - [x] Armazenar provider
 - [x] Armazenar scopes
@@ -393,176 +374,523 @@ Criar uma arquitetura genérica para integrações externas.
 - [x] Proteger tokens (AES-256-GCM, `TOKEN_ENCRYPTION_KEY` só em env)
 - [x] Nunca salvar token sensível sem proteção
 
-Modelo conceitual:
-
-```prisma
-model ConnectedApp {
-  id           String   @id @default(uuid())
-  userId       String
-  provider     String
-  accessToken  String?
-  refreshToken String?
-  expiresAt    DateTime?
-  scopes       String[]
-  connectedAt  DateTime @default(now())
-
-  @@unique([userId, provider])
-}
-```
-
 ---
 
 # 10. Fontes externas de ActivityLog
 
-Preparar `ActivityLog.source`.
-
-Valores futuros:
-
-```text
-MANUAL
-STRAVA
-GARMIN
-HEALTH_CONNECT
-APPLE_HEALTH
-SAMSUNG_HEALTH
-FITBIT
-OTHER
-```
-
 - [x] Impedir duplicidade com `externalId` (`ActivityLog` mantém `@@unique([source, externalId])`; `ExternalActivityCache` usa `@@unique([userId, provider, externalId])`)
-- [x] Identificar origem no histórico privado (badge "Origem: Registrado no SmartPlate" / "Origem: Strava" no histórico de atividades)
-- [x] Não assumir que todas as fontes podem ser compartilhadas socialmente (`EXTERNAL_PROVIDER_POLICIES` — `allowSocialSharing: false` para todo provider externo)
-- [x] Tratar política de cada provedor separadamente (`lib/integrations/provider-policy.ts` — nunca `if (source === "STRAVA")` espalhado)
+- [x] Identificar origem no histórico privado (badge de origem no histórico de atividades)
+- [x] Não assumir que todas as fontes podem ser compartilhadas socialmente (`allowSocialSharing: false` para todo provider externo)
+- [x] Tratar política de cada provedor separadamente (`lib/integrations/provider-policy.ts`)
 
-> `ActivityLog.source` migrou de `String` para o enum `ActivitySource` (migration
-> aditiva com `ALTER COLUMN ... USING`, preservando o único registro existente —
-> confirmado antes da migration que era `MANUAL`). Mas nesta implementação
-> **nenhum dado de provider externo é gravado em `ActivityLog`** — só `MANUAL`.
-> Atividades do Strava vivem exclusivamente em `ExternalActivityCache` (privado,
-> expira em 7 dias), nunca entram em XP/streak/desafio/ranking. Ver nota de
-> política na seção 11.
+> `ActivityLog.source` migrou de `String` para o enum `ActivitySource`. Nesta
+> implementação **nenhum dado de provider externo é gravado em `ActivityLog`**
+> — só `MANUAL`. Atividades do Strava vivem exclusivamente em
+> `ExternalActivityCache` (privado, expira em 7 dias), nunca entram em
+> XP/streak/desafio/ranking/metas/insights.
 
 ---
 
 # 11. Integração Strava
 
-**Atualização:** nesta rodada o usuário conectou uma conta Strava real
-(`STRAVA_CLIENT_ID`/`SECRET` configurados por ele) e o fluxo completo rodou de
-ponta a ponta — confirmado consultando o banco diretamente: `ConnectedApp`
-com `status = CONNECTED` e `connectedAt`/`lastSyncedAt` reais, e uma linha
-real em `ExternalActivityCache` ("Caminhada vespertina", `WALKING`, 70 min,
-6,34 km) idêntica ao exemplo que o próprio usuário reportou. Isso valida
+**Atualização:** o usuário conectou uma conta Strava real e o fluxo completo
+rodou de ponta a ponta — confirmado no banco: `ConnectedApp` com
+`status = CONNECTED` e uma linha real em `ExternalActivityCache`. Isso valida
 genuinamente OAuth, troca de código por token, criptografia de armazenamento,
-sincronização e normalização — não é mais só "arquitetura pronta". O que
-ainda não foi exercitado fica listado abaixo, item a item.
+sincronização e normalização.
 
 ## Conta
 
-- [x] Conectar Strava via OAuth 2.0 — **validado**: linha real em
-      `ConnectedApp` com `status = CONNECTED` após o fluxo completo
-      (autorizar → callback → troca de código) rodar contra o Strava real.
-- [x] Gerenciar access token — armazenamento sempre criptografado (AES-256-GCM);
-      round-trip de criptografia/decriptação + rejeição de payload adulterado
-      testados nesta tarefa, e agora também confirmado em uso real (token da
-      conexão acima só existe criptografado no banco).
-- [x] Gerenciar refresh token — mesma criptografia; `packStravaTokenResponse`
-      sempre persiste o refresh token mais recente devolvido, nunca reaproveita
-      o anterior.
-- [ ] Renovar tokens automaticamente — `ensureFreshStravaAccessToken` implementada
-      (renova quando faltam <5min para expirar), mas o access token da conexão
-      atual ainda não expirou (dura ~6h) — o fluxo de renovação em si ainda não
-      foi observado acontecendo de verdade.
-- [ ] Permitir desconectar Strava — rota implementada e revisada (revoga + limpa
-      tokens/cache local mesmo se a revogação remota falhar), mas não exercitada
-      nesta tarefa para não desconectar a conexão real do usuário sem pedir.
+- [x] Conectar Strava via OAuth 2.0 — **validado** com conta real
+- [x] Gerenciar access token — criptografado (AES-256-GCM), round-trip testado
+- [x] Gerenciar refresh token — mesma criptografia
+- [ ] Renovar tokens automaticamente — `ensureFreshStravaAccessToken` implementada, mas ainda não observada acontecendo de verdade (token atual não expirou durante os testes) — ver Parte 2
+- [ ] Permitir desconectar Strava — rota implementada e revisada, mas não exercitada para não desconectar a conexão real do usuário sem pedir — ver Parte 2
 
 ## Sincronização privada
 
-- [x] Buscar atividades autorizadas — **validado**: sincronização real trouxe
-      uma atividade real do Strava para `ExternalActivityCache`.
-- [x] Converter atividade para modelo interno — confirmado com dado real:
-      atividade "Caminhada vespertina" do Strava mapeada corretamente para
-      `activityType = WALKING`.
-- [x] Evitar duplicidades — `upsert` por `[userId, provider, externalId]`.
-- [x] Registrar origem `STRAVA` — confirmado na linha real do banco.
-- [x] Mostrar no histórico privado do usuário — **melhorado nesta tarefa**:
-      histórico agora unificado (Todas/SmartPlate/Strava), com estado vazio
-      correto por fonte, card e modal de detalhe dedicados — corrigido o bug de
-      UX em que "Nenhuma atividade registrada" aparecia mesmo com atividade
-      Strava disponível.
-- [ ] Implementar sincronização incremental — lógica via `lastSyncedAt`
-      implementada e usada na primeira sincronização; ainda não houve uma
-      segunda sincronização nesta conta para confirmar que o filtro
-      incremental (`after`) realmente evita rebuscar tudo de novo.
+- [x] Buscar atividades autorizadas — **validado** com atividade real
+- [x] Converter atividade para modelo interno — confirmado com dado real
+- [x] Evitar duplicidades — `upsert` por `[userId, provider, externalId]`
+- [x] Registrar origem `STRAVA`
+- [x] Mostrar no histórico privado do usuário (histórico unificado Todas/SmartPlate/Strava)
+- [ ] Implementar sincronização incremental — lógica via `lastSyncedAt` implementada; segunda sincronização real ainda não ocorreu para confirmar — ver Parte 2
 
 ## Webhooks
 
-- [ ] Receber nova atividade — handler `POST` implementado e revisado contra o
-      protocolo oficial (payload `aspect_type/object_id/owner_id/...`), não
-      registrado nem testado contra webhooks reais do Strava.
-- [ ] Receber alteração — idem.
-- [ ] Receber exclusão — idem (remove o `ExternalActivityCache` correspondente).
-- [ ] Atualizar ActivityLog correspondente — **decisão de design, não pendência**:
-      por política de privacidade (ver nota acima), o webhook nunca escreve em
-      `ActivityLog` — só em `ExternalActivityCache`. O item, ao pé da letra, não
-      se aplica a esta arquitetura; mantido `[ ]` para não sugerir algo que não
-      foi implementado como descrito.
+- [ ] Receber nova atividade/alteração/exclusão — handlers implementados e revisados contra o protocolo oficial, não testados contra webhooks reais do Strava — ver Parte 2
+- [ ] Atualizar ActivityLog correspondente — **decisão de design, não pendência**: por política de privacidade, o webhook nunca escreve em `ActivityLog`, só em `ExternalActivityCache`
 
-Script administrativo pronto para registrar a subscription quando houver domínio
-de produção: `npm run strava:webhook -- create <callbackUrl>` (ver
-`scripts/register-strava-webhook.cjs`).
+Script administrativo pronto: `npm run strava:webhook -- create <callbackUrl>`.
 
 ## Privacidade
 
-- [x] Revisar políticas atuais da API antes da implementação (consultado
-      developers.strava.com/docs/authentication e /docs/webhooks nesta tarefa)
+- [x] Revisar políticas atuais da API antes da implementação
 - [x] Não expor dados externos a terceiros sem permissão/política compatível
-      (`ExternalActivityCache` só é lido pelo próprio dono; nunca aparece em
-      posts automáticos, feed, ranking ou desafio)
-- [x] Separar dados privados sincronizados de conteúdo social (isolamento total
-      entre `ExternalActivityCache` e `CommunityPost`/`XpEvent`/`ChallengeParticipant`)
-
-> Dados sincronizados via API do Strava são privados e não alimentam diretamente
-> o feed ou ranking público. O compartilhamento social usa apenas conteúdo
-> explicitamente fornecido pelo próprio usuário.
+- [x] Separar dados privados sincronizados de conteúdo social
 
 ---
 
 # 12. Compartilhamento externo genérico
 
-Criar no composer da Comunidade:
-
-```text
-Criar publicação
-
-💬 Texto
-🏃 Atividade
-🏆 Conquista
-🥗 Refeição
-⚖️ Progresso
-🔗 Compartilhar de outro app
-```
-
 ## `Compartilhar de outro app`
 
-- [x] Permitir link fornecido pelo usuário (validado https-only; bloqueia `javascript:`/`data:`/`file:`)
-- [x] Permitir imagem fornecida pelo usuário (reaproveita `lib/storage/local-file-storage.ts`, mesmo storage de ProgressPhoto/avatar — MIME/tamanho validados, ownership checada antes de aceitar no post)
+- [x] Permitir link fornecido pelo usuário (validado https-only)
+- [x] Permitir imagem fornecida pelo usuário (Vercel Blob privado, ownership checada)
 - [x] Permitir legenda
 - [x] Salvar origem/provedor
-- [x] Mostrar badge da origem ("Compartilhado de {provider}" no `PostCard`)
-- [x] Nunca buscar e redistribuir automaticamente dados proibidos pela API externa (sem scraping — só mostra link/imagem/legenda que o usuário forneceu; nenhuma distância/pace/mapa preenchida automaticamente)
+- [x] Mostrar badge da origem
+- [x] Nunca buscar e redistribuir automaticamente dados proibidos pela API externa (sem scraping)
 
-Possíveis origens:
-
-- [x] Strava
-- [x] Garmin
-- [x] Apple Fitness
-- [x] Samsung Health
-- [x] Nike Run Club
-- [x] Adidas Running
-- [x] Outros
+Origens: Strava, Garmin, Apple Fitness, Samsung Health, Nike Run Club, Adidas Running, Outros — todas `[x]`.
 
 ---
+
+# 17. Dashboard de atividade
+
+## Perfil
+
+- [x] Atividades do mês
+- [x] Minutos ativos
+- [x] Dias ativos
+- [x] Tipo mais praticado
+- [x] Sequência de atividade
+- [x] Histórico
+
+## Início
+
+- [x] Resumo semanal
+- [x] Meta semanal
+- [x] Atividade mais recente
+- [x] CTA de registrar atividade
+
+---
+
+# 18. Metas de atividade
+
+- [x] Dias ativos por semana
+- [x] Minutos ativos por semana
+- [x] Quantidade de atividades
+- [x] Meta customizável
+- [x] Progresso da meta
+- [x] Conquista ao atingir
+- [x] Não transformar meta em obrigação para manter streak geral
+
+---
+
+# 19. Insights privados
+
+- [x] Detectar semana mais ativa
+- [x] Detectar consistência
+- [x] Resumo semanal
+- [x] Evolução mensal
+- [x] Relacionar atividade e alimentação de forma não invasiva
+- [x] Criar insights privados com IA
+
+---
+
+# 24. Conquistas compartilháveis
+
+**Corrigido nesta reorganização** — esta seção estava classificada como backlog, mas já está implementada:
+
+- [x] CTA `Compartilhar conquista` (toast de `AchievementCelebration.tsx`, abre o Composer com a conquista pré-selecionada)
+- [x] `PostType.ACHIEVEMENT` real
+- [x] Card visual específico (`PostCard.tsx`, branch `ACHIEVEMENT`)
+- [x] Mostrar badge/ícone
+- [x] Mostrar data
+- [x] Mostrar descrição
+- [x] Não publicar automaticamente sem consentimento (sempre passa pelo Composer, usuário clica Publicar)
+
+---
+
+# 25. Streak compartilhável
+
+**Corrigido nesta reorganização** — também já implementada, com uma ressalva:
+
+- [x] Compartilhar marco de streak (`PostType.STREAK`, toast de milestone com botão Compartilhar)
+- [x] Card especial de milestone (`PostCard.tsx`, branch `STREAK`)
+- [x] Reações
+- [x] Comentários
+- [ ] **Ressalva**: o botão de compartilhar streak ainda publica direto (não passa pelo Composer unificado) — é uma exceção documentada, já que streak não fazia parte do escopo de unificação do Composer numa tarefa anterior. Migrar pra `openPostComposer` fica pra Parte 2 se for prioridade.
+
+---
+
+# 26. Grupos de amigos
+
+**Corrigido nesta reorganização** — majoritariamente já implementado:
+
+- [x] Feed exclusivo do grupo
+- [x] Ranking do grupo
+- [x] Desafios privados de grupo
+- [x] Convites
+- [x] Código/link de convite
+- [x] Permissões `OWNER` / `ADMIN` / `MEMBER`
+- [ ] Metas coletivas — só existem metas individuais (`ActivityGoal`), não metas de grupo
+- [ ] Conquistas do grupo — só existem conquistas individuais
+- [ ] Estatísticas do grupo — só contagem de membros; sem painel de estatísticas dedicado
+- [ ] Moderação específica de grupo — moderação hoje é central (Comunidade geral), sem ferramentas extras por grupo
+
+---
+
+# 27. Desafios colaborativos
+
+**Corrigido nesta reorganização** — o núcleo já existe via desafios de grupo (seção 7):
+
+- [x] Barra de progresso do grupo (`collective`: soma do progresso de cada participante)
+- [x] Recompensa para todos os participantes (cada um recebe XP ao completar, via `recordChallengeCompletion`)
+- [x] Celebração automática quando concluído (`Notification` real)
+- [ ] Meta coletiva "editorial" (ex.: uma meta única definida como soma-do-grupo desde a criação, distinta de "cada um bate sua própria meta") — hoje o `collective` é sempre a soma dos progressos individuais, não um modo de meta diferente
+
+---
+
+# 32. Moderação
+
+**Corrigido nesta reorganização** — o núcleo já existe:
+
+- [x] Denunciar publicação
+- [x] Denunciar comentário
+- [x] Denunciar usuário
+- [x] Bloquear usuário
+- [x] Moderação administrativa (`/community/moderation`, `Profile.role` MODERATOR/ADMIN)
+- [x] Remover conteúdo (ocultar post / excluir comentário)
+- [x] Histórico de denúncias
+- [ ] Rate limiting — não implementado
+- [ ] Proteção contra spam — não implementado
+
+---
+
+# 38. Códigos Beta e PremiumGrant
+
+> Seção original de validação pós-implementação. A funcionalidade em si está
+> implementada e em uso (confirmado lendo `POST /api/beta/redeem`,
+> `GET /api/beta/status`, integração no onboarding e no Perfil/`/subscribe`).
+> **A checklist de QA formal abaixo (38.1-38.12) não foi executada item a
+> item como testes literais nesta sessão** — ver Parte 2 pra isso.
+
+Confirmado por leitura direta do código:
+
+- [x] Migration própria, `BetaCode`/`PremiumGrant` como models reais, relacionados a `Profile`
+- [x] `codeHash` único (`@unique`), código puro nunca persistido
+- [x] Um código = no máximo um usuário (`redeemedByUserId` único + claim atômico via `updateMany`)
+- [x] Um usuário = no máximo um código Beta (checado antes do resgate)
+- [x] Concorrência: claim atômico (`updateMany` com `WHERE redeemedByUserId: null`) — só um vencedor sob corrida
+- [x] Retry idempotente: reenviar o mesmo código pelo mesmo usuário retorna o grant já existente, não duplica
+- [x] Resolução central de Premium (`resolvePremiumAccess`): Stripe ativo OU `PremiumGrant` válido
+- [x] Código Beta nunca mexe em `stripeSubscriptionId`/`subscriptionActive`
+- [x] Usuário já Premium via Stripe não consegue consumir um código Beta (bloqueado explicitamente)
+- [x] Campo de código no onboarding é opcional, nunca bloqueia o fluxo
+- [x] Perfil mostra status Beta real (ativo até X / expirado), nunca expõe código/hash
+
+---
+
+# 40. Motor central de XP
+
+**Corrigido nesta reorganização** — já existe e é exatamente isto:
+`lib/community/gamification.ts` centraliza toda concessão de XP
+(`awardXpEvent`/`tryCreateXpEvent`/`creditXp`), usado por refeição, atividade,
+streak, desafio e conquista — nenhuma rota atualiza XP manualmente.
+
+- [x] Serviço/função central de gamificação
+- [x] Toda ação elegível passa pelo mesmo mecanismo
+- [x] Reaproveita `XpEvent`
+- [x] `idempotencyKey` único por evento (`meal_complete:...`, `activity:base:...`, `streak_milestone:...`, `challenge_complete:...`, `achievement:...`)
+- [x] Retry/duplo clique não concede XP de novo
+- [x] Histórico de XP existe (`XpEvent`, consultável, base do `getXpBreakdown`)
+
+---
+
+# 41. Streak / sequência real
+
+**Corrigido nesta reorganização** — já formalizado via `qualifyDayForStreak`,
+compartilhado entre refeição e atividade:
+
+- [x] Regra de "dia qualificado" formalizada e centralizada
+- [x] Não exige perfeição nem treino diário
+- [x] `DailyActivity` como resumo diário real (`mealCompleted`, `physicalActivityCompleted`, `qualifiesForStreak`)
+- [x] Timezone do usuário (`SocialProfile.timezone`), nunca UTC puro
+- [x] `currentStreak`/`longestStreak` atualizados de forma idempotente, múltiplas ações no mesmo dia contam um único dia
+
+---
+
+# 43. Níveis
+
+**Corrigido nesta reorganização** — já implementado em
+`lib/community/achievements.ts` (`computeLevel`, `getLevelProgress`,
+`LEVEL_THRESHOLDS`), exibido no Perfil e usado no ranking/ na Comunidade.
+
+- [x] Curva de XP definida (0 / 250 / 750 / 1500 / 3000)
+- [x] `computeLevel(totalXp)` centralizado
+- [x] Progresso pro próximo nível calculado
+
+---
+
+# 47. Ordem atualizada de implementação — sessões concluídas
+
+- [x] Sessão A — Fechar Perfil
+- [x] Sessão B — Beta Premium
+- [x] Sessão D — Gamificação (motor de XP)
+- [x] Sessão E — Streak
+- [x] Sessão F — Conquistas
+- [x] Sessão G — Plano Semanal (funcionalidade central em uso extensivo; sem um registro de auditoria formal isolado)
+- [x] Sessão H — Início / Dashboard
+- [x] Sessão I — Lista de Compras (funcionalidade central em uso extensivo; sem um registro de auditoria formal isolado)
+- [x] Sessão J — Assinatura (Premium resolvido centralmente, Beta + Stripe validados)
+- [x] Sessão K — Comunidade final
+
+Sessão C (Hidratação) não foi feita — ver Parte 2.
+
+---
+
+# 49. Sistema de Conquistas — tela principal
+
+- [x] Contagem dinâmica (`X / 50`, nunca hardcoded)
+- [x] Barra de progresso geral
+- [x] Botão "Ver todas as conquistas" com filtros por status/categoria
+- [x] Estado desbloqueado (ícone, badge, data, sem re-animação)
+- [x] Estado bloqueado (opacidade reduzida, cadeado, "Como desbloquear", progresso real)
+- [x] Estado "Em breve" (`COMING_SOON`) para o que depende de módulo ainda não implementado
+
+---
+
+# 50. Catálogo de conquistas
+
+- [x] Catálogo central implementado (`lib/community/achievement-catalog.ts`), fiel ao spec original de 50 conquistas
+- [x] 24+ conquistas `AVAILABLE` (onboarding, refeições, peso, fotos, social, atividade, meta pessoal)
+- [ ] Conquistas de Hidratação (7) — continuam `COMING_SOON`, sem `WaterLog` (ver Parte 2)
+- [ ] `FIRST_FAVORITE`/`FIRST_MEAL_SWAP` — continuam `COMING_SOON`, dependem de auditoria de favoritos/troca no Plano Semanal (ver Parte 2)
+- [ ] `BALANCED_WEEK` — depende de hidratação (ver Parte 2)
+
+---
+
+# 51. Categorias oficiais
+
+- [x] `ONBOARDING / FOOD / HYDRATION / STREAK / PROGRESS / ACTIVITY / SOCIAL / CHALLENGE / SPECIAL` — todas usadas consistentemente no catálogo
+
+---
+
+# 52. Catálogo central (padrão)
+
+- [x] Código interno estável, separado do texto de exibição
+- [x] `UserAchievement` referencia só o código
+- [x] Catálogo não duplicado entre telas
+- [x] Backend continua sendo a única autoridade para desbloqueio
+
+---
+
+# 53. Progresso incremental
+
+- [x] Refeições
+- [x] Peso
+- [x] Atividades — **corrigido nesta reorganização**: `ActivityLog` existe, catálogo de atividade é `AVAILABLE`
+- [x] Desafios — **corrigido nesta reorganização**: `FIRST_CHALLENGE_COMPLETED`/`FIRST_CHALLENGE_JOINED` são `AVAILABLE`
+- [ ] Água — catálogo pronto, mas sem `WaterLog` ainda (`COMING_SOON`)
+- [ ] Streak — catálogo pronto, mas regra formal de "dia ativo" definitiva do streak provisório antigo ainda não substitui os `STREAK_*` do catálogo novo (continuam `COMING_SOON` por decisão deliberada — ver seção 6)
+
+Regras: [x] uma única fonte de cálculo, [x] `progress` nunca maior que `target` na UI, [x] `unlockedAt` nunca muda depois do desbloqueio.
+
+---
+
+# 54. Detalhes da conquista
+
+- [x] Modal de detalhe (bloqueada: "Como desbloquear" + progresso; desbloqueada: data)
+
+---
+
+# 59. Integridade e segurança
+
+- [x] Backend é autoridade
+- [x] Frontend nunca desbloqueia conquista arbitrariamente
+- [x] Não aceita `achievementCode` enviado pelo usuário como prova
+- [x] Desbloqueia só a partir de evento real persistido
+- [x] `@@unique([userId, achievementCode])` impede duplicidade
+- [x] Retry idempotente
+- [ ] Regras por dia/semana respeitando timezone — nenhuma regra `AVAILABLE` hoje depende de fronteira de dia/semana ainda (não é uma falha, é que ainda não se aplica)
+
+---
+
+# 60. Ordem de ativação — atualizada
+
+- [x] WELCOME, BETA_TESTER, PROFILE_COMPLETE, GOAL_DEFINED, READY_TO_START
+- [x] FIRST_MEAL, FULL_MEAL_DAY, FIRST_BREAKFAST, FIRST_LUNCH, FIRST_DINNER, MEALS_10, MEALS_50, MEALS_100
+- [x] FIRST_WEIGHT_LOG, WEIGHT_LOGS_10, WEIGHT_LOGS_25, FIRST_PROGRESS_PHOTO, BEFORE_AFTER_READY
+- [x] FIRST_POST, FIRST_FRIEND, FIRST_GROUP, FIRST_REACTION_RECEIVED, FIRST_COMMENT_RECEIVED
+- [x] FIRST_ACTIVITY, ACTIVITIES_10, ACTIVITIES_50, ACTIVITIES_100, ACTIVE_3_DAYS_WEEK, ACTIVE_MINUTES_150, ACTIVITY_EXPLORER, ACTIVITY_WEEKS_CONSISTENCY, ACTIVE_30_DAYS_TOTAL — **corrigido**: todas `AVAILABLE` agora (ActivityLog real)
+- [x] FIRST_CHALLENGE_COMPLETED — **corrigido**: `AVAILABLE` agora
+- [x] PROGRESS_30_DAYS
+- [x] PERSONAL_GOAL_REACHED — **corrigido**: `AVAILABLE` agora (sistema de metas real)
+
+Pendentes (ver Parte 2/3): `FIRST_WATER_LOG` e demais conquistas de Hidratação, `STREAK_3`...`STREAK_365` (regra definitiva), `BALANCED_WEEK`, `FIRST_FAVORITE`, `FIRST_MEAL_SWAP`.
+
+---
+
+# 61. Critério para considerar a tela de conquistas pronta
+
+- [x] `X / 50` é real
+- [x] Nenhuma conquista desbloqueada é mock
+- [x] Bloqueadas ficam opacas, mas legíveis
+- [x] Desbloqueadas ficam destacadas
+- [x] Todas mostram "Como desbloquear"
+- [x] Incrementais mostram progresso real
+- [x] Recursos ainda inexistentes aparecem como "Em breve"
+- [x] Filtros funcionam
+- [x] Desbloqueio persiste após logout/login
+- [x] Mesma conquista nunca desbloqueia duas vezes
+- [x] Nenhum dado privado é exposto
+- [ ] Mobile validado visualmente — implementado com classes responsivas, mas sem navegador disponível neste ambiente pra validação visual real
+- [ ] Datas respeitando timezone — não se aplica ainda (nenhuma regra `AVAILABLE` depende disso)
+
+---
+
+# PARTE 2 — 🔜 Ainda vai ser trabalhado
+
+> Itens com escopo já claro, dependendo só de execução — não de uma decisão de produto em aberto.
+
+# 39. Hidratação — próxima funcionalidade do núcleo
+
+> Implementar depois de validar o sistema Beta (já validado — ver Parte 1, seção 38).
+
+## 39.1 Estrutura
+
+- [ ] Criar `WaterLog`
+- [ ] Relacionar ao Profile/usuário
+- [ ] Registrar quantidade em ml
+- [ ] Registrar data/hora
+- [ ] Criar meta diária de água
+- [ ] Permitir meta configurável pelo usuário
+- [ ] Tratar timezone corretamente
+
+Modelo conceitual:
+
+```prisma
+model WaterLog {
+  id        String   @id @default(uuid())
+  userId    String
+  amountMl  Int
+  loggedAt  DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  @@index([userId, loggedAt])
+}
+```
+
+Possível campo: `dailyWaterGoalMl Int?`
+
+## 39.2 API
+
+- [ ] GET dos registros do dia
+- [ ] POST novo consumo
+- [ ] DELETE de registro incorreto
+- [ ] Endpoint/resumo diário
+- [ ] Validar quantidade no backend (nunca negativo, nunca absurdo)
+
+## 39.3 Interface
+
+```text
+💧 Água
+
+1.450 / 2.500 ml
+
+[ +250 ml ] [ +500 ml ]
+
+████████░░░░ 58%
+```
+
+- [ ] Card de hidratação no Início
+- [ ] Total consumido + meta + barra de progresso
+- [ ] Botões `+250 ml` / `+500 ml` / quantidade personalizada
+- [ ] Permitir desfazer/excluir
+- [ ] Estado vazio, loading, erros
+
+## 39.4 Histórico
+
+- [ ] Histórico diário e semanal
+- [ ] Permitir corrigir registros
+
+## 39.5 Gamificação futura
+
+- [ ] Não dar XP a cada copo
+- [ ] Evento `WATER_GOAL_COMPLETED`, no máximo 1x/dia, idempotente por usuário+data
+- [ ] Ativa as 7 conquistas de Hidratação do catálogo (já prontas, `COMING_SOON`)
+- [ ] Ativa `BALANCED_WEEK` (seção 50) em conjunto com atividade já pronta
+
+---
+
+# 38 (continuação) — QA formal do Beta ainda não executada
+
+A funcionalidade está implementada (Parte 1). O que segue é rodar de fato este
+roteiro de teste manual, item a item:
+
+## Concorrência
+
+- [ ] Testar duas requisições simultâneas com o mesmo código, confirmar que só uma recebe acesso e só um `PremiumGrant` é criado
+
+## Teste real com múltiplos usuários
+
+- [ ] Criar 2+ contas de teste distintas
+- [ ] Ativar Código A com Conta A, confirmar Premium
+- [ ] Tentar Código A com Conta B, confirmar rejeição
+- [ ] Tentar outro código com Conta A (que já usou um), confirmar rejeição
+- [ ] Logout/login, confirmar que o acesso Beta persiste corretamente
+
+## Gerador administrativo
+
+- [ ] Confirmar existência e funcionamento de um gerador de lote de códigos com alta entropia, hash-only no banco
+- [ ] Confirmar que arquivo de códigos gerados (se existir) está no `.gitignore`
+
+## Build
+
+- [ ] Rodar `npm run build` focado nesta área e confirmar nenhum secret no bundle do client
+
+---
+
+# 11 (continuação) — Strava, fluxos ainda não exercitados ao vivo
+
+- [ ] Observar uma renovação automática de token acontecendo de verdade (token atual não expirou durante os testes)
+- [ ] Exercitar desconectar Strava com uma conta de teste (revogação + limpeza local)
+- [ ] Rodar uma segunda sincronização real pra confirmar que o filtro incremental (`after`/`lastSyncedAt`) evita rebuscar tudo de novo
+- [ ] Registrar e testar webhooks reais do Strava (`npm run strava:webhook -- create <callbackUrl>`) quando houver domínio de produção
+
+---
+
+# Achievements — auditorias pendentes
+
+- [ ] Auditar favoritos/troca de refeição no Plano Semanal, pra decidir se `FIRST_FAVORITE`/`FIRST_MEAL_SWAP` já podem virar `AVAILABLE`
+- [ ] Decidir se vale migrar o botão de "Compartilhar streak" (seção 25) pro Composer unificado, em vez do publish direto atual
+
+---
+
+# 28 (parcial) — Feed mais inteligente, filtros restantes
+
+O núcleo (Para Você / Amigos, feed heurístico) já está pronto (Parte 1, seção
+19 do checklist de hashtags/feed). Falta:
+
+- [ ] Filtros de tipo adicionais no feed: Alimentação (`PLAN_SHARE`), Desafios/Progresso — hoje só Tudo/Atividades/Conquistas/Compartilhados
+- [ ] Silenciar tipos de conteúdo (preferência persistente, não só "não tenho interesse" por post)
+- [ ] Ocultar atividade de um usuário específico sem bloqueá-lo (hoje só existe bloqueio completo)
+
+---
+
+# 29 (parcial) — Privacidade, tela central
+
+As regras já são aplicadas em todo o app (XP/streak/conquistas
+mostrar/ocultar via `SocialProfile`; atividade/progresso privados por
+padrão; apps conectados com desconexão e última sincronização visíveis).
+Falta:
+
+- [ ] Uma tela única "Privacidade" que reúna esses controles hoje espalhados (edição de perfil, `/profile/connected-apps`) num só lugar
+
+---
+
+# 32 (parcial) — Moderação, proteção restante
+
+- [ ] Rate limiting em denúncias/posts/comentários
+- [ ] Proteção contra spam
+
+---
+
+# PARTE 3 — ⏸️ Pendente para depois
+
+> Ideias de backlog, evoluções de longo prazo, ou itens que o texto original já descrevia como "futuro"/"não definir ainda" — sem compromisso de data.
 
 # 13. Health Connect — Android
 
@@ -570,11 +898,7 @@ Possíveis origens:
 
 - [ ] Pesquisar integração Android Health Connect
 - [ ] Ler permissões de atividade autorizadas
-- [ ] Importar dados compatíveis
-- [ ] Importar passos
-- [ ] Importar exercícios
-- [ ] Importar distância
-- [ ] Importar duração
+- [ ] Importar dados compatíveis (passos, exercícios, distância, duração)
 - [ ] Definir quais dados realmente fazem sentido no SmartPlate
 - [ ] Permitir revogar permissões
 - [ ] Mostrar fonte do dado
@@ -587,9 +911,7 @@ Possíveis origens:
 
 - [ ] Criar camada específica para iOS
 - [ ] Solicitar permissões individualmente
-- [ ] Importar atividades autorizadas
-- [ ] Importar passos quando fizer sentido
-- [ ] Importar treinos
+- [ ] Importar atividades/treinos autorizados
 - [ ] Integrar ao mesmo `ActivityLog`
 - [ ] Não criar arquitetura paralela ao Android
 
@@ -598,29 +920,20 @@ Possíveis origens:
 # 15. Garmin
 
 - [ ] Avaliar API/programa oficial disponível na época da implementação
-- [ ] Conectar conta
-- [ ] Importar atividades permitidas
-- [ ] Converter para ActivityLog
+- [ ] Conectar conta, importar atividades permitidas, converter para `ActivityLog`
 - [ ] Respeitar políticas de compartilhamento
 - [ ] Evitar duplicidade caso a mesma atividade venha do Strava
 
 ---
 
-# 16. Detecção de duplicidade
+# 16. Detecção de duplicidade (multi-integração)
 
-Importante para múltiplas integrações.
-
-Exemplo:
+Só relevante quando existir mais de uma integração ativa (Garmin/Health
+Connect/Apple Health além do Strava):
 
 ```text
-Garmin
-  ↓
-Strava
-  ↓
-SmartPlate
+Garmin → Strava → SmartPlate
 ```
-
-Uma mesma corrida pode chegar por mais de uma fonte.
 
 - [ ] Detectar `externalId`
 - [ ] Detectar atividades muito semelhantes
@@ -630,67 +943,13 @@ Uma mesma corrida pode chegar por mais de uma fonte.
 
 ---
 
-# 17. Dashboard de atividade
-
-## Perfil
-
-- [ ] Atividades do mês
-- [ ] Minutos ativos
-- [ ] Dias ativos
-- [ ] Tipo mais praticado
-- [ ] Sequência de atividade
-- [ ] Histórico
-
-## Início
-
-- [ ] Resumo semanal
-- [ ] Meta semanal
-- [ ] Atividade mais recente
-- [ ] CTA de registrar atividade
-
----
-
-# 18. Metas de atividade
-
-Permitir metas pessoais.
-
-- [ ] Dias ativos por semana
-- [ ] Minutos ativos por semana
-- [ ] Quantidade de atividades
-- [ ] Meta customizável
-- [ ] Progresso da meta
-- [ ] Conquista ao atingir
-- [ ] Não transformar meta em obrigação para manter streak geral
-
----
-
-# 19. Insights privados
-
-Usar dados de atividade para melhorar a experiência pessoal.
-
-- [ ] Detectar semana mais ativa
-- [ ] Detectar consistência
-- [ ] Resumo semanal
-- [ ] Evolução mensal
-- [ ] Relacionar atividade e alimentação de forma não invasiva
-- [ ] Criar insights privados com IA
-
-Exemplo:
-
-```text
-Você esteve ativo em 4 dias esta semana
-e completou 82% das refeições planejadas.
-```
-
----
-
 # 20. IA + atividade física
 
 ## Futuro
 
-- [ ] IA gerar resumo semanal
+- [ ] IA gerar resumo semanal (hoje: insights determinísticos + IA já existem — seção 19 — mas sem tocar no *plano alimentar*)
 - [ ] IA identificar mudanças de rotina
-- [ ] IA usar atividade como contexto de personalização
+- [ ] IA usar atividade como contexto de personalização do plano
 - [ ] IA considerar dias mais ativos no plano
 - [ ] IA sugerir organização das refeições em dias de treino
 - [ ] Evitar recomendações médicas indevidas
@@ -700,13 +959,8 @@ e completou 82% das refeições planejadas.
 
 # 21. Calendário / Timeline
 
-Criar visão diária unificada.
-
-Exemplo:
-
 ```text
 23 AGO
-
 08:00  Café da manhã concluído
 12:30  Almoço concluído
 17:00  🏃 Corrida — 35 min
@@ -714,12 +968,7 @@ Exemplo:
 22:00  ⚖️ Peso registrado
 ```
 
-- [ ] Refeições
-- [ ] Atividades
-- [ ] Peso
-- [ ] Fotos de progresso
-- [ ] Conquistas
-- [ ] Desafios
+- [ ] Refeições, atividades, peso, fotos de progresso, conquistas, desafios numa visão diária unificada
 
 ---
 
@@ -727,146 +976,36 @@ Exemplo:
 
 A seção de Antes & Depois deve permanecer privada por padrão.
 
-Futuro:
-
 - [ ] Botão explícito `Compartilhar progresso`
-- [ ] Escolher foto(s)
-- [ ] Escolher quais informações mostrar
+- [ ] Escolher foto(s) e quais informações mostrar
 - [ ] Ocultar peso por padrão
 - [ ] Permitir legenda
-- [ ] Compartilhar na comunidade geral
-- [ ] Compartilhar em grupo
+- [ ] Compartilhar na comunidade geral ou em grupo
 - [ ] Nunca publicar automaticamente
 
 ---
 
-# 23. Compartilhamento de refeições
+# 23. Compartilhamento de refeições (refinamento)
 
-- [ ] Compartilhar refeição concluída
-- [ ] Compartilhar receita
+`PostType.PLAN_SHARE` já permite compartilhar um **plano** inteiro (Parte 1,
+seção 12 do checklist de hashtags/feed). O que falta é mais granular:
+
+- [ ] Compartilhar uma refeição concluída específica (não o plano inteiro)
+- [ ] Compartilhar receita isoladamente
 - [ ] Compartilhar refeição favorita
-- [ ] Mostrar imagem quando disponível
-- [ ] Mostrar nome e macros apenas se usuário quiser
-- [ ] Permitir comentários e reações
+- [ ] Mostrar nome e macros apenas se o usuário quiser (hoje o card mostra nome do plano/dieta, não macros)
 
 ---
 
-# 24. Conquistas compartilháveis
+# 30. Notificações sociais (restante)
 
-- [ ] CTA `Compartilhar conquista`
-- [ ] Criar PostType `ACHIEVEMENT` real
-- [ ] Card visual específico
-- [ ] Mostrar badge
-- [ ] Mostrar data
-- [ ] Mostrar descrição
-- [ ] Não publicar automaticamente sem consentimento
-
----
-
-# 25. Streak compartilhável
-
-- [ ] Compartilhar 7 dias
-- [ ] Compartilhar 30 dias
-- [ ] Compartilhar 100 dias
-- [ ] Card especial de milestone
-- [ ] Reações
-- [ ] Comentários
-
----
-
-# 26. Grupos de amigos
-
-## Funcionalidades futuras
-
-- [ ] Feed exclusivo
-- [ ] Ranking do grupo
-- [ ] Desafios privados
-- [ ] Convites
-- [ ] Código/link de convite
-- [ ] Metas coletivas
-- [ ] Conquistas do grupo
-- [ ] Estatísticas do grupo
-- [ ] Moderação
-- [ ] Permissões OWNER / ADMIN / MEMBER
-
----
-
-# 27. Desafios colaborativos
-
-Além de competição individual:
-
-- [ ] Meta coletiva de minutos ativos
-- [ ] Meta coletiva de refeições
-- [ ] Meta coletiva de dias ativos
-- [ ] Barra de progresso do grupo
-- [ ] Recompensa para todos os participantes
-- [ ] Celebração automática quando concluído
-
----
-
-# 28. Feed mais inteligente
-
-## Filtros
-
-- [ ] Tudo
-- [ ] Amigos
-- [ ] Atividades
-- [ ] Conquistas
-- [ ] Alimentação
-- [ ] Progresso
-- [ ] Desafios
-
-## Preferências
-
-- [ ] Silenciar tipos de conteúdo
-- [ ] Ocultar atividade de determinado usuário
-- [ ] Feed cronológico
-- [ ] Feed relevante no futuro
-
----
-
-# 29. Privacidade
-
-Criar uma área central de privacidade.
-
-## SocialProfile
-
-- [ ] Mostrar/ocultar XP
-- [ ] Mostrar/ocultar streak
-- [ ] Mostrar/ocultar conquistas
-- [ ] Perfil descobrível
-
-## Atividade física
-
-- [ ] Privada por padrão
-- [ ] Compartilhar caso a caso
-- [ ] Futuramente permitir configuração padrão
-
-## Progresso
-
-- [ ] Peso sempre privado por padrão
-- [ ] Fotos privadas
-- [ ] Meta privada
-- [ ] Compartilhamento somente explícito
-
-## Integrações
-
-- [ ] Mostrar apps conectados
-- [ ] Permitir desconectar
-- [ ] Mostrar última sincronização
-- [ ] Informar quais dados são utilizados
-
----
-
-# 30. Notificações sociais
+Já existe notificação real de desafio concluído (`Notification` model). Falta:
 
 - [ ] Nova solicitação de amizade
 - [ ] Amizade aceita
-- [ ] Comentário
-- [ ] Reação
+- [ ] Comentário / reação recebidos
 - [ ] Convite para grupo
 - [ ] Desafio iniciado
-- [ ] Desafio concluído
 - [ ] Conquista desbloqueada
 - [ ] Streak em risco
 - [ ] Meta semanal atingida
@@ -875,56 +1014,21 @@ Criar uma área central de privacidade.
 
 # 31. Configuração de notificações
 
-Quando implementar de verdade:
+Não adicionar toggles falsos antes de existir persistência real.
 
-- [ ] Social
-- [ ] Refeições
-- [ ] Atividades
-- [ ] Desafios
-- [ ] Streak
-- [ ] Progresso
-- [ ] Lembretes
-
-Não adicionar toggles falsos antes de existir persistência.
-
----
-
-# 32. Moderação
-
-À medida que a Comunidade crescer:
-
-- [ ] Denunciar publicação
-- [ ] Denunciar comentário
-- [ ] Denunciar usuário
-- [ ] Bloquear usuário
-- [ ] Moderação administrativa
-- [ ] Remover conteúdo
-- [ ] Histórico de denúncias
-- [ ] Rate limiting
-- [ ] Proteção contra spam
+- [ ] Social, Refeições, Atividades, Desafios, Streak, Progresso, Lembretes — cada categoria configurável e persistida
 
 ---
 
 # 33. Métricas de saúde do produto
 
-Não confundir com dados médicos.
+Não confundir com dados médicos — métricas internas do SmartPlate:
 
-Métricas internas do SmartPlate:
-
-- [ ] Usuários ativos
-- [ ] Atividades registradas
-- [ ] Refeições concluídas
-- [ ] Taxa de adesão
-- [ ] Desafios concluídos
-- [ ] Posts por semana
-- [ ] Retenção
-- [ ] Streak médio
-- [ ] Uso de grupos
-- [ ] Uso de integrações
+- [ ] Usuários ativos, atividades registradas, refeições concluídas, taxa de adesão, desafios concluídos, posts por semana, retenção, streak médio, uso de grupos, uso de integrações
 
 ---
 
-# 34. Arquitetura sugerida
+# 34. Arquitetura sugerida (referência)
 
 ```text
                         SMARTPLATE
@@ -952,8 +1056,6 @@ Métricas internas do SmartPlate:
        Feed         Grupos       Ranking
 ```
 
-Integrações externas:
-
 ```text
 Strava ───────────────┐
 Garmin ───────────────┤
@@ -965,614 +1067,52 @@ Manual ───────────────┘
 
 ---
 
-# 35. Ordem recomendada de implementação
+# 35-36. Ordem original de implementação e princípios do produto (referência histórica)
 
-## Fase atual — concluir núcleo
+Mantidos como norteadores, não como tarefa em si — a maior parte do que
+estava listado em "Fase atual"/"Próxima fase" já foi concluída (ver Parte 1).
 
-- [ ] Perfil
-- [ ] Onboarding
-- [ ] Plano Semanal
-- [ ] Início / Dashboard
-- [ ] Lista de Compras
-- [ ] Assinatura
-- [ ] Revisão final da Comunidade
+Princípios que continuam valendo pra qualquer trabalho futuro:
 
-## Próxima fase
-
-- [ ] ActivityLog
-- [ ] Registro manual de atividade
-- [ ] Histórico de atividades
-- [ ] Atividade + XP
-- [ ] Atividade + streak
-- [ ] Conquistas de atividade
-- [ ] Compartilhamento de atividade
-- [ ] Desafios baseados em atividade
-
-## Depois
-
-- [ ] Dashboard de atividade
-- [ ] Metas pessoais
-- [ ] Timeline diária
-- [ ] Insights
-- [ ] Connected Apps
-
-## Integrações
-
-- [ ] Strava
-- [ ] Health Connect
-- [ ] Apple Health
-- [ ] Garmin
-- [ ] Outros provedores
-
-## Evolução social
-
-- [ ] Compartilhar refeições
-- [ ] Compartilhar progresso
-- [ ] Compartilhar conquistas
-- [ ] Compartilhar streak
-- [ ] Posts de apps externos
-- [ ] Desafios colaborativos
-
----
-
-# 36. Princípios do produto
-
-Manter estes princípios durante as implementações futuras:
-
-- [ ] Dados privados não devem virar conteúdo social automaticamente
-- [ ] Compartilhamento deve ser escolha explícita do usuário
-- [ ] Não criar métricas falsas
-- [ ] Não exibir mocks como se fossem dados reais
-- [ ] Não adicionar controles que não persistem
-- [ ] SocialProfile contém apenas identidade pública
-- [ ] Peso, saúde, fotos e objetivos permanecem privados
-- [ ] XP deve recompensar consistência, não comportamento extremo
-- [ ] Integrações externas devem respeitar as políticas de cada provedor
-- [ ] Dados sincronizados e dados compartilhados são conceitos diferentes
-- [ ] Construir funcionalidades reutilizáveis, não fluxos duplicados
-- [ ] Preparar o modelo interno para receber novas fontes no futuro
+- Dados privados não devem virar conteúdo social automaticamente
+- Compartilhamento deve ser escolha explícita do usuário
+- Não criar métricas falsas nem mocks
+- Não adicionar controles que não persistem
+- `SocialProfile` contém apenas identidade pública — peso, saúde, fotos e objetivos permanecem privados
+- XP deve recompensar consistência, não comportamento extremo
+- Integrações externas devem respeitar as políticas de cada provedor
+- Dados sincronizados e dados compartilhados são conceitos diferentes
+- Construir funcionalidades reutilizáveis, não fluxos duplicados
+- Preparar o modelo interno para receber novas fontes no futuro
 
 ---
 
 # 37. Ideias extras para avaliar posteriormente
 
-- [ ] Medalhas sazonais
-- [ ] Eventos da comunidade
-- [ ] Desafios oficiais SmartPlate
-- [ ] Perfil com vitrine de conquistas
-- [ ] Cards compartilháveis em redes sociais
-- [ ] Resumo semanal visual
-- [ ] Resumo mensal
-- [ ] Comparação consigo mesmo
-- [ ] Calendário de consistência estilo GitHub
-- [ ] Heatmap de atividades
-- [ ] Heatmap de refeições concluídas
-- [ ] Metas personalizadas
-- [ ] Sistema de níveis mais elaborado
-- [ ] Títulos de perfil desbloqueáveis
-- [ ] Recompensas cosméticas
-- [ ] Badges de eventos
-- [ ] Reações especiais
-- [ ] Comentários com mídia
-- [ ] Compartilhamento de receitas
-- [ ] Favoritos sociais
-- [ ] Sugestões de amigos
-- [ ] Convite por link
-- [ ] Deep links no app mobile
-- [ ] Widgets Android/iOS
-- [ ] Push notifications
-- [ ] Resumo de atividade no mobile
-- [ ] Sincronização em background no app mobile
+- [ ] Medalhas sazonais, eventos da comunidade, desafios oficiais SmartPlate
+- [ ] Perfil com vitrine de conquistas, cards compartilháveis em redes sociais
+- [ ] Resumo semanal/mensal visual, comparação consigo mesmo
+- [ ] Calendário de consistência estilo GitHub, heatmap de atividades/refeições
+- [ ] Metas personalizadas mais elaboradas, sistema de níveis mais rico
+- [ ] Títulos de perfil desbloqueáveis, recompensas cosméticas, badges de eventos
+- [ ] Reações especiais, comentários com mídia
+- [ ] Compartilhamento de receitas, favoritos sociais
+- [ ] Sugestões de amigos, convite por link
+- [ ] Deep links no app mobile, widgets Android/iOS, push notifications
+- [ ] Resumo de atividade no mobile, sincronização em background no app mobile
 
 ---
 
-## Observação final
-
-Este arquivo é um backlog de produto.
-
-Não é necessário implementar tudo de uma vez.
-
-A prioridade deve continuar sendo:
-
-> finalizar cada módulo principal com dados reais, estabilidade e boa experiência antes de expandir o SmartPlate com novas integrações e funcionalidades sociais.
-
----
-
-# 38. Pós-implementação dos Códigos Beta — Validação imediata
-
-> Esta seção deve ser usada assim que o prompt de implementação dos códigos Beta for concluído.
->
-> O objetivo aqui é validar a funcionalidade antes de seguir para novas regras de monetização, hidratação ou gamificação.
-
-## 38.1 Banco e migrations
-
-- [ ] Confirmar que uma nova migration foi criada
-- [ ] Confirmar que migrations antigas não foram alteradas
-- [ ] Confirmar criação do model `BetaCode` ou equivalente
-- [ ] Confirmar criação do model `PremiumGrant` ou equivalente
-- [ ] Confirmar relacionamento correto com `Profile`
-- [ ] Confirmar `codeHash` como `UNIQUE`
-- [ ] Confirmar que um mesmo código não pode gerar mais de um grant
-- [ ] Confirmar que um usuário não pode consumir dois códigos Beta
-- [ ] Confirmar índices necessários para consulta
-- [ ] Confirmar que campos novos são compatíveis com usuários existentes
-- [ ] Rodar `npx prisma generate`
-- [ ] Confirmar sucesso do Prisma Client
-- [ ] Aplicar migration no banco correto de desenvolvimento/teste
-- [ ] Nunca aplicar migration em produção por engano durante testes locais
-
-## 38.2 Segurança dos códigos
-
-- [ ] Confirmar que códigos são gerados com fonte criptograficamente segura
-- [ ] Confirmar que o banco armazena somente hash do código
-- [ ] Confirmar que o código puro não aparece no banco
-- [ ] Confirmar que o código puro não aparece em APIs
-- [ ] Confirmar que o código puro não aparece em logs
-- [ ] Confirmar que o código puro não é armazenado em `localStorage`
-- [ ] Confirmar que o código puro não entra em bundle frontend
-- [ ] Confirmar normalização com `trim`
-- [ ] Confirmar normalização para uppercase
-- [ ] Confirmar comportamento consistente com hífens
-- [ ] Confirmar que tentativas inválidas não revelam dados internos
-- [ ] Confirmar que código já usado não revela quem o utilizou
-
-## 38.3 Regra de unicidade
-
-Regra obrigatória:
-
-```text
-1 código = 1 usuário
-1 usuário = no máximo 1 código Beta
-```
-
-Validar:
-
-- [ ] Usuário A consegue ativar Código A
-- [ ] Usuário B NÃO consegue ativar Código A
-- [ ] Usuário A NÃO consegue ativar Código B depois de já usar Código A
-- [ ] Código usado permanece inutilizável
-- [ ] Usuário que já usou Beta não consegue acumular mais 30 dias com outro código
-
-## 38.4 Concorrência
-
-- [ ] Testar duas requisições simultâneas com o mesmo código
-- [ ] Confirmar que apenas uma delas recebe o acesso
-- [ ] Confirmar que apenas um `PremiumGrant` é criado
-- [ ] Confirmar que o banco continua consistente
-- [ ] Confirmar rollback completo em falha parcial
-- [ ] Tratar `P2002` ou erro equivalente sem erro 500 genérico
-
-Cenário crítico:
-
-```text
-Usuário A ─┐
-           ├── mesmo código
-Usuário B ─┘
-```
-
-Resultado:
-
-```text
-somente um usuário recebe Premium
-```
-
-## 38.5 Retry e idempotência
-
-- [ ] Ativar código com sucesso
-- [ ] Reenviar exatamente o mesmo código pelo mesmo usuário
-- [ ] Confirmar que não cria novo grant
-- [ ] Confirmar que não adiciona mais 30 dias
-- [ ] Retornar o grant já existente de forma idempotente
-- [ ] Confirmar que duplo clique no botão não duplica ativação
-
-## 38.6 Expiração
-
-- [ ] Confirmar que os 30 dias começam no momento do resgate
-- [ ] Confirmar cálculo correto de `expiresAt`
-- [ ] Confirmar que `redeemUntil` é independente do período Premium
-- [ ] Confirmar que código com `redeemUntil` expirado não pode ser consumido
-- [ ] Confirmar que `PremiumGrant` expirado permanece no banco para histórico
-- [ ] Confirmar que não é necessário cron para remover o acesso
-- [ ] Confirmar que `expiresAt <= now` remove o acesso efetivo automaticamente
-
-## 38.7 Stripe + Beta
-
-- [ ] Confirmar que Stripe continua funcionando de forma independente
-- [ ] Confirmar que código Beta não altera `stripeSubscriptionId`
-- [ ] Confirmar que código Beta não simula assinatura paga
-- [ ] Confirmar que `subscriptionActive` não foi usado de forma incorreta para representar Beta
-- [ ] Confirmar resolução central de acesso Premium
-- [ ] Confirmar regra:
-
-```text
-Premium =
-Stripe ativo
-OU
-PremiumGrant válido
-```
-
-- [ ] Usuário Beta ativo recebe acesso aos gates Premium já existentes
-- [ ] Usuário Stripe ativo continua Premium
-- [ ] Usuário com Beta + Stripe continua Premium
-- [ ] Expirar Beta não cancela Stripe
-- [ ] Cancelar Stripe não remove Beta ainda válido
-- [ ] Usuário já Premium por Stripe não deve consumir código Beta sem necessidade
-
-## 38.8 Onboarding
-
-- [ ] Campo de código Beta é opcional
-- [ ] Usuário sem código consegue concluir onboarding normalmente
-- [ ] Usuário com código válido recebe feedback claro
-- [ ] Usuário com código inválido recebe erro claro
-- [ ] Usuário com código já usado recebe erro claro
-- [ ] Usuário que já utilizou outro código recebe erro claro
-- [ ] Código válido não é perdido por erro visual do frontend
-- [ ] Input fica bloqueado/oculto após ativação
-- [ ] Onboarding continua idempotente
-- [ ] Nenhum dado existente do usuário é apagado
-
-## 38.9 Perfil
-
-- [ ] Mostrar `SmartPlate Premium Beta` quando ativo
-- [ ] Mostrar data de término do acesso
-- [ ] Mostrar estado expirado quando terminar
-- [ ] Manter identificação histórica de `Beta Tester`
-- [ ] Não expor código ou hash
-- [ ] Não publicar badge Beta automaticamente na Comunidade
-- [ ] Não conceder XP Beta ainda
-- [ ] Não criar conquista Beta ainda
-
-## 38.10 Gerador administrativo
-
-- [ ] Gerador aceita quantidade de códigos
-- [ ] Gerador aceita duração
-- [ ] Gerador usa `crypto.randomBytes()` ou equivalente seguro
-- [ ] Gerar lote inicial de 30 códigos
-- [ ] Cada código possui alta entropia
-- [ ] Evitar caracteres visualmente confusos se possível
-- [ ] Persistir somente hashes no banco
-- [ ] Exibir códigos puros apenas na geração
-- [ ] Salvar lote em arquivo local ignorado pelo Git, se implementado
-- [ ] Confirmar regra no `.gitignore`
-- [ ] Confirmar que arquivo de códigos não entra no commit
-
-## 38.11 Teste real com múltiplos usuários
-
-- [ ] Criar pelo menos 2 contas de teste distintas
-- [ ] Ativar Código A com Conta A
-- [ ] Verificar Premium da Conta A
-- [ ] Tentar Código A com Conta B
-- [ ] Confirmar rejeição
-- [ ] Ativar Código B com Conta B
-- [ ] Confirmar Premium da Conta B
-- [ ] Tentar Código C novamente com Conta A
-- [ ] Confirmar rejeição
-- [ ] Reiniciar sessão
-- [ ] Confirmar que acesso Beta permanece
-- [ ] Fazer logout/login
-- [ ] Confirmar que acesso Beta continua correto
-
-## 38.12 Build
-
-- [ ] Rodar `npm run build`
-- [ ] Corrigir qualquer erro decorrente da implementação
-- [ ] Confirmar que nenhum secret foi incluído no client bundle
-- [ ] Confirmar que nenhuma rota administrativa ficou exposta
-
----
-
-# 39. Hidratação — Próxima funcionalidade do núcleo
-
-> Implementar depois de validar o sistema Beta.
-
-## 39.1 Estrutura
-
-- [ ] Criar `WaterLog`
-- [ ] Relacionar ao Profile/usuário
-- [ ] Registrar quantidade em ml
-- [ ] Registrar data/hora
-- [ ] Criar meta diária de água
-- [ ] Permitir meta configurável pelo usuário
-- [ ] Tratar timezone corretamente
-
-Modelo conceitual:
-
-```prisma
-model WaterLog {
-  id        String   @id @default(uuid())
-  userId    String
-  amountMl  Int
-  loggedAt  DateTime @default(now())
-  createdAt DateTime @default(now())
-
-  @@index([userId, loggedAt])
-}
-```
-
-Possível campo:
-
-```prisma
-dailyWaterGoalMl Int?
-```
-
-## 39.2 API
-
-- [ ] GET dos registros do dia
-- [ ] POST novo consumo
-- [ ] DELETE de registro incorreto
-- [ ] Endpoint/resumo diário
-- [ ] Validar quantidade no backend
-- [ ] Não aceitar valores negativos
-- [ ] Não aceitar valores absurdos sem validação
-
-## 39.3 Interface
-
-- [ ] Card de hidratação no Início
-- [ ] Exibir total consumido
-- [ ] Exibir meta
-- [ ] Barra de progresso
-- [ ] Botão `+250 ml`
-- [ ] Botão `+500 ml`
-- [ ] Quantidade personalizada
-- [ ] Permitir desfazer/excluir
-- [ ] Estado vazio
-- [ ] Loading
-- [ ] Erros
-
-Exemplo:
-
-```text
-💧 Água
-
-1.450 / 2.500 ml
-
-[ +250 ml ] [ +500 ml ]
-
-████████░░░░ 58%
-```
-
-## 39.4 Histórico
-
-- [ ] Histórico diário
-- [ ] Histórico semanal
-- [ ] Visualizar consumo por dia
-- [ ] Permitir corrigir registros
-
-## 39.5 Gamificação futura
-
-- [ ] Não dar XP a cada copo
-- [ ] Criar evento `WATER_GOAL_COMPLETED`
-- [ ] Conceder XP no máximo uma vez por dia pela meta
-- [ ] Usar idempotency key por usuário + data
-- [ ] Permitir conquistas relacionadas à hidratação no futuro
-
----
-
-# 40. Motor central de XP
-
-> Hoje XP não deve ficar espalhado em várias rotas. Criar um fluxo central antes de expandir a gamificação.
-
-## 40.1 Serviço central
-
-- [ ] Criar serviço/função central de gamificação
-- [ ] Toda ação elegível deve passar pelo mesmo mecanismo
-- [ ] Não atualizar XP manualmente em vários endpoints
-- [ ] Reutilizar `XpEvent` existente
-- [ ] Definir tipos de eventos
-- [ ] Definir regras em um único arquivo/config
-
-Fluxo desejado:
-
-```text
-ação real
-   ↓
-evento persistido
-   ↓
-GamificationService
-   ↓
-XP + DailyActivity + Achievement checks
-```
-
-## 40.2 Idempotência
-
-- [ ] Todo evento que concede XP deve possuir `idempotencyKey`
-- [ ] `idempotencyKey` deve ser UNIQUE
-- [ ] Retry não concede XP novamente
-- [ ] Duplo clique não concede XP novamente
-- [ ] Webhook duplicado no futuro não concede XP novamente
-
-Exemplos:
-
-```text
-meal-completed:{mealId}:{date}
-water-goal:{userId}:{date}
-weight-log:{weightLogId}
-activity:{activityLogId}
-challenge-completed:{challengeId}:{userId}
-```
-
-## 40.3 Regras iniciais a validar
-
-Valores iniciais sugeridos, sujeitos a ajuste futuro:
-
-- [ ] Primeira refeição concluída no dia
-- [ ] Todas as refeições planejadas concluídas no dia
-- [ ] Meta diária de água atingida
-- [ ] Registro de peso
-- [ ] Onboarding concluído
-- [ ] Conquista desbloqueada
-- [ ] Desafio concluído futuramente
-- [ ] Atividade física futuramente
-
-## 40.4 Anti-abuso
-
-- [ ] Não conceder XP por clique
-- [ ] Não conceder XP repetido pela mesma ação
-- [ ] Definir limites diários quando necessário
-- [ ] Não permitir farm de XP editando/removendo/recriando registros
-- [ ] Pensar em reversão de XP para ações excluídas quando fizer sentido
-
-## 40.5 XP de hoje
-
-- [ ] Calcular XP do dia
-- [ ] Mostrar no Dashboard
-- [ ] Mostrar breakdown das ações
-
-Exemplo:
-
-```text
-Hoje +30 XP
-
-+5  Café concluído
-+5  Almoço concluído
-+10 Meta de água
-+10 Dia completo
-```
-
-## 40.6 Histórico de XP
-
-- [ ] Criar histórico
-- [ ] Exibir tipo do evento
-- [ ] Exibir valor
-- [ ] Exibir data
-- [ ] Não mostrar chaves internas/idempotencyKey ao usuário
-
----
-
-# 41. Streak / sequência real
-
-> Implementar depois do motor de XP estar consistente.
-
-## 41.1 Definir `dia ativo`
-
-O streak não deve significar apenas abrir o aplicativo.
-
-Possível regra inicial:
-
-```text
-Dia qualificado =
-refeição concluída
-OU
-meta de água atingida
-OU
-atividade física registrada
-```
-
-- [ ] Formalizar a regra
-- [ ] Centralizar a regra
-- [ ] Não exigir perfeição
-- [ ] Não exigir treino diário
-- [ ] Não usar somente login como critério
-
-## 41.2 DailyActivity
-
-- [ ] Revisar model atual `DailyActivity`
-- [ ] Usá-lo como resumo diário
-- [ ] Registrar refeições concluídas
-- [ ] Registrar total/meta de água
-- [ ] Registrar atividade física no futuro
-- [ ] Registrar `qualifiedForStreak`
-- [ ] Evitar recalcular informações de forma diferente em cada página
-
-Exemplo conceitual:
-
-```text
-DailyActivity
-2026-08-23
-
-mealsCompleted: 3
-mealsPlanned: 4
-waterGoalCompleted: true
-physicalActivityCompleted: false
-qualifiedForStreak: true
-```
-
-## 41.3 Timezone
-
-- [ ] Usar timezone do usuário/SocialProfile
-- [ ] Não usar UTC puro para definir troca de dia
-- [ ] Testar virada de dia
-- [ ] Testar usuário em timezone diferente
-- [ ] Evitar perder streak por diferença UTC/local
-
-## 41.4 Current e longest streak
-
-- [ ] Atualizar `currentStreak`
-- [ ] Atualizar `longestStreak`
-- [ ] Garantir idempotência
-- [ ] Garantir que múltiplas ações no mesmo dia contem apenas um dia
-- [ ] Testar quebra de sequência
-- [ ] Testar retomada após quebra
-
----
-
-# 42. Conquistas — revisão completa
-
-> Fazer depois de XP + streak.
-
-## 42.1 Alimentação
-
-- [ ] Primeira refeição concluída
-- [ ] Primeiro dia completo
-- [ ] X refeições concluídas
-- [ ] Sequência de alimentação
-
-## 42.2 Hidratação
-
-- [ ] Primeira meta diária de água
-- [ ] Meta em 3 dias
-- [ ] Meta em 7 dias
-- [ ] Meta em 30 dias
-
-## 42.3 Streak
-
-- [ ] 3 dias
-- [ ] 7 dias
-- [ ] 30 dias
-- [ ] 100 dias
-
-## 42.4 Progresso
-
-- [ ] Primeiro registro de peso
-- [ ] 10 registros de peso
-- [ ] Primeira foto de progresso
-- [ ] Marco de evolução
-
-## 42.5 Beta
-
-Somente depois que o motor de achievements estiver validado:
-
-- [ ] Criar conquista histórica `Beta Tester`
-- [ ] Criar conquista/medalha `Early Adopter`, se desejado
-- [ ] Conceder apenas para usuários realmente elegíveis
-- [ ] Não depender de Beta ainda estar ativo
-- [ ] Não duplicar conquista
-
----
-
-# 43. Níveis
-
-> Implementar/revisar quando XP estiver confiável.
-
-- [ ] Definir curva de XP
-- [ ] Centralizar `getLevelFromXp(totalXp)`
-- [ ] Não duplicar regras de nível em componentes
-- [ ] Exibir progresso para próximo nível
-- [ ] Validar níveis no Perfil
-- [ ] Validar níveis na Comunidade
-- [ ] Validar ranking
-
-Exemplo inicial:
-
-```text
-Nível 1   0 XP
-Nível 2   100 XP
-Nível 3   250 XP
-Nível 4   450 XP
-Nível 5   700 XP
-```
-
-Valores podem ser ajustados depois.
+# 42.2. Conquistas de Hidratação
+
+> Nota: a seção original 42 tinha 5 subseções (Alimentação/Hidratação/Streak/
+> Progresso/Beta). 42.1, 42.3, 42.4 e 42.5 foram absorvidas pelo catálogo real
+> de conquistas (Parte 1, seções 50/60 — `FIRST_MEAL`/`MEALS_10`,
+> `STREAK_3`...`STREAK_100`, `FIRST_WEIGHT_LOG`/`FIRST_PROGRESS_PHOTO`,
+> `BETA_TESTER`), por isso não aparecem de novo aqui. Só 42.2 (Hidratação)
+> continua genuinamente pendente.
+
+- [ ] Primeira meta diária de água, meta em 3/7/30 dias — depende inteiramente da seção 39 (Hidratação), que já está na Parte 2
 
 ---
 
@@ -1582,1138 +1122,101 @@ Valores podem ser ajustados depois.
 
 ## Manter por enquanto
 
-- [ ] Preservar regras atuais
-- [ ] Beta deve passar pelos gates Premium já existentes
-- [ ] Stripe deve continuar funcionando
-- [ ] Não criar restrições artificiais agora
+- [x] Preservar regras atuais
+- [x] Beta passa pelos gates Premium já existentes
+- [x] Stripe continua funcionando
+- [x] Nenhuma restrição artificial foi criada
 
 ## Definir posteriormente
 
-- [ ] Quantidade de gerações de plano alimentar no Free
-- [ ] Limite de uso de IA
-- [ ] Quantidade de regenerações
-- [ ] Limites da lista de compras
-- [ ] Recursos de personalização
-- [ ] Histórico disponível
-- [ ] Recursos de comunidade
-- [ ] Recursos de grupos
-- [ ] Integrações externas
-- [ ] Relatórios
-- [ ] Insights de IA
-- [ ] Antes & Depois
-- [ ] Recursos Premium exclusivos
-- [ ] Estratégia de upgrade
-- [ ] Trial
-- [ ] Grace period
-- [ ] Expiração/cancelamento
-- [ ] Tratamento de downgrade
+- [ ] Quantidade de gerações de plano alimentar no Free, limite de uso de IA, regenerações, limites da lista de compras
+- [ ] Recursos de personalização, histórico disponível, recursos de comunidade/grupos, integrações externas
+- [ ] Relatórios, insights de IA, Antes & Depois como recursos Premium exclusivos
+- [ ] Estratégia de upgrade, trial, grace period, expiração/cancelamento, downgrade
 - [ ] Comparativo visual Free x Premium
 
-## Critério importante
+## Critério importante antes de restringir qualquer recurso
 
-Antes de restringir qualquer recurso:
-
-- [ ] Confirmar que o recurso funciona 100%
-- [ ] Confirmar valor real para o usuário
-- [ ] Não limitar funcionalidades essenciais de segurança
-- [ ] Não prejudicar dados já criados após downgrade
-- [ ] Não apagar dados ao expirar Premium
+- [ ] Confirmar que o recurso funciona 100%, tem valor real, não é de segurança essencial
+- [ ] Não apagar/prejudicar dados já criados após downgrade ou expiração
 
 ---
 
-# 45. Painel administrativo Beta — Futuro
+# 45. Painel administrativo Beta
 
 > Não é necessário para testar agora, mas será útil antes de ampliar o Beta.
 
-- [ ] Criar área administrativa protegida
-- [ ] Exibir total de códigos criados
-- [ ] Exibir códigos disponíveis
-- [ ] Exibir códigos utilizados
-- [ ] Exibir códigos desativados
-- [ ] Exibir data de resgate
-- [ ] Exibir usuário associado sem expor dados além do necessário
-- [ ] Permitir desativar código não utilizado
-- [ ] Permitir criar novo lote
-- [ ] Permitir escolher duração do lote
-- [ ] Permitir definir `redeemUntil`
+- [ ] Área administrativa protegida com totais de códigos (criados/disponíveis/usados/desativados), data de resgate, usuário associado
+- [ ] Permitir desativar código não utilizado, criar novo lote, escolher duração/`redeemUntil`
 - [ ] Nunca exibir código puro depois da geração
-- [ ] Permitir revogar `PremiumGrant` em caso administrativo
-- [ ] Registrar auditoria de revogação
+- [ ] Permitir revogar `PremiumGrant` administrativamente, com auditoria
 
 ---
 
-# 46. Códigos promocionais — Evolução futura
+# 46. Códigos promocionais — evolução futura
 
-A estrutura Beta pode futuramente suportar outras concessões.
+Possíveis categorias futuras: `BETA / PROMO / PARTNER / GIFT / ADMIN`.
 
-Possíveis categorias:
+- [ ] Generalizar somente quando houver necessidade real — não transformar `BetaCode` em sistema complexo agora
+- [ ] Campanhas promocionais, quantidade máxima de usos, datas de validade, duração Premium
+- [ ] Códigos de parceiros, gifts, grants administrativos
 
-```text
-BETA
-PROMO
-PARTNER
-GIFT
-ADMIN
-```
-
-- [ ] Generalizar somente quando houver necessidade real
-- [ ] Não transformar BetaCode em sistema excessivamente complexo agora
-- [ ] Criar campanhas promocionais
-- [ ] Definir quantidade máxima de usos quando necessário
-- [ ] Definir datas de validade
-- [ ] Definir duração Premium
-- [ ] Criar códigos de parceiros
-- [ ] Criar gifts
-- [ ] Criar grants administrativos
-
----
-
-# 47. Ordem atualizada de implementação
-
-## Sessão A — Fechar Perfil
-
-- [ ] Antes & Depois restaurado e funcional
-- [ ] Fotos persistentes
-- [ ] Histórico de fotos
-- [ ] Onboarding validado
-- [ ] Dados físicos validados
-- [ ] Perfil sem mocks
-
-## Sessão B — Beta Premium
-
-- [ ] Implementar BetaCode
-- [ ] Implementar PremiumGrant
-- [ ] Integrar onboarding
-- [ ] Gerar códigos
-- [ ] Rodar toda a seção 38 deste checklist
-
-## Sessão C — Hidratação
-
-- [ ] Implementar seção 39
-
-## Sessão D — Gamificação
-
-- [ ] Implementar motor central de XP
-- [ ] Validar idempotência
-- [ ] Implementar XP diário
-- [ ] Implementar histórico de XP
-
-## Sessão E — Streak
-
-- [ ] Formalizar dia ativo
-- [ ] Integrar DailyActivity
-- [ ] Corrigir timezone
-- [ ] Validar current/longest streak
-
-## Sessão F — Conquistas
-
-- [ ] Revisar achievements existentes
-- [ ] Integrar eventos reais
-- [ ] Criar conquistas de alimentação
-- [ ] Criar conquistas de hidratação
-- [ ] Criar conquistas de streak
-- [ ] Criar conquistas de progresso
-- [ ] Adicionar Beta Tester posteriormente
-
-## Sessão G — Plano Semanal
-
-- [ ] Auditoria completa
-- [ ] Dados reais
-- [ ] Geração de IA
-- [ ] Refeições concluídas
-- [ ] Favoritos
-- [ ] Trocas
-- [ ] Integração com XP
-
-## Sessão H — Início / Dashboard
-
-- [ ] Refeições do dia
-- [ ] Hidratação
-- [ ] Peso/progresso
-- [ ] XP do dia
-- [ ] Streak
-- [ ] Conquistas recentes
-- [ ] Ações rápidas
-
-## Sessão I — Lista de Compras
-
-- [ ] Auditoria completa
-- [ ] Persistência
-- [ ] Integração com planos
-- [ ] Estados reais
-
-## Sessão J — Assinatura
-
-- [ ] Auditoria Stripe
-- [ ] Resolver Premium centralmente
-- [ ] Validar Beta + Stripe
-- [ ] Somente depois definir Free x Premium
-
-## Sessão K — Comunidade final
-
-- [ ] Ranking com XP real
-- [ ] Streak real
-- [ ] Conquistas reais
-- [ ] Posts reais
-- [ ] Amigos
-- [ ] Grupos
-- [ ] Desafios
-- [ ] Integrações futuras preparadas
-
----
-
-# 48. Regra para considerar cada sessão concluída
-
-Uma sessão só deve ser marcada como concluída quando:
-
-- [ ] Não depender de mock
-- [ ] Dados forem persistidos
-- [ ] Backend validar entrada
-- [ ] Frontend tratar loading
-- [ ] Frontend tratar erro
-- [ ] Frontend tratar estado vazio
-- [ ] Usuário não conseguir acessar dados de outro usuário
-- [ ] Retry não criar duplicidade
-- [ ] Build funcionar
-- [ ] Fluxo funcionar após logout/login
-- [ ] Funcionar com usuário antigo
-- [ ] Funcionar com usuário novo
-- [ ] Não quebrar Comunidade
-- [ ] Não quebrar Stripe
-- [ ] Não expor informações privadas
-
----
-
-# 49. Sistema de Conquistas — Catálogo inicial de 50 conquistas
-
-> Objetivo: criar uma experiência completa de conquistas com estados bloqueado, desbloqueado e “em breve”, usando dados reais do SmartPlate e respeitando a ordem de implementação dos módulos deste checklist.
-
-## 49.1 Tela principal de conquistas
-
-Na seção de Conquistas do Perfil/Comunidade, mostrar:
-
-```text
-Conquistas
-
-2 / 50 desbloqueadas
-4% concluído
-
-[ Ver todas as conquistas ]
-```
-
-Regras:
-
-- [x] A contagem deve ser dinâmica
-- [x] O total deve vir do catálogo real
-- [x] O número desbloqueado deve vir de `UserAchievement`
-- [x] Nunca hardcodar `2 / 50`
-- [x] Mostrar barra de progresso geral
-- [x] Atualizar automaticamente quando novas conquistas forem adicionadas
-
----
-
-## 49.2 Botão “Ver todas as conquistas”
-
-Ao clicar:
-
-```text
-Todas as conquistas
-
-2 / 50 desbloqueadas
-████░░░░░░░░░░░░ 4%
-
-Todas | Alimentação | Hidratação | Sequência |
-Progresso | Atividade | Social | Desafios | Especiais
-```
-
-Adicionar filtros:
-
-- [x] Todas
-- [x] Desbloqueadas
-- [x] Bloqueadas
-- [x] Alimentação
-- [x] Hidratação
-- [x] Sequência
-- [x] Progresso
-- [x] Atividade
-- [x] Social
-- [x] Desafios
-- [x] Especiais
-
----
-
-## 49.3 Estado desbloqueado
-
-Exemplo:
-
-```text
-┌─────────────────────────────────┐
-│ 🥗 Primeiro Prato               │
-│                                 │
-│ Concluiu sua primeira refeição  │
-│ planejada.                      │
-│                                 │
-│ ✅ Desbloqueada                 │
-│ 23 ago. 2026                    │
-└─────────────────────────────────┘
-```
-
-- [x] Ícone em destaque
-- [x] Card com aparência normal
-- [x] Badge `Desbloqueada`
-- [x] Mostrar data de desbloqueio
-- [x] Manter `unlockedAt` original
-- [x] Não repetir animação toda vez que abrir a página
-
----
-
-## 49.4 Estado bloqueado
-
-Exemplo:
-
-```text
-┌─────────────────────────────────┐
-│ 🔒 💧 Hidratação Consistente     │
-│                                 │
-│ Atinja sua meta de água em      │
-│ 7 dias diferentes.              │
-│                                 │
-│ Como desbloquear:               │
-│ Complete a meta diária de água  │
-│ em 7 dias.                      │
-│                                 │
-│ Progresso: 2 / 7                │
-└─────────────────────────────────┘
-```
-
-Visual sugerido:
-
-- [x] `opacity` aproximada entre 55% e 65%
-- [x] Saturação reduzida
-- [x] Cadeado visível
-- [x] Badge `Bloqueada`
-- [x] Texto continua legível
-- [x] Não depender somente de cor
-- [x] Mostrar `Como desbloquear`
-- [x] Mostrar progresso real quando aplicável
-
----
-
-## 49.5 Estado “Em breve”
-
-Conquistas que dependem de módulos ainda não implementados devem aparecer como:
-
-```text
-🔒 Em breve
-```
-
-e não como uma conquista normalmente alcançável.
-
-Exemplo:
-
-```text
-🏃 Em Movimento
-
-Registre sua primeira atividade física.
-
-🔒 Em breve
-
-Disponível quando o registro de atividades
-for liberado no SmartPlate.
-```
-
-- [x] Criar estado `COMING_SOON` ou equivalente
-- [x] Não mostrar progresso falso
-- [x] Não executar regra de desbloqueio antes do módulo existir
-- [x] Trocar automaticamente para `LOCKED` quando o recurso for lançado
-
-Estados recomendados:
-
-```text
-LOCKED
-UNLOCKED
-COMING_SOON
-```
-
----
-
-# 50. Catálogo inicial — 50 conquistas
-
-## Primeiros passos — 5
-
-### 01. 👋 Bem-vindo ao SmartPlate
-**Código:** `WELCOME`
-
-**Descrição:** Complete seu onboarding.
-
-**Como desbloquear:** Finalize as etapas obrigatórias do onboarding.
-
----
-
-### 02. 🧪 Beta Tester
-**Código:** `BETA_TESTER`
-
-**Descrição:** Participou da fase Beta do SmartPlate.
-
-**Como desbloquear:** Ative um código Beta válido.
-
-Regras:
-- [x] Histórico permanente
-- [x] Continua desbloqueada após o Premium Beta expirar
-- [x] Não duplicar
-
----
-
-### 03. 📸 Identidade Completa
-**Código:** `PROFILE_COMPLETE`
-
-**Descrição:** Deixou seu perfil completo.
-
-**Como desbloquear:** Tenha nome, username, avatar e bio preenchidos.
-
----
-
-### 04. 🎯 Objetivo Definido
-**Código:** `GOAL_DEFINED`
-
-**Descrição:** Definiu um objetivo pessoal no SmartPlate.
-
-**Como desbloquear:** Preencha seu objetivo no Perfil.
-
----
-
-### 05. 🧭 Pronto para Começar
-**Código:** `READY_TO_START`
-
-**Descrição:** Configurou os principais dados para usar o SmartPlate.
-
-**Como desbloquear:** Complete onboarding, objetivo e preferências alimentares.
-
----
-
-## Alimentação — 10
-
-### 06. 🥗 Primeiro Prato
-**Código:** `FIRST_MEAL`
-
-**Descrição:** Concluiu sua primeira refeição planejada.
-
-**Como desbloquear:** Marque uma refeição do plano como concluída.
-
----
-
-### 07. 🍽️ Dia Completo
-**Código:** `FULL_MEAL_DAY`
-
-**Descrição:** Completou todas as refeições planejadas de um dia.
-
-**Como desbloquear:** Conclua 100% das refeições planejadas para o mesmo dia.
-
----
-
-### 08. 🌅 Bom Dia
-**Código:** `FIRST_BREAKFAST`
-
-**Descrição:** Concluiu seu primeiro café da manhã.
-
-**Como desbloquear:** Marque um café da manhã planejado como concluído.
-
----
-
-### 09. ☀️ Hora do Almoço
-**Código:** `FIRST_LUNCH`
-
-**Descrição:** Concluiu seu primeiro almoço.
-
-**Como desbloquear:** Marque um almoço planejado como concluído.
-
----
-
-### 10. 🌙 Fechando o Dia
-**Código:** `FIRST_DINNER`
-
-**Descrição:** Concluiu seu primeiro jantar.
-
-**Como desbloquear:** Marque um jantar planejado como concluído.
-
----
-
-### 11. ✅ 10 Refeições
-**Código:** `MEALS_10`
-
-**Como desbloquear:** Complete 10 refeições planejadas.
-
-Progresso:
-
-```text
-7 / 10
-```
-
----
-
-### 12. ✅ 50 Refeições
-**Código:** `MEALS_50`
-
-**Como desbloquear:** Complete 50 refeições planejadas.
-
----
-
-### 13. 🏅 100 Refeições
-**Código:** `MEALS_100`
-
-**Como desbloquear:** Complete 100 refeições planejadas.
-
----
-
-### 14. ⭐ Favorito
-**Código:** `FIRST_FAVORITE`
-
-**Descrição:** Salvou seu primeiro favorito.
-
-**Como desbloquear:** Favorite sua primeira refeição/plano quando o sistema definitivo de favoritos estiver validado.
-
----
-
-### 15. 🔄 Experimentando Algo Novo
-**Código:** `FIRST_MEAL_SWAP`
-
-**Descrição:** Personalizou seu plano.
-
-**Como desbloquear:** Faça sua primeira troca real de refeição.
-
----
-
-## Hidratação — 7
-
-### 16. 💧 Primeiro Gole
-**Código:** `FIRST_WATER_LOG`
-
-**Como desbloquear:** Registre seu primeiro consumo de água.
-
----
-
-### 17. 💦 Meta Alcançada
-**Código:** `FIRST_WATER_GOAL`
-
-**Como desbloquear:** Alcance 100% da sua meta diária de hidratação.
-
----
-
-### 18. 💧 3 Dias Hidratado
-**Código:** `WATER_GOAL_3_DAYS`
-
-**Como desbloquear:** Atinja a meta diária de água em 3 dias diferentes.
-
----
-
-### 19. 💦 7 Dias Hidratado
-**Código:** `WATER_GOAL_7_DAYS`
-
-**Como desbloquear:** Atinja a meta diária em 7 dias diferentes.
-
----
-
-### 20. 🌊 30 Dias Hidratado
-**Código:** `WATER_GOAL_30_DAYS`
-
-**Como desbloquear:** Atinja a meta diária em 30 dias diferentes.
-
----
-
-### 21. 🫗 50 Registros
-**Código:** `WATER_LOGS_50`
-
-**Como desbloquear:** Faça 50 registros válidos de consumo de água.
-
-Observação:
-- [ ] Não conceder XP por cada copo
-- [ ] Esta conquista é apenas milestone
-
----
-
-### 22. 🚰 Hidratação Frequente
-**Código:** `WATER_WEEK_CONSISTENCY`
-
-**Como desbloquear:** Registre consumo de água em 7 dias diferentes.
-
----
-
-## Sequência / Streak — 7
-
-### 23. 🔥 Começou a Sequência
-**Código:** `STREAK_3`
-
-**Como desbloquear:** Alcance uma sequência de 3 dias ativos.
-
----
-
-### 24. 🔥 Uma Semana
-**Código:** `STREAK_7`
-
-**Como desbloquear:** Alcance 7 dias consecutivos ativos.
-
----
-
-### 25. 🔥 Duas Semanas
-**Código:** `STREAK_14`
-
-**Como desbloquear:** Alcance 14 dias consecutivos ativos.
-
----
-
-### 26. 🔥 Um Mês
-**Código:** `STREAK_30`
-
-**Como desbloquear:** Alcance 30 dias consecutivos ativos.
-
----
-
-### 27. 🔥 60 Dias
-**Código:** `STREAK_60`
-
-**Como desbloquear:** Alcance 60 dias consecutivos ativos.
-
----
-
-### 28. 🔥 100 Dias
-**Código:** `STREAK_100`
-
-**Como desbloquear:** Alcance 100 dias consecutivos ativos.
-
----
-
-### 29. 🏆 Imparável
-**Código:** `STREAK_365`
-
-**Como desbloquear:** Alcance 365 dias consecutivos ativos.
-
-Regra:
-- [ ] Usar definição oficial de `dia ativo`
-- [ ] Não exigir alimentação perfeita
-- [ ] Não exigir atividade física diária
-
----
-
-## Progresso — 7
-
-### 30. ⚖️ Primeiro Registro
-**Código:** `FIRST_WEIGHT_LOG`
-
-**Como desbloquear:** Registre seu peso pela primeira vez.
-
----
-
-### 31. 📊 Acompanhando a Jornada
-**Código:** `WEIGHT_LOGS_10`
-
-**Como desbloquear:** Faça 10 registros válidos de peso.
-
----
-
-### 32. 📈 Histórico em Construção
-**Código:** `WEIGHT_LOGS_25`
-
-**Como desbloquear:** Faça 25 registros válidos de peso.
-
----
-
-### 33. 📸 Primeiro Registro Visual
-**Código:** `FIRST_PROGRESS_PHOTO`
-
-**Como desbloquear:** Adicione sua primeira foto em Antes & Depois.
-
----
-
-### 34. 🖼️ Antes & Agora
-**Código:** `BEFORE_AFTER_READY`
-
-**Como desbloquear:** Tenha pelo menos duas fotos de progresso.
-
----
-
-### 35. 🗓️ Um Mês de Jornada
-**Código:** `PROGRESS_30_DAYS`
-
-**Como desbloquear:** Tenha registros de progresso separados por pelo menos 30 dias.
-
----
-
-### 36. 🎯 Marco Pessoal
-**Código:** `PERSONAL_GOAL_REACHED`
-
-**Como desbloquear:** Complete uma meta pessoal acompanhada pelo sistema.
-
-Regras:
-- [ ] Não incentivar perda extrema de peso
-- [ ] Não premiar comportamento inseguro
-- [ ] Só ativar após sistema definitivo de metas existir
-
----
-
-## Atividade física — 7
-
-### 37. 🏃 Em Movimento
-**Código:** `FIRST_ACTIVITY`
-
-**Como desbloquear:** Registre sua primeira atividade física válida.
-
----
-
-### 38. 🏃 10 Atividades
-**Código:** `ACTIVITIES_10`
-
-**Como desbloquear:** Registre 10 atividades físicas.
-
----
-
-### 39. 🏅 50 Atividades
-**Código:** `ACTIVITIES_50`
-
-**Como desbloquear:** Registre 50 atividades físicas.
-
----
-
-### 40. 🏆 100 Atividades
-**Código:** `ACTIVITIES_100`
-
-**Como desbloquear:** Registre 100 atividades físicas.
-
----
-
-### 41. 📅 Semana Ativa
-**Código:** `ACTIVE_3_DAYS_WEEK`
-
-**Como desbloquear:** Registre atividade em 3 dias diferentes da mesma semana.
-
----
-
-### 42. ⏱️ 150 Minutos
-**Código:** `ACTIVE_MINUTES_150`
-
-**Como desbloquear:** Acumule 150 minutos de atividades válidas.
-
----
-
-### 43. 🧭 Explorador
-**Código:** `ACTIVITY_EXPLORER`
-
-**Como desbloquear:** Registre pelo menos 5 tipos diferentes de atividade física.
-
----
-
-## Social — 5
-
-### 44. 💬 Primeira Publicação
-**Código:** `FIRST_POST`
-
-**Como desbloquear:** Faça sua primeira publicação válida na Comunidade.
-
----
-
-### 45. 🤝 Primeira Amizade
-**Código:** `FIRST_FRIEND`
-
-**Como desbloquear:** Tenha sua primeira solicitação de amizade aceita.
-
----
-
-### 46. 👥 Fazendo Parte
-**Código:** `FIRST_GROUP`
-
-**Como desbloquear:** Entre no seu primeiro grupo.
-
----
-
-### 47. ❤️ Apoio da Comunidade
-**Código:** `FIRST_REACTION_RECEIVED`
-
-**Como desbloquear:** Receba sua primeira reação em uma publicação.
-
----
-
-### 48. 💬 Conversa Iniciada
-**Código:** `FIRST_COMMENT_RECEIVED`
-
-**Como desbloquear:** Receba seu primeiro comentário válido em uma publicação.
-
----
-
-## Desafios e especiais — 2
-
-### 49. 🎯 Primeiro Desafio
-**Código:** `FIRST_CHALLENGE_COMPLETED`
-
-**Como desbloquear:** Participe e conclua seu primeiro desafio.
-
----
-
-### 50. 🌟 Vida em Equilíbrio
-**Código:** `BALANCED_WEEK`
-
-**Descrição:** Combinou diferentes hábitos ao longo da semana.
-
-**Como desbloquear:** Em uma mesma semana, cumpra os critérios definidos de alimentação acompanhada, hidratação e atividade física.
-
-Regras:
-- [ ] Não exigir perfeição
-- [ ] Definir regra exata somente quando hidratação e ActivityLog estiverem prontos
-
----
-
-# 51. Categorias oficiais
-
-Usar códigos internos consistentes:
-
-```text
-ONBOARDING
-FOOD
-HYDRATION
-STREAK
-PROGRESS
-ACTIVITY
-SOCIAL
-CHALLENGE
-SPECIAL
-```
-
----
-
-# 52. Catálogo central
-
-Não espalhar título, descrição e regras em componentes diferentes.
-
-Criar um catálogo central semelhante a:
-
-```ts
-ACHIEVEMENTS = {
-  FIRST_MEAL: {
-    title: "Primeiro Prato",
-    description: "Concluiu sua primeira refeição planejada.",
-    unlockDescription: "Marque uma refeição do seu plano como concluída.",
-    category: "FOOD",
-    icon: "🥗",
-    target: 1,
-  },
-
-  MEALS_10: {
-    title: "10 Refeições",
-    description: "Complete 10 refeições planejadas.",
-    unlockDescription: "Alcance 10 refeições concluídas no total.",
-    category: "FOOD",
-    icon: "✅",
-    target: 10,
-  }
-}
-```
-
-Regras:
-
-- [x] Código interno estável
-- [x] Texto pode mudar sem quebrar banco
-- [x] `UserAchievement` referencia código
-- [x] Catálogo não deve ser duplicado entre telas
-- [x] Backend continua sendo autoridade para desbloqueio
-
----
-
-# 53. Progresso incremental
-
-API deve conseguir retornar:
-
-```json
-{
-  "code": "MEALS_10",
-  "unlocked": false,
-  "status": "LOCKED",
-  "progress": 7,
-  "target": 10
-}
-```
-
-Interface:
-
-```text
-7 / 10
-██████████████░░░░░
-```
-
-Aplicar a:
-
-- [x] Refeições
-- [ ] Água — catálogo pronto, mas sem WaterLog ainda (COMING_SOON)
-- [ ] Streak — catálogo pronto, mas regra ainda provisória (COMING_SOON)
-- [x] Peso
-- [ ] Atividades — catálogo pronto, mas sem ActivityLog ainda (COMING_SOON)
-- [ ] Desafios — catálogo pronto, mas ainda COMING_SOON nesta sessão
-
-Regras:
-
-- [x] Uma única fonte de cálculo
-- [x] `progress` nunca maior que `target` na UI
-- [x] Não alterar `unlockedAt` após desbloqueio
-
----
-
-# 54. Detalhes da conquista
-
-Ao clicar em um card bloqueado:
-
-```text
-🔥 Uma Semana
-
-Uma semana inteira de consistência.
-
-🔒 Bloqueada
-
-Como desbloquear:
-Alcance uma sequência de 7 dias ativos.
-
-Seu progresso:
-5 / 7 dias
-```
-
-Quando desbloqueada:
-
-```text
-✅ Desbloqueada
-23 de agosto de 2026
-```
-
----
-
-# 55. Nova conquista desbloqueada
-
-Quando ocorrer desbloqueio:
-
-```text
-🏆 Nova conquista!
-
-🔥 Uma Semana
-
-Você alcançou 7 dias de sequência.
-
-[ Ver conquista ]
-[ Continuar ]
-```
-
-- [x] Exibir apenas no primeiro desbloqueio
-- [x] Persistir antes de mostrar
-- [ ] Não depender somente de toast — nesta sessão a celebração é só toast (`react-hot-toast`); o modal enriquecido do exemplo (com "Ver conquista"/"Continuar") fica para depois
-- [ ] Se várias forem desbloqueadas juntas, usar fila ou resumo — hoje empilha toasts do react-hot-toast, sem fila controlada
-- [x] Não bloquear a ação principal do usuário
-
 ---
-
-# 56. Compartilhamento futuro
-
-Conquistas desbloqueadas poderão futuramente possuir:
-
-```text
-[ Compartilhar na Comunidade ]
-```
-
-- [ ] Nunca compartilhar automaticamente
-- [ ] Usuário escolhe
-- [ ] Criar post `ACHIEVEMENT`
-- [ ] Não expor dados privados que originaram a conquista
-
-Exemplo:
 
-```text
-🏆 Lucas desbloqueou uma conquista
+# 48. Regra para considerar cada sessão concluída (apêndice metodológico)
 
-🔥 Uma Semana
+Critério usado (e que deve continuar sendo usado) para qualquer sessão futura:
 
-7 dias de consistência no SmartPlate.
-```
+- Não depender de mock; dados persistidos; backend valida entrada
+- Frontend trata loading, erro e estado vazio
+- Usuário não consegue acessar dados de outro usuário
+- Retry não cria duplicidade; build funciona
+- Fluxo funciona após logout/login, com usuário antigo e usuário novo
+- Não quebra Comunidade nem Stripe; não expõe informações privadas
 
 ---
 
-# 57. XP por conquista — definir depois
+# 55 (restante) — Nova conquista desbloqueada, versão enriquecida
 
-Não definir valores finais antes do motor central de XP.
+Hoje a celebração é só toast (`react-hot-toast`). Fica pra depois:
 
-Possível estrutura futura:
+- [ ] Modal enriquecido (com "Ver conquista"/"Continuar") em vez de só toast
+- [ ] Fila/resumo quando várias conquistas são desbloqueadas juntas (hoje empilha toasts sem fila controlada)
 
-```text
-COMMON     +10 XP
-UNCOMMON   +20 XP
-RARE       +40 XP
-EPIC       +75 XP
-SPECIAL    variável
-```
-
-- [ ] XP uma única vez
-- [ ] `XpEvent` com idempotencyKey
-- [ ] Não permitir farm
-- [ ] Não recompensar comportamento extremo
-
 ---
-
-# 58. Raridade opcional
 
-Preparar estrutura futura:
+# 56. Compartilhamento de conquistas — refinamentos futuros
 
-```text
-COMMON
-UNCOMMON
-RARE
-EPIC
-SPECIAL
-```
+O compartilhamento básico já existe (Parte 1, seção 24). Ideias de evolução:
 
-Exemplos:
+- [ ] Card de compartilhamento com layout dedicado além do genérico do `PostCard`
 
-```text
-Primeiro Prato   COMMON
-10 Refeições     COMMON
-100 Refeições    RARE
-Streak 30        RARE
-Streak 100       EPIC
-Streak 365       EPIC
-Beta Tester      SPECIAL
-```
-
-Não é obrigatório mostrar raridade na primeira versão.
-
 ---
-
-# 59. Integridade e segurança
 
-- [x] Backend é autoridade
-- [x] Frontend nunca desbloqueia conquista arbitrariamente
-- [x] Não aceitar `achievementCode` enviado pelo usuário como prova
-- [x] Desbloquear apenas a partir de evento real persistido
-- [x] `UserAchievement` deve impedir duplicidade
-- [x] Retry deve ser idempotente
-- [x] Mesmo achievement só pode existir uma vez por usuário
-- [x] Alterar/deletar dados não deve permitir farm
-- [ ] Regras por dia/semana devem respeitar timezone — nenhuma regra AVAILABLE nesta sessão depende de fronteira de dia/semana ainda
+# 57. XP por conquista — valores finais
 
-Constraint recomendada:
+Os valores atuais (`ACHIEVEMENT_RARITY_XP`: COMMON +10, UNCOMMON +20, RARE
++40, EPIC +75, SPECIAL +100) já estão em produção e funcionando. Ajuste fino
+de valores continua uma decisão de produto em aberto:
 
-```text
-@@unique([userId, achievementCode])
-```
+- [ ] Revisar/ajustar valores de XP por raridade com base em uso real
 
 ---
-
-# 60. Ordem de ativação
-
-## Disponíveis primeiro
-
-Quando os módulos atuais forem validados:
-
-- [x] WELCOME
-- [x] BETA_TESTER
-- [x] PROFILE_COMPLETE
-- [x] GOAL_DEFINED
-- [x] READY_TO_START
-- [x] FIRST_MEAL
-- [x] FULL_MEAL_DAY
-- [x] FIRST_BREAKFAST
-- [x] FIRST_LUNCH
-- [x] FIRST_DINNER
-- [x] MEALS_10
-- [x] MEALS_50
-- [x] MEALS_100
-- [x] FIRST_WEIGHT_LOG
-- [x] WEIGHT_LOGS_10
-- [x] WEIGHT_LOGS_25
-- [x] FIRST_PROGRESS_PHOTO
-- [x] BEFORE_AFTER_READY
-- [x] FIRST_POST
-- [x] FIRST_FRIEND
-
-## Após Hidratação
-
-- [ ] FIRST_WATER_LOG
-- [ ] FIRST_WATER_GOAL
-- [ ] WATER_GOAL_3_DAYS
-- [ ] WATER_GOAL_7_DAYS
-- [ ] WATER_GOAL_30_DAYS
-- [ ] WATER_LOGS_50
-- [ ] WATER_WEEK_CONSISTENCY
 
-## Após Streak
+# 58. Raridade — exibição na UI
 
-- [ ] STREAK_3
-- [ ] STREAK_7
-- [ ] STREAK_14
-- [ ] STREAK_30
-- [ ] STREAK_60
-- [ ] STREAK_100
-- [ ] STREAK_365
+A raridade já existe no código (`AchievementRarity`, usada pro cálculo de
+XP). Não é obrigatório mostrá-la visualmente na tela de conquistas ainda:
 
-## Após ActivityLog
+- [ ] Mostrar selo/cor de raridade nos cards de conquista
 
-- [ ] FIRST_ACTIVITY
-- [ ] ACTIVITIES_10
-- [ ] ACTIVITIES_50
-- [ ] ACTIVITIES_100
-- [ ] ACTIVE_3_DAYS_WEEK
-- [ ] ACTIVE_MINUTES_150
-- [ ] ACTIVITY_EXPLORER
-
-## Após grupos/desafios/social final
-
-- [x] FIRST_GROUP — grupos/membros já são reais e persistidos (`CommunityGroup`/`GroupMember`), adiantado nesta sessão
-- [x] FIRST_REACTION_RECEIVED — reações reais já existem, adiantado nesta sessão
-- [x] FIRST_COMMENT_RECEIVED — comentários reais já existem, adiantado nesta sessão
-- [ ] FIRST_CHALLENGE_COMPLETED — mantido `COMING_SOON` nesta sessão
-
-## Após integração completa dos módulos
-
-- [ ] BALANCED_WEEK
-- [ ] PERSONAL_GOAL_REACHED
-- [x] PROGRESS_30_DAYS — regra (intervalo ≥30 dias entre fotos) é clara e computável a partir de `ProgressPhoto` real, adiantado nesta sessão
-- [ ] FIRST_FAVORITE
-- [ ] FIRST_MEAL_SWAP
-
----
-
-# 61. Critério para considerar a tela pronta
-
-- [x] `X / 50` é real
-- [x] Nenhuma conquista desbloqueada é mock
-- [x] Bloqueadas ficam opacas, mas legíveis
-- [x] Desbloqueadas ficam destacadas
-- [x] Todas mostram `Como desbloquear`
-- [x] Incrementais mostram progresso real
-- [x] Recursos ainda inexistentes aparecem como `Em breve`
-- [x] Filtros funcionam
-- [ ] Mobile funciona — implementado com classes responsivas (grid 1/2/3 colunas, chips com scroll horizontal), mas não há navegador disponível neste ambiente para validação visual real
-- [x] Desbloqueio persiste após logout/login
-- [x] Mesma conquista nunca desbloqueia duas vezes
-- [ ] Datas respeitam timezone — nenhuma regra AVAILABLE nesta sessão depende de fronteira de dia/semana
-- [x] Nenhum dado privado é exposto
-
 ---
-
-### Implementação
-
-Data: 2026-08-23
-
-Implementado:
-- catálogo central de 50 conquistas (`lib/community/achievement-catalog.ts`), com títulos/descrições/"como desbloquear" fiéis a este Markdown;
-- motor de avaliação/desbloqueio idempotente (`lib/community/achievement-engine.ts`), reaproveitando `UserAchievement` já existente (sem migration nova);
-- endpoint `GET /api/achievements` (resumo + lista completa com status/progresso/target/unlockedAt);
-- tela "Todas as conquistas" (`components/AchievementsModal.tsx`) com filtros de status e categoria, cards bloqueada/desbloqueada/em breve, detalhe por conquista;
-- resumo no Perfil (`components/AchievementsSummaryCard.tsx`) com contador `X / 50`, percentual, barra de progresso e botão "Ver todas as conquistas";
-- estados `LOCKED` / `UNLOCKED` / `COMING_SOON` — 24 conquistas `AVAILABLE` (onboarding, refeições, peso, fotos de progresso, social) e 26 `COMING_SOON` (hidratação, streak definitivo, atividade física, desafios, favoritos/troca ambíguos, meta pessoal) — nenhuma foi forçada a `AVAILABLE` sem dado real por trás;
-- reconciliação retroativa a cada consulta (contas antigas recebem conquistas já cumpridas sem refazer a ação);
-- proteção contra duplicidade (constraint `@@unique([userId, achievementCode])` já existente + tratamento de `P2002`).
 
-Adiantado em relação à seção 60 (ordem de ativação original), após confirmar no código atual que já são reais: `FIRST_GROUP`, `FIRST_REACTION_RECEIVED`, `FIRST_COMMENT_RECEIVED` (grupos/reações/comentários já persistidos) e `PROGRESS_30_DAYS` (regra computável a partir de `ProgressPhoto` real).
+# XP de hoje — breakdown diário no Dashboard
 
-Ainda pendente:
-- hidratação (WaterLog);
-- atividade física (ActivityLog);
-- regra definitiva de streak/"dia ativo" (os `STREAK_*` têm catálogo pronto, mas continuam `COMING_SOON` — o motor antigo ainda concede STREAK_3/7/14/30 via streak provisório em `recordMealCompletion`, e essas linhas antigas são intencionalmente ignoradas pela tela nova até a regra definitiva existir);
-- XP definitivo (nenhum XP foi concedido por conquista nesta tarefa);
-- desafios (`FIRST_CHALLENGE_COMPLETED`, `BALANCED_WEEK`);
-- favoritos e troca de refeição (`FIRST_FAVORITE`, `FIRST_MEAL_SWAP` — ambíguos até o Plano Semanal ser auditado);
-- meta pessoal (`PERSONAL_GOAL_REACHED`);
-- compartilhamento de conquistas na Comunidade;
-- celebração de novo desbloqueio hoje é só toast — modal enriquecido com fila/resumo fica para depois.
+`getXpBreakdown()` já existe e expõe a soma de XP por fonte (vitalícia, não
+diária) via `GET /api/community/gamification`. O que a seção original 40.5
+descrevia — um card "Hoje +30 XP" com a lista de ações específicas do dia
+("+5 Café concluído", "+10 Meta de água", etc.) — não existe ainda:
 
+- [ ] Card "XP de hoje" no Início, com breakdown por ação do dia

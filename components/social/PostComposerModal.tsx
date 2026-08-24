@@ -12,7 +12,7 @@ import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Loader2, ChevronDown, Link2 } from "lucide-react";
 import { PersonSimpleRunIcon, TrophyIcon, ForkKnifeIcon } from "@phosphor-icons/react";
-import { useCreatePost, useMyGroups } from "@/hooks/useCommunity";
+import { useCreatePost, useHashtagSuggestions, useMyGroups } from "@/hooks/useCommunity";
 import { useCommunityMediaUpload } from "@/hooks/useCommunityMediaUpload";
 import { useCommunityTermsGate } from "./CommunityTermsGate";
 import { resolveIcon } from "@/components/icon-registry";
@@ -115,6 +115,11 @@ export default function PostComposerModal({
   const [showAchievementPicker, setShowAchievementPicker] = useState(false);
   const [showMealPicker, setShowMealPicker] = useState(false);
   const [showExternalPicker, setShowExternalPicker] = useState(false);
+  // Token de hashtag parcial sendo digitado (ex.: "#cor" antes de completar) —
+  // guarda a posição pra poder substituir o trecho certo ao escolher uma
+  // sugestão. Detecção aqui é só UX; a extração real acontece no backend.
+  const [activeHashtagToken, setActiveHashtagToken] = useState<{ query: string; start: number; end: number } | null>(null);
+  const { data: hashtagSuggestions } = useHashtagSuggestions(activeHashtagToken?.query ?? "");
 
   const isPublishing = createPost.isPending || uploading;
   const canPublish = isDraftPublishable(draft) && !isPublishing;
@@ -122,6 +127,25 @@ export default function PostComposerModal({
   const autoGrow = (el: HTMLTextAreaElement) => {
     el.style.height = "auto";
     el.style.height = `${Math.min(el.scrollHeight, 240)}px`;
+  };
+
+  const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const value = e.target.value.slice(0, MAX_TEXT_LENGTH);
+    const cursorPos = e.target.selectionStart;
+    setDraft((d) => ({ ...d, text: value }));
+    autoGrow(e.target);
+
+    const uptoCursor = value.slice(0, cursorPos);
+    const match = uptoCursor.match(/#([\p{L}\p{N}_]{1,30})$/u);
+    setActiveHashtagToken(match ? { query: match[1], start: cursorPos - match[0].length, end: cursorPos } : null);
+  };
+
+  const applyHashtagSuggestion = (slug: string) => {
+    if (!activeHashtagToken) return;
+    const { start, end } = activeHashtagToken;
+    setDraft((d) => ({ ...d, text: `${d.text.slice(0, start)}#${slug} ${d.text.slice(end)}`.slice(0, MAX_TEXT_LENGTH) }));
+    setActiveHashtagToken(null);
+    requestAnimationFrame(() => textareaRef.current?.focus());
   };
 
   /** Só 1 attachment estruturado por vez — troca pede confirmação simples se já existir um diferente (item 54). */
@@ -192,14 +216,12 @@ export default function PostComposerModal({
                 <p className="font-semibold text-slate-800 text-sm">{user?.firstName || "Você"}</p>
               </div>
 
-              <div>
+              <div className="relative">
                 <textarea
                   ref={textareaRef}
                   value={draft.text}
-                  onChange={(e) => {
-                    setDraft((d) => ({ ...d, text: e.target.value.slice(0, MAX_TEXT_LENGTH) }));
-                    autoGrow(e.target);
-                  }}
+                  onChange={handleTextChange}
+                  onBlur={() => setTimeout(() => setActiveHashtagToken(null), 150)}
                   placeholder="No que você está pensando?"
                   rows={3}
                   autoFocus
@@ -209,6 +231,22 @@ export default function PostComposerModal({
                   <p className={`text-xs text-right mt-1 ${draft.text.length >= MAX_TEXT_LENGTH ? "text-red-500" : "text-slate-400"}`}>
                     {draft.text.length}/{MAX_TEXT_LENGTH}
                   </p>
+                )}
+                {activeHashtagToken && !!hashtagSuggestions?.hashtags.length && (
+                  <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden z-10">
+                    {hashtagSuggestions.hashtags.map((h) => (
+                      <button
+                        key={h.slug}
+                        type="button"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => applyHashtagSuggestion(h.slug)}
+                        className="w-full flex items-center justify-between gap-2 px-3 py-2 text-sm hover:bg-slate-50"
+                      >
+                        <span className="text-[#007BFF] font-medium">#{h.slug}</span>
+                        {h.postCount > 0 && <span className="text-xs text-slate-400">{h.postCount} posts</span>}
+                      </button>
+                    ))}
+                  </div>
                 )}
               </div>
 

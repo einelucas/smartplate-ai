@@ -112,6 +112,46 @@ export function safeParse<T = any>(value: string | null): T | null {
   }
 }
 
+// ─── Adesão ao plano ────────────────────────────────────────────────────────
+// Definição ÚNICA e oficial de "adesão": refeições concluídas / refeições
+// planejadas, somado por todos os dias do plano. Reutilizada pelo Perfil e
+// pelos insights de atividade (checklist Parte J, item 32) — nunca outro
+// cálculo de adesão em paralelo.
+
+export interface AdherenceMealSlot {
+  completed?: boolean;
+}
+
+export interface AdherencePlanDay {
+  breakfast: AdherenceMealSlot | null;
+  lunch: AdherenceMealSlot | null;
+  dinner: AdherenceMealSlot | null;
+  snacks: AdherenceMealSlot[] | null;
+}
+
+export function calculateMealAdherence(days: AdherencePlanDay[] | undefined): { completed: number; total: number; percentage: number } {
+  if (!days || days.length === 0) return { completed: 0, total: 0, percentage: 0 };
+  let total = 0;
+  let completed = 0;
+  for (const day of days) {
+    for (const slot of [day.breakfast, day.lunch, day.dinner]) {
+      if (slot) {
+        total += 1;
+        if (slot.completed) completed += 1;
+      }
+    }
+    if (Array.isArray(day.snacks)) {
+      for (const snack of day.snacks) {
+        if (snack) {
+          total += 1;
+          if (snack.completed) completed += 1;
+        }
+      }
+    }
+  }
+  return { completed, total, percentage: total > 0 ? Math.round((completed / total) * 100) : 0 };
+}
+
 /**
  * Extrai e parseia o JSON retornado pela IA, tratando markdown fences.
  */

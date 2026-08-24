@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { createActivityLogSchema } from "@/lib/activity/validation";
 import { ACTIVITY_TYPE_VALUES } from "@/lib/activity/options";
 import { recordActivityLog } from "@/lib/community/gamification";
+import { checkActivityGoalCompletions } from "@/lib/activity/goals";
 
 export async function GET(request: Request) {
   const { userId } = await auth();
@@ -72,6 +73,10 @@ export async function POST(request: Request) {
         durationMin: activity.durationMin,
         performedAt: activity.performedAt,
       });
+
+      // Metas de atividade são pessoais/opcionais — nunca afetam XP/streak
+      // geral acima; só registram (idempotente) que a meta foi atingida.
+      await checkActivityGoalCompletions(tx, userId, socialProfile?.timezone);
 
       return { activity, gamification };
     });

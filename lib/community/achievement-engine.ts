@@ -93,6 +93,10 @@ interface RawStats {
   // Desafios
   challengeJoinedCount: number;
   challengeCompletedCount: number;
+  // Metas de atividade (lib/activity/goals.ts) — true assim que QUALQUER
+  // meta semanal foi atingida ao menos uma vez (evento idempotente
+  // "ACTIVITY_GOAL_MET" em XpEvent, gravado por checkActivityGoalCompletions).
+  personalGoalReached: boolean;
 }
 
 interface MealSlot {
@@ -166,6 +170,7 @@ async function getRawStats(userId: string): Promise<RawStats> {
     dailyActivities,
     challengeJoinedCount,
     challengeCompletedCount,
+    activityGoalMetEventCount,
   ] = await Promise.all([
     prisma.profile.findUnique({ where: { userId }, select: { onboardingCompletedAt: true, dietType: true } }),
     prisma.userPreferences.findUnique({ where: { userId }, select: { dietGoal: true } }),
@@ -192,6 +197,7 @@ async function getRawStats(userId: string): Promise<RawStats> {
     }),
     prisma.challengeParticipant.count({ where: { userId } }),
     prisma.challengeParticipant.count({ where: { userId, completedAt: { not: null } } }),
+    prisma.xpEvent.count({ where: { userId, eventType: "ACTIVITY_GOAL_MET" } }),
   ]);
 
   const timezone = socialProfile?.timezone;
@@ -286,6 +292,7 @@ async function getRawStats(userId: string): Promise<RawStats> {
     balancedWeeksCount,
     challengeJoinedCount,
     challengeCompletedCount,
+    personalGoalReached: activityGoalMetEventCount > 0,
   };
 }
 
@@ -366,6 +373,8 @@ function computeProgress(code: string, target: number, stats: RawStats): { progr
       return count(stats.challengeJoinedCount);
     case "FIRST_CHALLENGE_COMPLETED":
       return count(stats.challengeCompletedCount);
+    case "PERSONAL_GOAL_REACHED":
+      return bool(stats.personalGoalReached);
     default:
       return { progress: 0, achieved: false };
   }

@@ -15,15 +15,17 @@ import {
   Flame,
   Target,
   UtensilsCrossed,
+  EyeOff,
 } from "lucide-react";
 import { ThumbsUpIcon, FireIcon, HandsClappingIcon, BarbellIcon, TrophyIcon, type Icon } from "@phosphor-icons/react";
-import { useBlockUser, useDeletePost, useToggleReaction, useUpdatePost } from "@/hooks/useCommunity";
+import { useBlockUser, useDeletePost, useMarkNotInterested, useToggleReaction, useUpdatePost } from "@/hooks/useCommunity";
 import { formatRelativeTime } from "@/lib/community/dates";
 import { resolveIcon } from "@/components/icon-registry";
 import { ACTIVITY_TYPE_ICON_KEY, findActivityIntensityLabel, findActivityTypeLabel } from "@/lib/activity/options";
 import type { CommunityPostSummary } from "@/types/community";
 import CommentSection from "./CommentSection";
 import ExternalProviderBadge from "./ExternalProviderBadge";
+import HashtagText from "./HashtagText";
 
 const ReportModal = dynamic(() => import("./ReportModal"), { ssr: false });
 const ImageViewerDialog = dynamic(() => import("./ImageViewerDialog"), { ssr: false });
@@ -91,6 +93,7 @@ export default function PostCard({
   const deletePost = useDeletePost(groupId);
   const updatePost = useUpdatePost(groupId);
   const blockUser = useBlockUser();
+  const markNotInterested = useMarkNotInterested(groupId);
 
   return (
     <motion.div
@@ -143,6 +146,15 @@ export default function PostCard({
                 </>
               ) : (
                 <>
+                  <button
+                    onClick={() => {
+                      setShowMenu(false);
+                      markNotInterested.mutate(post.id);
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50"
+                  >
+                    <EyeOff size={14} /> Não tenho interesse
+                  </button>
                   <button
                     onClick={() => {
                       setShowMenu(false);
@@ -276,7 +288,11 @@ function PostBody({
         <Flame className="text-orange-500 flex-shrink-0" size={28} />
         <div>
           <p className="font-bold text-slate-800 text-sm">{milestone} dias de consistência!</p>
-          {post.text && <p className="text-xs text-slate-500 mt-0.5">{post.text}</p>}
+          {post.text && (
+            <p className="text-xs text-slate-500 mt-0.5">
+              <HashtagText text={post.text} />
+            </p>
+          )}
         </div>
       </div>
     );
@@ -295,7 +311,11 @@ function PostBody({
     const { shareToken, planName, dietType } = (post.metadata ?? {}) as PlanShareMetadata;
     return (
       <div>
-        {post.text && <p className="text-slate-600 text-sm mb-3">{post.text}</p>}
+        {post.text && (
+          <p className="text-slate-600 text-sm mb-3">
+            <HashtagText text={post.text} />
+          </p>
+        )}
         <Link
           href={shareToken ? `/shared/${shareToken}` : "#"}
           target="_blank"
@@ -344,7 +364,11 @@ function PostBody({
             <FireIcon size={14} weight="fill" /> +{meta.xpAwarded} XP
           </p>
         )}
-        {post.text && <p className="text-sm text-slate-700 mt-2">{post.text}</p>}
+        {post.text && (
+          <p className="text-sm text-slate-700 mt-2">
+            <HashtagText text={post.text} />
+          </p>
+        )}
         {meta.imageUrl && (
           <div className="mt-3">
             <PostImage src={meta.imageUrl} onOpen={() => setViewerSrc(meta.imageUrl!)} />
@@ -359,7 +383,11 @@ function PostBody({
     const meta = (post.metadata ?? {}) as ExternalShareMetadata;
     return (
       <div className="border border-slate-100 rounded-xl overflow-hidden">
-        {post.text && <p className="text-slate-700 text-sm whitespace-pre-wrap break-words p-3 pb-0">{post.text}</p>}
+        {post.text && (
+          <p className="text-slate-700 text-sm whitespace-pre-wrap break-words p-3 pb-0">
+            <HashtagText text={post.text} />
+          </p>
+        )}
         {meta.imageUrl && <PostImage src={meta.imageUrl} onOpen={() => setViewerSrc(meta.imageUrl!)} />}
         <div className="p-3 flex items-center justify-between gap-2">
           <ExternalProviderBadge provider={meta.provider} />
@@ -384,7 +412,11 @@ function PostBody({
   const { imageUrl } = (post.metadata ?? {}) as TextMetadata;
   return (
     <div>
-      {post.text && <p className="text-slate-700 text-sm whitespace-pre-wrap break-words">{post.text}</p>}
+      {post.text && (
+        <p className="text-slate-700 text-sm whitespace-pre-wrap break-words">
+          <HashtagText text={post.text} />
+        </p>
+      )}
       {imageUrl && (
         <div className={post.text ? "mt-3" : ""}>
           <PostImage src={imageUrl} onOpen={() => setViewerSrc(imageUrl)} />

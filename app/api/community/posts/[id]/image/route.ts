@@ -8,11 +8,10 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { isBlockedEitherWay, requireGroupMembership } from "@/lib/community/authz";
 import { streamPrivateImage } from "@/lib/storage/blob";
+import { IMAGE_CAPABLE_TYPES } from "@/lib/community/feed-items";
 
 type Params = { params: Promise<{ id: string }> };
 type PostImageMetadata = { imageUrl?: string | null };
-
-const IMAGE_CAPABLE_TYPES = new Set(["TEXT", "ACTIVITY", "EXTERNAL_SHARE", "ACHIEVEMENT", "PLAN_SHARE"]);
 
 export async function GET(_request: Request, context: Params) {
   const { userId } = await auth();

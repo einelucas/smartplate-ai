@@ -71,3 +71,11 @@ export const ACTIVITY_XP_DURATION_BONUS_THRESHOLD_MIN = 30;
 export const ACTIVITY_XP_FIRST_OF_DAY_BONUS = 5;
 /** Teto diário de XP vindo especificamente de ActivityLog (não inclui XP de desafio/conquista). */
 export const ACTIVITY_XP_DAILY_CAP = 40;
+
+// ─── Metas de atividade (lib/activity/goals.ts) ────────────────────────────
+
+export const ACTIVITY_GOAL_METRIC_LABELS: Record<"ACTIVE_DAYS" | "ACTIVITY_MINUTES" | "ACTIVITY_COUNT", string> = {
+  ACTIVE_DAYS: "dias ativos",
+  ACTIVITY_MINUTES: "minutos ativos",
+  ACTIVITY_COUNT: "atividades",
+};

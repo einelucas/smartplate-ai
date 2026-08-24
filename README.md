@@ -33,7 +33,10 @@ Além da geração do plano, o sistema mantém histórico, cria listas de compra
 - Webhooks para ativação, falha de pagamento e cancelamento
 - Proteção das áreas de plano e perfil conforme autenticação e assinatura
 - Comunidade real com feed, amigos, grupos, desafios, ranking semanal e gamificação (streak/XP/conquistas)
+- Hashtags como interesse explícito (seguir/deixar de seguir), com página de descoberta por hashtag
+- Feed "Para você" (heurística determinística, sem machine learning) e "Amigos" na comunidade geral
 - Moderação de conteúdo gerado por usuários (denúncias, bloqueios, painel de moderação)
+- Card de plano/assinatura acessível pelo Perfil (mobile incluído) e resgate de Código Beta fora do onboarding
 
 ## Tecnologias
 
@@ -178,11 +181,26 @@ Solicitação, aceite, recusa, cancelamento e remoção via `Friendship`, com pa
 
 Posts (`CommunityPost`: `TEXT`, `ACHIEVEMENT`, `STREAK`, `CHALLENGE`, `PLAN_SHARE`), reações (`CommunityReaction`, uma por tipo por usuário) e comentários (`CommunityComment`) com paginação por cursor. `PLAN_SHARE` reaproveita `SharedPlan`/`POST /api/meal-plans/[id]/share` (com página de leitura pública em `/shared/[token]`), validando que o plano pertence a quem publica. Antes do primeiro post/comentário, o usuário aceita as Regras da Comunidade (`/community/rules`). Denúncias (`ContentReport`) cobrem posts, comentários e usuários; `Profile.role` (`USER`/`MODERATOR`/`ADMIN`) controla acesso ao painel `/community/moderation`, onde é possível ocultar posts, excluir comentários e resolver denúncias.
 
+### Hashtags e Feed Para Você
+
+Hashtags (`#corrida`) são extraídas do texto do post **no backend** (frontend só detecta pra UX), normalizadas (minúsculo, sem acento, sem `#`), deduplicadas e limitadas a 5 por publicação (`lib/community/hashtags.ts`). Cada uma vira um `Hashtag` (upsert por `slug`) ligado ao post via `PostHashtag`; editar o texto recalcula as relações (remove o que sumiu, adiciona o novo). Seguir uma hashtag (`UserHashtagFollow`) é sempre uma ação explícita — usar a hashtag num post nunca segue automaticamente. Página de descoberta em `/community/hashtag/[slug]`.
+
+O feed geral tem duas abas: **Amigos** (eu + amizades `ACCEPTED`, cronológico) e **Para você**, uma heurística determinística e documentada — **sem machine learning, embeddings ou modelo externo** — que pontua uma janela limitada de posts recentes (amigos, hashtags seguidas, mesmos grupos, geral) por sinais sociais (amizade, grupo, hashtag seguida, interação anterior com o autor, engajamento, recência) e ordena/pagina no backend (`lib/community/feed-ranking.ts`). Nunca usa dado de saúde privado, dados do Strava ou status Premium/Free como sinal. "Não tenho interesse" (`PostFeedFeedback`) remove um post do próprio Feed Para Você sem denunciar, bloquear ou afetar amizade. A arquitetura (`calculateFeedScore`) foi desenhada para receber novos sinais no futuro sem reescrever as rotas.
+
 ### Limitações conhecidas (próxima fase)
 
 - Ranking semanal usa uma janela UTC única para todos os usuários (não ajustada por timezone individual).
 - `DayPlan.completed` não reseta diariamente — planos totalmente concluídos podem pausar novas transições de streak até gerar um novo plano.
-- Sem chat privado, stories, feed algorítmico ou ligas — fora de escopo do MVP.
+- Feed Para Você ranqueia sobre uma janela limitada de candidatos recentes (não o histórico inteiro) — é heurístico, não a versão final do algoritmo.
+- Sem chat privado, stories, ligas, trending completo ou qualquer recomendação por machine learning — fora de escopo do MVP.
+
+### Dashboard, metas e insights de atividade
+
+Só `ActivityLog` com `source: MANUAL` entra em métricas oficiais, metas, conquistas e insights (atividade sincronizada de provider externo nunca conta). Toda métrica (atividades/minutos/dias ativos/tipo mais praticado do mês, resumo semanal) passa por um único serviço central (`lib/activity/stats.ts`) — nunca recalculada de outra forma no Perfil ou no Início.
+
+Metas semanais (`ActivityGoal`: dias ativos, minutos ativos ou quantidade de atividades) são sempre escolhidas pelo usuário — o sistema nunca cria uma meta "ideal" automaticamente. O progresso nunca é persistido: é sempre recalculado a partir do `ActivityLog` real. A "sequência de semanas ativas" (`lib/activity/goals.ts`) é um conceito próprio, **nunca** o streak geral do SmartPlate — uma meta não atingida numa semana jamais quebra `UserGamification.currentStreak`. A primeira meta semanal atingida desbloqueia a conquista já existente `PERSONAL_GOAL_REACHED` (reaproveitada do catálogo, antes `COMING_SOON`).
+
+Insights privados (`/profile`, nunca publicados na Comunidade) combinam estatísticas determinísticas (semana mais ativa dos últimos 3 meses, consistência nas últimas 8 semanas, evolução mês a mês, relação descritiva — nunca causal — entre atividade e adesão alimentar) com 1-3 frases geradas por IA a partir de um contexto agregado mínimo (`lib/activity/insights.ts`) — nunca dados do Strava, peso, fotos, notas, e-mail, username ou qualquer dado médico. A IA nunca é chamada a cada render: o resultado é cacheado por usuário/semana (`ActivityInsight.dataHash`) e, se a IA falhar, os mesmos insights determinísticos aparecem no lugar — a seção nunca quebra.
 
 ## Principais modelos de dados
 
@@ -199,7 +217,12 @@ Posts (`CommunityPost`: `TEXT`, `ACHIEVEMENT`, `STREAK`, `CHALLENGE`, `PLAN_SHAR
 - `CommunityGroup` e `GroupMember`: grupos e papéis
 - `Challenge` e `ChallengeParticipant`: desafios e progresso
 - `CommunityPost`, `CommunityReaction` e `CommunityComment`: feed
+- `Hashtag`, `PostHashtag` e `UserHashtagFollow`: hashtags e interesse explícito
+- `PostFeedFeedback`: sinais de recomendação do Feed Para Você (ex.: "não tenho interesse")
+- `ActivityGoal`: metas semanais pessoais de atividade (dias/minutos/quantidade)
+- `ActivityInsight`: cache semanal dos insights privados de atividade (determinísticos + IA)
 - `ContentReport`: denúncias e moderação
+- `PremiumGrant` e `BetaCode`: acesso Premium concedido fora do Stripe (Código Beta)
 
 ## Status
 

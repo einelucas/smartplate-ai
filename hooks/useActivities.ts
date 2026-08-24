@@ -18,8 +18,8 @@ export interface ActivityLogEntry {
 }
 
 export interface ActivitySummary {
-  thisWeek: { count: number; minutes: number };
-  thisMonth: { count: number; minutes: number; distinctDays: number };
+  thisWeek: { count: number; minutes: number; distinctDays: number };
+  thisMonth: { count: number; minutes: number; distinctDays: number; mostPracticed: { type: string; count: number } | null };
   lastActivity: {
     activityType: string;
     customActivityName: string | null;
@@ -44,6 +44,7 @@ const SUMMARY_KEY = ["activities", "summary"];
 
 function invalidateActivityRelated(queryClient: QueryClient) {
   queryClient.invalidateQueries({ queryKey: ACTIVITIES_KEY });
+  queryClient.invalidateQueries({ queryKey: SUMMARY_KEY });
   queryClient.invalidateQueries({ queryKey: ["community", "gamification"] });
   queryClient.invalidateQueries({ queryKey: ["achievements"] });
   queryClient.invalidateQueries({ queryKey: ["community", "me"] });
@@ -51,6 +52,10 @@ function invalidateActivityRelated(queryClient: QueryClient) {
   // servidor) — a lista de desafios/notificações precisa refletir isso.
   queryClient.invalidateQueries({ queryKey: ["community", "challenges"] });
   queryClient.invalidateQueries({ queryKey: ["notifications"] });
+  // Pode completar uma meta semanal (progresso e "sequência de semanas
+  // ativas" recalculados no servidor) e mudar os insights determinísticos.
+  queryClient.invalidateQueries({ queryKey: ["activity-goals"] });
+  queryClient.invalidateQueries({ queryKey: ["activity-insights"] });
 }
 
 export function useActivities() {

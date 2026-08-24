@@ -12,9 +12,11 @@ import Link from "next/link";
 import StatCard from "./StatCard";
 import AdherenceRing from "./AdherenceRing";
 import ChartSkeleton from "./skeletons/ChartSkeleton";
+import MealTypeIcon, { type MealType } from "./MealTypeIcon";
 import { useActivitySummary } from "@/hooks/useActivities";
 import { useActivityHistory } from "@/hooks/useActivityHistory";
-import { ACTIVITY_TYPE_ICON_KEY } from "@/lib/activity/options";
+import { useActivityGoals } from "@/hooks/useActivityGoals";
+import { ACTIVITY_TYPE_ICON_KEY, ACTIVITY_GOAL_METRIC_LABELS } from "@/lib/activity/options";
 import { resolveIcon } from "@/components/icon-registry";
 
 // recharts é pesado e a atividade só abre sob clique — ambos tirados do
@@ -25,6 +27,7 @@ const RegisterActivityModal = dynamic(() => import("./RegisterActivityModal"), {
 const DAY_ORDER = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 const MEAL_TIMES: Record<string, string> = { breakfast: "07:30", lunch: "12:30", snack: "15:30", dinner: "19:30" };
 const MEAL_LABELS: Record<string, string> = { breakfast: "Café da Manhã", lunch: "Almoço", snack: "Lanche", dinner: "Jantar" };
+const MEAL_TYPE_BY_KEY: Record<string, MealType> = { breakfast: "BREAKFAST", lunch: "LUNCH", snack: "SNACK", dinner: "DINNER" };
 
 export default function HomeDashboard() {
   const { user } = useUser();
@@ -32,6 +35,8 @@ export default function HomeDashboard() {
   const [showActivityModal, setShowActivityModal] = useState(false);
   const { data: activitySummary } = useActivitySummary();
   const { manualItems, externalItems } = useActivityHistory();
+  const { data: goalsData } = useActivityGoals();
+  const primaryGoal = goalsData?.goals.find((g) => g.isActive) ?? null;
 
   const today = new Date();
   const hour = today.getHours();
@@ -227,19 +232,19 @@ export default function HomeDashboard() {
                       }`}
                       onClick={() => toggleMealMutation.mutate({ mealType: meal.key, snackIndex: meal.snackIndex, completed: !done })}
                     >
-                      <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center text-3xl shadow-sm border border-slate-100 flex-shrink-0">
-                        {meal.emoji || "🍽️"}
+                      <div className="w-9 h-9 sm:w-12 sm:h-12 bg-[#007BFF]/10 rounded-xl flex items-center justify-center flex-shrink-0">
+                        <MealTypeIcon type={MEAL_TYPE_BY_KEY[meal.key] ?? "SNACK"} className="w-4.5 h-4.5 sm:w-6 sm:h-6 text-[#007BFF]" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">{MEAL_LABELS[meal.key]}</p>
+                        <p className="text-xs font-medium text-slate-400 uppercase tracking-wide truncate">{MEAL_LABELS[meal.key]}</p>
                         <h4 className="font-semibold text-slate-800 truncate">{meal.name}</h4>
                         <div className="flex items-center gap-3 mt-1">
-                          <span className="text-sm text-slate-500">{meal.calories} kcal</span>
+                          <span className="text-sm text-slate-500 whitespace-nowrap">{meal.calories} kcal</span>
                           <span className="text-slate-300">•</span>
-                          <span className="text-sm text-slate-500">{MEAL_TIMES[meal.key]}</span>
+                          <span className="text-sm text-slate-500 whitespace-nowrap">{MEAL_TIMES[meal.key]}</span>
                         </div>
                       </div>
-                      <div className="flex items-center gap-3 flex-shrink-0">
+                      <div className="hidden sm:flex items-center gap-3 flex-shrink-0">
                         <div className="flex">
                           {[...Array(5)].map((_, j) => (
                             <Star key={j} size={14} className={j < (meal.rating || 0) ? "fill-amber-400 text-amber-400" : "text-slate-200"} />
@@ -248,6 +253,9 @@ export default function HomeDashboard() {
                         <div className={`w-8 h-8 rounded-full flex items-center justify-center ${done ? "bg-[#28A745]" : "bg-slate-200"}`}>
                           {done ? <span className="text-white text-xs">✓</span> : <span className="text-slate-400 text-xs">○</span>}
                         </div>
+                      </div>
+                      <div className={`flex sm:hidden w-7 h-7 rounded-full items-center justify-center flex-shrink-0 ${done ? "bg-[#28A745]" : "bg-slate-200"}`}>
+                        {done ? <span className="text-white text-[10px]">✓</span> : <span className="text-slate-400 text-[10px]">○</span>}
                       </div>
                     </motion.div>
                   );
@@ -291,9 +299,41 @@ export default function HomeDashboard() {
           {/* Atividade física */}
           <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
             <h3 className="font-bold text-slate-800 mb-4">Atividade</h3>
-            <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Esta semana no SmartPlate</p>
-            <p className="text-2xl font-bold text-slate-800 mt-1">{activitySummary?.thisWeek.count ?? 0} atividades</p>
-            <p className="text-sm text-slate-500">{activitySummary?.thisWeek.minutes ?? 0} min ativos</p>
+            <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Esta semana</p>
+            <p className="text-sm text-slate-600 mt-1">
+              {activitySummary?.thisWeek.distinctDays ?? 0} {(activitySummary?.thisWeek.distinctDays ?? 0) === 1 ? "dia" : "dias"} •{" "}
+              {activitySummary?.thisWeek.minutes ?? 0} min • {activitySummary?.thisWeek.count ?? 0}{" "}
+              {(activitySummary?.thisWeek.count ?? 0) === 1 ? "atividade" : "atividades"}
+            </p>
+
+            <div className="mt-4 pt-4 border-t border-slate-100">
+              {primaryGoal ? (
+                <>
+                  <div className="flex items-center justify-between mb-1.5 gap-2">
+                    <span className="text-xs font-medium text-slate-400 uppercase tracking-wide truncate">
+                      Meta de {ACTIVITY_GOAL_METRIC_LABELS[primaryGoal.metric]}
+                    </span>
+                    <span className="text-xs font-semibold text-slate-600 flex-shrink-0">
+                      {primaryGoal.progress.current} / {primaryGoal.progress.target}
+                    </span>
+                  </div>
+                  <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-[#007BFF] to-[#28A745] rounded-full transition-all"
+                      style={{ width: `${primaryGoal.progress.percentage}%` }}
+                    />
+                  </div>
+                </>
+              ) : (
+                <div>
+                  <p className="text-sm font-medium text-slate-700">Meta semanal</p>
+                  <p className="text-xs text-slate-500 mt-1">Defina uma meta de atividade para acompanhar sua semana.</p>
+                  <Link href="/profile" className="inline-block mt-2 text-xs font-semibold text-[#007BFF]">
+                    Criar meta →
+                  </Link>
+                </div>
+              )}
+            </div>
 
             {(manualItems[0] || externalItems[0]) && (
               <div className="mt-4 pt-4 border-t border-slate-100 space-y-2.5">

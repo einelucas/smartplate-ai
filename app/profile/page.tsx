@@ -9,16 +9,19 @@ import dynamic from "next/dynamic";
 import { Toaster } from "react-hot-toast";
 import { useRouter } from "next/navigation";
 import { Spinner } from "@/components/spinner";
-import { Camera, Scale, Ruler, Target, LogOut, Edit, Flame, Star, Trophy, Plug } from "lucide-react";
+import { Camera, Scale, Ruler, Target, LogOut, Edit, Flame, Star, Trophy, Plug, Sparkles } from "lucide-react";
 import AdherenceRing from "@/components/AdherenceRing";
 import ChartSkeleton from "@/components/skeletons/ChartSkeleton";
 import ProfileSkeleton from "@/components/skeletons/ProfileSkeleton";
 import BeforeAfterSection from "@/components/BeforeAfterSection";
-import BetaTesterBadge from "@/components/BetaTesterBadge";
+import PlanSubscriptionCard from "@/components/PlanSubscriptionCard";
 import AchievementsSummaryCard from "@/components/AchievementsSummaryCard";
 import ActivitySummaryCard from "@/components/ActivitySummaryCard";
+import ActivityGoalsCard from "@/components/ActivityGoalsCard";
+import ActivityInsightsCard from "@/components/ActivityInsightsCard";
 import { useProfile } from "@/hooks/useProfile";
 import { formatHeightMeters, findLabel, DIET_GOALS, DIET_TYPES, COOKING_LEVELS, BUDGET_LEVELS } from "@/lib/profile/options";
+import { calculateMealAdherence } from "@/lib/mealplan";
 
 const WeightChart = dynamic(() => import("@/components/WeightChart"), { ssr: false, loading: () => <ChartSkeleton /> });
 const EditProfileModal = dynamic(() => import("@/components/EditProfileModal"), { ssr: false });
@@ -27,40 +30,6 @@ interface WeightLog {
   id: string;
   weight: number;
   date: string;
-}
-
-interface MealSlot {
-  completed?: boolean;
-}
-
-interface PlanDay {
-  breakfast: MealSlot | null;
-  lunch: MealSlot | null;
-  dinner: MealSlot | null;
-  snacks: MealSlot[] | null;
-}
-
-function calculateAdherence(days: PlanDay[] | undefined): { completed: number; total: number; percentage: number } {
-  if (!days || days.length === 0) return { completed: 0, total: 0, percentage: 0 };
-  let total = 0;
-  let completed = 0;
-  for (const day of days) {
-    for (const slot of [day.breakfast, day.lunch, day.dinner]) {
-      if (slot) {
-        total += 1;
-        if (slot.completed) completed += 1;
-      }
-    }
-    if (Array.isArray(day.snacks)) {
-      for (const snack of day.snacks) {
-        if (snack) {
-          total += 1;
-          if (snack.completed) completed += 1;
-        }
-      }
-    }
-  }
-  return { completed, total, percentage: total > 0 ? Math.round((completed / total) * 100) : 0 };
 }
 
 export default function ProfilePage() {
@@ -120,7 +89,7 @@ export default function ProfilePage() {
   const userHeight = physicalData?.height;
 
   const latestPlan = plansData?.plans?.[0] ?? null;
-  const adherence = calculateAdherence(latestPlan?.days);
+  const adherence = calculateMealAdherence(latestPlan?.days);
   const favoriteCount = favoritePlansData?.plans?.length ?? 0;
 
   const formattedWeightLogs = weightLogs.map((log) => ({
@@ -240,7 +209,7 @@ export default function ProfilePage() {
             )}
           </div>
 
-          <BetaTesterBadge />
+          <PlanSubscriptionCard />
 
           {/* Preferências */}
           <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
@@ -309,13 +278,19 @@ export default function ProfilePage() {
               <h3 className="font-semibold text-slate-800">Configurações</h3>
             </div>
             <div className="p-2">
-              <Link href="/profile/connected-apps" className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 transition-colors">
+              <Link href="/profile/connected-apps" className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 transition-colors min-h-[44px]">
                 <div className="w-9 h-9 bg-[#007BFF]/10 rounded-lg flex items-center justify-center flex-shrink-0">
                   <Plug size={16} className="text-[#007BFF]" />
                 </div>
                 <span className="text-sm font-medium text-slate-700 flex-1 text-left">Apps conectados</span>
               </Link>
-              <button onClick={handleSignOut} className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-red-50 transition-colors">
+              <Link href="/subscribe" className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 transition-colors min-h-[44px]">
+                <div className="w-9 h-9 bg-amber-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <Sparkles size={16} className="text-amber-500" />
+                </div>
+                <span className="text-sm font-medium text-slate-700 flex-1 text-left">Plano e assinatura</span>
+              </Link>
+              <button onClick={handleSignOut} className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-red-50 transition-colors min-h-[44px]">
                 <div className="w-9 h-9 bg-red-100 rounded-lg flex items-center justify-center flex-shrink-0">
                   <LogOut size={16} className="text-red-500" />
                 </div>
@@ -385,6 +360,8 @@ export default function ProfilePage() {
           </div>
 
           <ActivitySummaryCard />
+          <ActivityGoalsCard />
+          <ActivityInsightsCard />
 
           {/* Registrar novo peso */}
           <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">

@@ -8,7 +8,9 @@ import { useMutation } from "@tanstack/react-query";
 import { availablePlans } from "@/lib/plans";
 import toast, { Toaster } from "react-hot-toast";
 import { motion } from "framer-motion";
-import { Check, Sparkles, Zap, Star, Crown } from "lucide-react";
+import { Check, Sparkles, Zap, Star, Crown, FlaskConical } from "lucide-react";
+import { useSubscriptionStatus } from "@/hooks/useSubscriptionStatus";
+import BetaPlanSection from "@/components/BetaPlanSection";
 
 const planStyle: Record<string, { icon: typeof Zap; color: string; badge?: string; highlight?: boolean }> = {
   semana: { icon: Zap, color: "from-blue-400 to-blue-600" },
@@ -41,6 +43,35 @@ const subscribeToPlan = async ({
 
   return res.json();
 };
+
+function formatExpiryDate(iso: string): string {
+  return new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+function CurrentPlanBanner() {
+  const { data } = useSubscriptionStatus();
+  if (!data?.premium.isPremium) return null;
+
+  const isBeta = data.premium.source === "BETA_CODE";
+
+  return (
+    <div
+      className={`max-w-md mx-auto mb-8 rounded-2xl border p-4 flex items-center gap-3 text-left ${
+        isBeta ? "bg-gradient-to-br from-[#28A745]/10 to-[#007BFF]/10 border-[#28A745]/30" : "bg-[#007BFF]/5 border-[#007BFF]/20"
+      }`}
+    >
+      {isBeta ? <FlaskConical size={20} className="text-[#28A745] flex-shrink-0" /> : <Sparkles size={20} className="text-[#007BFF] flex-shrink-0" />}
+      <div className="min-w-0">
+        <p className="text-sm font-semibold text-slate-800">{isBeta ? "SmartPlate Premium Beta" : "SmartPlate Premium"}</p>
+        <p className="text-xs text-slate-500">
+          {isBeta && data.premium.expiresAt
+            ? `Acesso até ${formatExpiryDate(data.premium.expiresAt)}`
+            : "Sua assinatura está ativa — obrigado por fazer parte do SmartPlate."}
+        </p>
+      </div>
+    </div>
+  );
+}
 
 export default function SubscribePage() {
   const { user } = useUser();
@@ -94,6 +125,9 @@ export default function SubscribePage() {
           Planos flexíveis para você atingir seus objetivos com saúde e praticidade.
         </p>
       </div>
+
+      <CurrentPlanBanner />
+      <BetaPlanSection />
 
       {/* Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">

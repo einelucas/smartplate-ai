@@ -11,9 +11,12 @@ import type {
   ChallengeSummary,
   CommunityCommentSummary,
   CommunityPostSummary,
+  FeedTab,
   FriendEntry,
   GroupMemberEntry,
   GroupSummary,
+  HashtagDetail,
+  HashtagSuggestion,
   ModerationReportEntry,
   RankingEntry,
   RankingPeriod,
@@ -33,8 +36,14 @@ async function apiFetch<T = any>(url: string, init?: RequestInit): Promise<T> {
 
 const keys = {
   me: ["community", "me"] as const,
-  feed: (groupId?: string) => ["community", "feed", groupId ?? "global"] as const,
+  // Prefixo — invalidar isto cobre TODAS as abas (chronological/for-you/
+  // friends) de um mesmo destino (comunidade geral ou um grupo específico).
+  feedGroup: (groupId?: string) => ["community", "feed", groupId ?? "global"] as const,
+  feed: (groupId?: string, tab: FeedTab = "chronological") => ["community", "feed", groupId ?? "global", tab] as const,
   comments: (postId: string) => ["community", "comments", postId] as const,
+  hashtagSuggestions: (q: string) => ["community", "hashtag-suggestions", q] as const,
+  hashtag: (slug: string) => ["community", "hashtag", slug] as const,
+  hashtagPosts: (slug: string) => ["community", "hashtag-posts", slug] as const,
   search: (q: string) => ["community", "search", q] as const,
   friends: ["community", "friends"] as const,
   blocks: ["community", "blocks"] as const,
@@ -83,12 +92,15 @@ export function useAcceptCommunityTerms() {
 
 // ─── Feed / posts / reações / comentários ──────────────────────────────────
 
-export function useCommunityFeed(groupId?: string) {
+export function useCommunityFeed(groupId?: string, tab: FeedTab = "chronological") {
   return useInfiniteQuery({
-    queryKey: keys.feed(groupId),
+    queryKey: keys.feed(groupId, tab),
     queryFn: ({ pageParam }: { pageParam?: string }) => {
       const params = new URLSearchParams();
       if (groupId) params.set("groupId", groupId);
+      // `tab` só é enviado pra comunidade geral — grupo é sempre cronológico
+      // (ver app/api/community/feed/route.ts).
+      if (!groupId && tab !== "chronological") params.set("tab", tab);
       if (pageParam) params.set("cursor", pageParam);
       return apiFetch<{ items: CommunityPostSummary[]; nextCursor: string | null }>(
         `/api/community/feed?${params.toString()}`
@@ -119,7 +131,7 @@ export function useCreatePost(groupId?: string) {
       groupId?: string;
     }) => apiFetch("/api/community/posts", { method: "POST", body: JSON.stringify({ ...input, groupId: input.groupId ?? groupId }) }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: keys.feed(groupId) });
+      queryClient.invalidateQueries({ queryKey: keys.feedGroup(groupId) });
       toast.success("Publicado na comunidade!");
     },
     onError: (error: Error) => toast.error(error.message),
@@ -132,7 +144,7 @@ export function useUpdatePost(groupId?: string) {
     mutationFn: ({ postId, text }: { postId: string; text: string }) =>
       apiFetch(`/api/community/posts/${postId}`, { method: "PATCH", body: JSON.stringify({ text }) }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: keys.feed(groupId) });
+      queryClient.invalidateQueries({ queryKey: keys.feedGroup(groupId) });
       toast.success("Post atualizado");
     },
     onError: (error: Error) => toast.error(error.message),
@@ -144,7 +156,7 @@ export function useDeletePost(groupId?: string) {
   return useMutation({
     mutationFn: (postId: string) => apiFetch(`/api/community/posts/${postId}`, { method: "DELETE" }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: keys.feed(groupId) });
+      queryClient.invalidateQueries({ queryKey: keys.feedGroup(groupId) });
       toast.success("Post removido");
     },
     onError: (error: Error) => toast.error(error.message),
@@ -156,7 +168,21 @@ export function useToggleReaction(groupId?: string) {
   return useMutation({
     mutationFn: ({ postId, type }: { postId: string; type: "LIKE" | "FIRE" | "CLAP" | "STRONG" }) =>
       apiFetch(`/api/community/posts/${postId}/reactions`, { method: "POST", body: JSON.stringify({ type }) }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: keys.feed(groupId) }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: keys.feedGroup(groupId) }),
+    onError: (error: Error) => toast.error(error.message),
+  });
+}
+
+/** "Não tenho interesse" — recomendação, não denúncia/bloqueio (checklist itens 36-40). Só afeta o próprio Feed Para Você. */
+export function useMarkNotInterested(groupId?: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (postId: string) =>
+      apiFetch(`/api/community/posts/${postId}/feedback`, { method: "POST", body: JSON.stringify({ type: "NOT_INTERESTED" }) }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: keys.feedGroup(groupId) });
+      toast.success("Você verá menos posts como esse.");
+    },
     onError: (error: Error) => toast.error(error.message),
   });
 }
@@ -185,7 +211,7 @@ export function useCreateComment(postId: string, groupId?: string) {
       apiFetch(`/api/community/posts/${postId}/comments`, { method: "POST", body: JSON.stringify({ text }) }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: keys.comments(postId) });
-      queryClient.invalidateQueries({ queryKey: keys.feed(groupId) });
+      queryClient.invalidateQueries({ queryKey: keys.feedGroup(groupId) });
     },
     onError: (error: Error) => toast.error(error.message),
   });
@@ -197,7 +223,68 @@ export function useDeleteComment(postId: string, groupId?: string) {
     mutationFn: (commentId: string) => apiFetch(`/api/community/comments/${commentId}`, { method: "DELETE" }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: keys.comments(postId) });
-      queryClient.invalidateQueries({ queryKey: keys.feed(groupId) });
+      queryClient.invalidateQueries({ queryKey: keys.feedGroup(groupId) });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+}
+
+// ─── Hashtags (interesses/descoberta) ───────────────────────────────────────
+
+export function useHashtagSuggestions(query: string) {
+  return useQuery({
+    queryKey: keys.hashtagSuggestions(query),
+    queryFn: () => apiFetch<{ hashtags: HashtagSuggestion[] }>(`/api/community/hashtags/suggest?q=${encodeURIComponent(query)}`),
+    enabled: query.trim().length >= 1,
+    staleTime: 30_000,
+  });
+}
+
+export function useHashtag(slug: string | null) {
+  return useQuery({
+    queryKey: keys.hashtag(slug ?? "none"),
+    queryFn: () => apiFetch<{ hashtag: HashtagDetail; isFollowing: boolean }>(`/api/community/hashtags/${slug}`),
+    enabled: !!slug,
+  });
+}
+
+export function useHashtagPosts(slug: string | null) {
+  return useInfiniteQuery({
+    queryKey: keys.hashtagPosts(slug ?? "none"),
+    queryFn: ({ pageParam }: { pageParam?: string }) => {
+      const params = new URLSearchParams();
+      if (pageParam) params.set("cursor", pageParam);
+      return apiFetch<{ items: CommunityPostSummary[]; nextCursor: string | null }>(
+        `/api/community/hashtags/${slug}/posts?${params.toString()}`
+      );
+    },
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+    enabled: !!slug,
+    staleTime: 15_000,
+  });
+}
+
+export function useFollowHashtag() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (slug: string) => apiFetch(`/api/community/hashtags/${slug}/follow`, { method: "POST" }),
+    onSuccess: (_, slug) => {
+      queryClient.invalidateQueries({ queryKey: keys.hashtag(slug) });
+      // Seguir muda o ranking do Feed Para Você.
+      queryClient.invalidateQueries({ queryKey: ["community", "feed"] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+}
+
+export function useUnfollowHashtag() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (slug: string) => apiFetch(`/api/community/hashtags/${slug}/follow`, { method: "DELETE" }),
+    onSuccess: (_, slug) => {
+      queryClient.invalidateQueries({ queryKey: keys.hashtag(slug) });
+      queryClient.invalidateQueries({ queryKey: ["community", "feed"] });
     },
     onError: (error: Error) => toast.error(error.message),
   });
@@ -243,6 +330,8 @@ export function useRespondFriendRequest() {
       apiFetch(`/api/community/friends/${friendshipId}`, { method: "PATCH", body: JSON.stringify({ action }) }),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: keys.friends });
+      // Aceitar amizade muda quem aparece na aba Amigos do feed.
+      if (variables.action === "accept") queryClient.invalidateQueries({ queryKey: ["community", "feed"] });
       toast.success(variables.action === "accept" ? "Amizade aceita!" : "Solicitação recusada");
     },
     onError: (error: Error) => toast.error(error.message),

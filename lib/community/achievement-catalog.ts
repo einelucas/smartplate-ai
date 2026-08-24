@@ -479,14 +479,13 @@ export const ACHIEVEMENT_CATALOG: Record<string, AchievementDefinition> = {
   }),
   PERSONAL_GOAL_REACHED: def({
     code: "PERSONAL_GOAL_REACHED",
-    title: "Marco Pessoal",
-    description: "Completou uma meta pessoal acompanhada pelo sistema.",
-    unlockDescription: "Complete uma meta pessoal acompanhada pelo sistema.",
+    title: "🎯 Meta Cumprida",
+    description: "Concluiu sua primeira meta semanal de atividade.",
+    unlockDescription: "Atinja uma das metas semanais de atividade que você definiu.",
     category: "PROGRESS",
     icon: "FlagCheckered",
     target: 1,
-    availability: "COMING_SOON",
-    comingSoonReason: "Disponível quando o sistema definitivo de metas pessoais for implementado.",
+    availability: "AVAILABLE",
   }),
   PROGRESS_WEEKS_CONSISTENCY: def({
     code: "PROGRESS_WEEKS_CONSISTENCY",

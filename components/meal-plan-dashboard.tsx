@@ -8,10 +8,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
 import {
   Sparkles,
-  Coffee,
-  Sun,
-  Moon,
-  Cookie,
   RefreshCw,
   Heart,
   Check,
@@ -25,6 +21,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { celebrateAchievements, celebrateStreakIfMilestone } from "@/components/social/AchievementCelebration";
+import MealTypeIcon, { type MealType } from "./MealTypeIcon";
 import type { GeneratePlanFormData } from "./GeneratePlanModal";
 
 // Formulário de geração (IA) só abre sob clique — não precisa entrar no
@@ -77,11 +74,11 @@ const buildWeekDays = () => {
   });
 };
 
-const mealTypes = [
-  { id: "breakfast", label: "Café da Manhã", icon: Coffee },
-  { id: "lunch", label: "Almoço", icon: Sun },
-  { id: "dinner", label: "Jantar", icon: Moon },
-  { id: "snacks", label: "Lanches", icon: Cookie },
+const mealTypes: { id: string; label: string; type: MealType }[] = [
+  { id: "breakfast", label: "Café da Manhã", type: "BREAKFAST" },
+  { id: "lunch", label: "Almoço", type: "LUNCH" },
+  { id: "dinner", label: "Jantar", type: "DINNER" },
+  { id: "snacks", label: "Lanches", type: "SNACK" },
 ];
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -172,15 +169,15 @@ function MealCard({ meal, type, onSwap, onFavorite, isFavorite, onComplete, isCo
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-8">
           {[
             { label: "Proteína", value: protein, bg: "bg-blue-50" },
             { label: "Carboidrato", value: carbs, bg: "bg-orange-50" },
             { label: "Gordura", value: fat, bg: "bg-purple-50" },
           ].map((macro, i) => (
-            <div key={i} className={`${macro.bg} rounded-2xl p-4 text-center`}>
-              <p className="text-2xl font-bold text-slate-800">{macro.value}g</p>
-              <p className="text-sm text-slate-500 mt-1">{macro.label}</p>
+            <div key={i} className={`${macro.bg} rounded-2xl p-2.5 sm:p-4 text-center min-w-0`}>
+              <p className="text-lg sm:text-2xl font-bold text-slate-800 break-words">{macro.value}g</p>
+              <p className="text-xs sm:text-sm text-slate-500 mt-1 break-words">{macro.label}</p>
             </div>
           ))}
         </div>
@@ -188,32 +185,35 @@ function MealCard({ meal, type, onSwap, onFavorite, isFavorite, onComplete, isCo
         {meal?.ingredientes && meal.ingredientes.length > 0 && (
           <div className="mb-6">
             <p className="text-sm font-semibold text-slate-600 mb-2">Ingredientes:</p>
-            <div className="flex flex-wrap gap-1">
+            <ul className="divide-y divide-slate-100 border border-slate-100 rounded-xl overflow-hidden">
               {meal.ingredientes.map((ing: string, i: number) => (
-                <span key={i} className="text-xs px-2 py-1 bg-slate-100 text-slate-600 rounded-full">
-                  {ing}
-                </span>
+                <li key={i} className="flex items-start gap-2 px-3 py-2 text-sm text-slate-600 min-w-0">
+                  <span className="w-1.5 h-1.5 mt-1.5 rounded-full bg-[#28A745] flex-shrink-0" />
+                  <span className="min-w-0 break-words">{ing}</span>
+                </li>
               ))}
-            </div>
+            </ul>
           </div>
         )}
 
-        <div className="flex gap-4">
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
           <button
             onClick={onComplete}
-            className={`flex-1 h-12 rounded-xl font-semibold transition-all ${
+            className={`flex-1 min-h-[48px] py-3 px-3 rounded-xl font-semibold transition-all flex items-center justify-center text-center break-words ${
               isComplete ? "bg-[#28A745]/10 text-[#28A745] border-2 border-[#28A745] hover:bg-[#28A745]/20" : "bg-[#28A745] hover:bg-[#1e7e34] text-white"
             }`}
           >
             {isComplete ? (
               <>
-                <Check size={18} className="mr-2 inline" /> Concluída
+                <Check size={18} className="mr-2 flex-shrink-0" /> Concluída
               </>
             ) : (
               "Marcar como concluída"
             )}
           </button>
-          <button className="flex-1 h-12 rounded-xl border-2 border-[#007BFF] text-[#007BFF] font-semibold hover:bg-[#007BFF]/10 transition-all">Ver Receita Completa</button>
+          <button className="flex-1 min-h-[48px] py-3 px-3 rounded-xl border-2 border-[#007BFF] text-[#007BFF] font-semibold hover:bg-[#007BFF]/10 transition-all break-words">
+            Ver Receita Completa
+          </button>
         </div>
       </div>
     </motion.div>
@@ -502,14 +502,17 @@ export default function MealPlanDashboard() {
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden mb-6">
             <div className="bg-white rounded-2xl border border-slate-100 shadow-sm divide-y divide-slate-100">
               {savedPlans.map((plan: any) => (
-                <div key={plan.id} className="p-4 flex justify-between items-center">
-                  <button className="text-left" onClick={() => { setSelectedPlanId(plan.id); setShowSavedPlans(false); }}>
-                    <p className="font-medium text-slate-800 text-sm">{plan.name || "Plano sem nome"}</p>
-                    <p className="text-xs text-slate-500 mt-0.5">
+                <div key={plan.id} className="p-4 flex justify-between items-center gap-3">
+                  <button
+                    className="text-left min-w-0 flex-1"
+                    onClick={() => { setSelectedPlanId(plan.id); setShowSavedPlans(false); }}
+                  >
+                    <p className="font-medium text-slate-800 text-sm truncate">{plan.name || "Plano sem nome"}</p>
+                    <p className="text-xs text-slate-500 mt-0.5 truncate">
                       {plan.dietType || "Personalizado"} • {plan.calories ? `${plan.calories} kcal` : ""} • {new Date(plan.createdAt).toLocaleDateString("pt-BR")}
                     </p>
                   </button>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-shrink-0">
                     <button
                       onClick={() => toggleFavoriteMutation.mutate({ planId: plan.id, favorite: !plan.favorite })}
                       className={`p-2 rounded-lg transition-colors ${plan.favorite ? "bg-red-50 text-red-500" : "bg-slate-100 text-slate-400"}`}
@@ -534,18 +537,18 @@ export default function MealPlanDashboard() {
         )}
       </AnimatePresence>
 
-      {/* Day selector — scroll horizontal em telas estreitas para não espremer os 7 dias */}
-      <div className="flex gap-2 mb-8 bg-white rounded-2xl p-2 shadow-sm border border-slate-100 overflow-x-auto scrollbar-hide">
+      {/* Day selector — grid de 7 colunas, sempre cabe na largura disponível, sem scroll horizontal */}
+      <div className="grid grid-cols-7 gap-1 sm:gap-2 mb-8 bg-white rounded-2xl p-1.5 sm:p-2 shadow-sm border border-slate-100">
         {weekDays.map((day, i) => (
           <motion.button
             key={day.short}
             whileTap={{ scale: 0.96 }}
             onClick={() => setSelectedDay(i)}
             aria-current={selectedDay === i ? "true" : undefined}
-            className={`flex-1 min-w-[52px] py-3 rounded-xl transition-all ${selectedDay === i ? "bg-[#007BFF] text-white shadow-md shadow-[#007BFF]/30" : "text-slate-500 hover:bg-slate-50"}`}
+            className={`min-w-0 py-2 sm:py-3 rounded-xl transition-all ${selectedDay === i ? "bg-[#007BFF] text-white shadow-md shadow-[#007BFF]/30" : "text-slate-500 hover:bg-slate-50"}`}
           >
-            <p className="text-xs font-medium">{day.short}</p>
-            <p className="text-lg font-bold mt-0.5">{day.date}</p>
+            <p className="text-[10px] sm:text-xs font-medium uppercase truncate px-0.5">{day.short}</p>
+            <p className="text-sm sm:text-lg font-bold mt-0.5">{day.date}</p>
           </motion.button>
         ))}
       </div>
@@ -561,7 +564,7 @@ export default function MealPlanDashboard() {
           {/* Left column */}
           <div className="lg:col-span-3 space-y-2">
             <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wide mb-4">Refeições</h3>
-            {mealTypes.map(({ id, label, icon: Icon }) => {
+            {mealTypes.map(({ id, label, type }) => {
               const isActive = selectedMeal === id;
               const mealForType = id === "snacks" ? null : (dayPlan[id as keyof DailyMealPlan] as DailyMeal | null | undefined);
               const isComplete = id === "snacks" ? !!dayPlan.snacks?.length && dayPlan.snacks.every((s) => s.completed) : !!mealForType?.completed;
@@ -576,9 +579,9 @@ export default function MealPlanDashboard() {
                     isActive ? "bg-[#007BFF] text-white shadow-lg shadow-[#007BFF]/30" : "bg-white text-slate-600 border border-slate-100 hover:border-[#007BFF]/30"
                   }`}
                 >
-                  <Icon size={20} />
-                  <span className="font-medium flex-1">{label}</span>
-                  <div className="flex items-center gap-1">
+                  <MealTypeIcon type={type} className="w-5 h-5 flex-shrink-0" />
+                  <span className="font-medium flex-1 min-w-0 truncate">{label}</span>
+                  <div className="flex items-center gap-1 flex-shrink-0">
                     {isFav && <Heart size={14} className={isActive ? "text-red-300 fill-red-300" : "text-red-400 fill-red-400"} />}
                     {isComplete && (
                       <div className={`w-5 h-5 rounded-full flex items-center justify-center ${isActive ? "bg-white/20" : "bg-[#28A745]"}`}>

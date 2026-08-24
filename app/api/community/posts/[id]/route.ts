@@ -6,6 +6,7 @@ import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { postTextSchema } from "@/lib/community/validation";
+import { exceedsHashtagLimit, syncPostHashtags, MAX_HASHTAGS_PER_POST } from "@/lib/community/hashtags";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -23,8 +24,15 @@ export async function PATCH(request: Request, context: Params) {
   const body = await request.json().catch(() => null);
   const parsed = postTextSchema.safeParse(body?.text);
   if (!parsed.success) return NextResponse.json({ error: "Texto inválido" }, { status: 400 });
+  if (exceedsHashtagLimit(parsed.data)) {
+    return NextResponse.json({ error: `Máximo de ${MAX_HASHTAGS_PER_POST} hashtags por publicação` }, { status: 400 });
+  }
 
-  const updated = await prisma.communityPost.update({ where: { id: params.id }, data: { text: parsed.data } });
+  const updated = await prisma.$transaction(async (tx) => {
+    const post = await tx.communityPost.update({ where: { id: params.id }, data: { text: parsed.data } });
+    await syncPostHashtags(tx, post.id, parsed.data);
+    return post;
+  });
   return NextResponse.json({ post: updated });
 }
 

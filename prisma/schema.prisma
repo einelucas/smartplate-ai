@@ -65,6 +65,10 @@ model Profile {
   communityReactions      CommunityReaction[]
   contentReports          ContentReport[]
   notifications           Notification[]
+  hashtagFollows          UserHashtagFollow[]
+  postFeedFeedback        PostFeedFeedback[]
+  activityGoals           ActivityGoal[]
+  activityInsights        ActivityInsight[]
 
   // Relações — Integrações externas (Connected Apps)
   connectedApps          ConnectedApp[]
@@ -652,6 +656,8 @@ model CommunityPost {
 
   reactions CommunityReaction[]
   comments  CommunityComment[]
+  hashtags  PostHashtag[]
+  feedback  PostFeedFeedback[]
 
   @@index([createdAt])
   @@index([groupId, createdAt])
@@ -698,6 +704,122 @@ model ContentReport {
 
   @@index([status])
   @@index([targetType, targetId])
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// METAS E INSIGHTS DE ATIVIDADE FÍSICA
+// ══════════════════════════════════════════════════════════════════════════
+
+enum ActivityGoalMetric {
+  ACTIVE_DAYS
+  ACTIVITY_MINUTES
+  ACTIVITY_COUNT
+}
+
+// Meta semanal pessoal, escolhida pelo próprio usuário — nunca um valor
+// "ideal" definido pelo sistema (ver lib/activity/goals.ts). Um usuário pode
+// ter as três métricas simultaneamente, cada uma com seu próprio target
+// (por isso model separado, não campos soltos em Profile). `isActive` permite
+// desativar sem perder o histórico de eventos idempotentes já concedidos
+// (XpEvent "activity-goal:{goalId}:{semana}").
+model ActivityGoal {
+  id      String  @id @default(uuid())
+  userId  String
+  profile Profile @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  metric   ActivityGoalMetric
+  target   Int
+  isActive Boolean            @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, metric])
+  @@index([userId, isActive])
+}
+
+// Cache dos insights privados de atividade (determinísticos + IA) por
+// usuário/período — nunca gerado a cada render (ver lib/activity/insights.ts).
+// `dataHash` evita regenerar via IA quando os dados agregados não mudaram.
+// Nunca visível na Comunidade — sempre privado ao próprio usuário.
+model ActivityInsight {
+  id      String  @id @default(uuid())
+  userId  String
+  profile Profile @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  periodStart DateTime
+  periodEnd   DateTime
+  content     Json
+  dataHash    String
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, periodStart])
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// HASHTAGS (interesses/descoberta) E SINAIS DE FEED
+// ══════════════════════════════════════════════════════════════════════════
+
+// name/slug sempre iguais e já normalizados (lowercase, sem #, trim — ver
+// lib/community/hashtags.ts). Mantidos como dois campos por clareza de
+// propósito (name = exibição, slug = chave de URL), não porque divergem hoje.
+model Hashtag {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+
+  posts     PostHashtag[]
+  followers UserHashtagFollow[]
+
+  @@index([name])
+}
+
+model PostHashtag {
+  postId    String
+  hashtagId String
+  post      CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  hashtag   Hashtag       @relation(fields: [hashtagId], references: [id], onDelete: Cascade)
+  createdAt DateTime      @default(now())
+
+  @@id([postId, hashtagId])
+  @@index([hashtagId])
+}
+
+// Interesse EXPLÍCITO do usuário (nunca inferido por ele apenas usar a
+// hashtag num post — ver lib/community/hashtags.ts). Sinal de entrada do
+// ranking do Feed Para Você (ver lib/community/feed-ranking.ts).
+model UserHashtagFollow {
+  userId    String
+  hashtagId String
+  profile   Profile  @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  hashtag   Hashtag  @relation(fields: [hashtagId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([userId, hashtagId])
+  @@index([userId])
+  @@index([hashtagId])
+}
+
+enum FeedFeedbackType {
+  NOT_INTERESTED
+}
+
+// Feedback de recomendação (distinto de denúncia/moderação — ver
+// ContentReport/hiddenAt). Só afeta o Feed Para Você do próprio usuário.
+model PostFeedFeedback {
+  id        String           @id @default(uuid())
+  userId    String
+  postId    String
+  profile   Profile          @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  post      CommunityPost    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  type      FeedFeedbackType
+  createdAt DateTime         @default(now())
+
+  @@unique([userId, postId, type])
+  @@index([userId])
+  @@index([postId])
 }
 
 // ══════════════════════════════════════════════════════════════════════════
