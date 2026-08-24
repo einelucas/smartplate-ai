@@ -4,11 +4,15 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import { motion } from "framer-motion";
 import { Lock } from "lucide-react";
 import { useAchievements, type Achievement } from "@/hooks/useAchievements";
 import { resolveIcon } from "@/components/icon-registry";
-import AchievementsModal from "./AchievementsModal";
+
+// Modal só existe depois de um clique em "Ver todas" — tirado do bundle
+// inicial do Perfil (314 linhas + toda a lógica de filtro/categoria).
+const AchievementsModal = dynamic(() => import("./AchievementsModal"), { ssr: false });
 
 function pickPreview(achievements: Achievement[]): Achievement[] {
   const unlocked = achievements

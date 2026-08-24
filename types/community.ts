@@ -38,7 +38,22 @@ export interface RankingEntry {
   username: string | null;
   displayName: string;
   avatarUrl: string | null;
-  weeklyXp: number;
+  xp: number;
+}
+
+export type RankingPeriod = "weekly" | "monthly" | "all";
+export type RankingScope = "global" | "friends" | "group";
+
+export interface ChallengeRankingEntry {
+  rank: number;
+  userId: string;
+  username: string | null;
+  displayName: string;
+  avatarUrl: string | null;
+  progress: number;
+  target: number;
+  percentage: number;
+  completedAt: string | null;
 }
 
 export interface ModerationReportPreview {
@@ -47,7 +62,7 @@ export interface ModerationReportPreview {
   username?: string;
 }
 
-export type CommunityPostType = "TEXT" | "ACHIEVEMENT" | "STREAK" | "CHALLENGE" | "PLAN_SHARE" | "ACTIVITY";
+export type CommunityPostType = "TEXT" | "ACHIEVEMENT" | "STREAK" | "CHALLENGE" | "PLAN_SHARE" | "ACTIVITY" | "EXTERNAL_SHARE";
 
 export interface CommunityPostSummary {
   id: string;

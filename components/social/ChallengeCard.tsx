@@ -1,15 +1,26 @@
 // components/social/ChallengeCard.tsx
 "use client";
 
+import { useState } from "react";
+import dynamic from "next/dynamic";
 import { motion } from "framer-motion";
-import { Users, Target, Clock, Trash2 } from "lucide-react";
+import { Users, Target, Clock, Trash2, ListOrdered } from "lucide-react";
 import { useDeleteChallenge, useJoinChallenge } from "@/hooks/useCommunity";
 import type { ChallengeSummary } from "@/types/community";
+
+const ChallengeRankingModal = dynamic(() => import("./ChallengeRankingModal"), { ssr: false });
 
 const METRIC_LABELS: Record<string, string> = {
   ACTIVE_DAYS: "dias ativos",
   MEAL_COMPLETIONS: "refeições concluídas",
   STREAK_DAYS: "dias de streak",
+  ACTIVITY_COUNT: "atividades",
+  ACTIVITY_MINUTES: "minutos ativos",
+  WALKING_DAYS: "dias de caminhada",
+  RUNNING_DAYS: "dias de corrida",
+  CYCLING_DAYS: "dias de ciclismo",
+  STRENGTH_DAYS: "dias de musculação",
+  BALANCED_DAYS: "dias equilibrados",
 };
 
 export type ChallengeData = ChallengeSummary & { canDelete?: boolean };
@@ -25,6 +36,7 @@ export default function ChallengeCard({
 }) {
   const joinChallenge = useJoinChallenge(scope, groupId);
   const deleteChallenge = useDeleteChallenge(scope, groupId);
+  const [showRanking, setShowRanking] = useState(false);
 
   const daysLeft = Math.max(0, Math.ceil((new Date(challenge.endsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
   const progress = challenge.myProgress ?? 0;
@@ -98,6 +110,20 @@ export default function ChallengeCard({
           <span className="text-sm text-white/80">🏆 Recompensa:</span>
           <span className="font-bold">{challenge.rewardXp} XP</span>
         </div>
+      )}
+
+      {challenge.joined && (
+        <button
+          onClick={() => setShowRanking(true)}
+          className="mt-3 self-start flex items-center gap-1.5 text-xs text-white/80 hover:text-white"
+        >
+          <ListOrdered size={14} />
+          Ver ranking do desafio
+        </button>
+      )}
+
+      {showRanking && (
+        <ChallengeRankingModal challengeId={challenge.id} title={challenge.title} onClose={() => setShowRanking(false)} />
       )}
     </motion.div>
   );

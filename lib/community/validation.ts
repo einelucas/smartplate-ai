@@ -39,8 +39,42 @@ export const updateSocialProfileSchema = z.object({
 
 // ─── Posts / reações / comentários ─────────────────────────────────────────
 
-export const postTypeSchema = z.enum(["TEXT", "ACHIEVEMENT", "STREAK", "CHALLENGE", "PLAN_SHARE", "ACTIVITY"]);
+export const postTypeSchema = z.enum(["TEXT", "ACHIEVEMENT", "STREAK", "CHALLENGE", "PLAN_SHARE", "ACTIVITY", "EXTERNAL_SHARE"]);
 export const postTextSchema = z.string().trim().min(1, "Texto vazio").max(500, "Texto muito longo");
+
+// ─── Compartilhamento externo genérico (conteúdo fornecido pelo usuário —
+// nunca dado obtido via API de integração; ver seção 12 do checklist) ──────
+
+export const externalShareProviderSchema = z.enum([
+  "STRAVA",
+  "GARMIN",
+  "APPLE_FITNESS",
+  "SAMSUNG_HEALTH",
+  "NIKE_RUN_CLUB",
+  "ADIDAS_RUNNING",
+  "OTHER",
+]);
+
+/** Só https — bloqueia javascript:/data:/file: e qualquer outro esquema perigoso. */
+export function isSafeExternalShareUrl(raw: string): boolean {
+  try {
+    return new URL(raw).protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+export const externalShareUrlSchema = z
+  .string()
+  .trim()
+  .max(500)
+  .refine(isSafeExternalShareUrl, { message: "Informe um link https válido" });
+
+// Reaproveita os mesmos limites de imagem já usados em ProgressPhoto/avatar
+// (ver lib/profile/validation.ts) — não é um storage novo, só outro
+// consumidor de lib/storage/local-file-storage.ts.
+export const EXTERNAL_SHARE_MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+export const EXTERNAL_SHARE_ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
 
 export const createPostSchema = z
   .object({
@@ -51,6 +85,9 @@ export const createPostSchema = z
     streakMilestone: z.number().int().positive().max(10000).optional(),
     shareToken: z.string().trim().min(1).max(128).optional(),
     activityLogId: z.string().trim().min(1).max(64).optional(),
+    externalShareProvider: externalShareProviderSchema.optional(),
+    externalShareUrl: externalShareUrlSchema.optional(),
+    externalShareImageUrl: z.string().trim().min(1).max(300).optional(),
   })
   .refine((data) => data.type !== "TEXT" || !!data.text, {
     message: "Texto é obrigatório para posts do tipo TEXT",
@@ -71,7 +108,18 @@ export const createPostSchema = z
   .refine((data) => data.type !== "ACTIVITY" || !!data.activityLogId, {
     message: "activityLogId é obrigatório para posts do tipo ACTIVITY",
     path: ["activityLogId"],
-  });
+  })
+  .refine((data) => data.type !== "EXTERNAL_SHARE" || !!data.externalShareProvider, {
+    message: "Selecione o app de origem",
+    path: ["externalShareProvider"],
+  })
+  .refine(
+    (data) => data.type !== "EXTERNAL_SHARE" || !!(data.externalShareUrl || data.externalShareImageUrl || data.text),
+    {
+      message: "Adicione um link, uma imagem ou uma legenda",
+      path: ["externalShareUrl"],
+    }
+  );
 
 export const commentTextSchema = z.object({
   text: z.string().trim().min(1, "Comentário vazio").max(300, "Comentário muito longo"),
@@ -132,7 +180,18 @@ export const createChallengeSchema = z
     groupId: z.string().trim().min(1).max(64).optional(),
     title: z.string().trim().min(2).max(80),
     description: z.string().trim().max(300).optional().nullable(),
-    metric: z.enum(["ACTIVE_DAYS", "MEAL_COMPLETIONS", "STREAK_DAYS"]),
+    metric: z.enum([
+      "ACTIVE_DAYS",
+      "MEAL_COMPLETIONS",
+      "STREAK_DAYS",
+      "ACTIVITY_COUNT",
+      "ACTIVITY_MINUTES",
+      "WALKING_DAYS",
+      "RUNNING_DAYS",
+      "CYCLING_DAYS",
+      "STRENGTH_DAYS",
+      "BALANCED_DAYS",
+    ]),
     target: z.number().int().min(1).max(1000),
     rewardXp: z.number().int().min(0).max(5000).default(0),
     startsAt: z.coerce.date(),

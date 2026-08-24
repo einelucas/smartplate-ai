@@ -3,14 +3,16 @@
 
 import { use, useState } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { ArrowLeft, Users2, UserPlus, AlertTriangle } from "lucide-react";
 import { useGroup } from "@/hooks/useCommunity";
 import PostFeedList from "@/components/social/PostFeedList";
 import LeaderboardCard from "@/components/social/LeaderboardCard";
 import ChallengesList from "@/components/social/ChallengesList";
 import GroupMembersPanel from "@/components/social/GroupMembersPanel";
-import GroupInviteModal from "@/components/social/GroupInviteModal";
-import GroupSettingsMenu from "@/components/social/GroupSettingsMenu";
+
+const GroupInviteModal = dynamic(() => import("@/components/social/GroupInviteModal"), { ssr: false });
+const GroupSettingsMenu = dynamic(() => import("@/components/social/GroupSettingsMenu"), { ssr: false });
 
 const tabs = [
   { id: "feed", label: "Feed" },

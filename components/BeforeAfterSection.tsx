@@ -5,10 +5,12 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import { Camera, ImageIcon, Sparkles, History } from "lucide-react";
 import { useProgressPhotos, type ProgressPhoto } from "@/hooks/useProgressPhotos";
-import AddProgressPhotoModal from "./AddProgressPhotoModal";
-import ProgressPhotoHistoryModal from "./ProgressPhotoHistoryModal";
+
+const AddProgressPhotoModal = dynamic(() => import("./AddProgressPhotoModal"), { ssr: false });
+const ProgressPhotoHistoryModal = dynamic(() => import("./ProgressPhotoHistoryModal"), { ssr: false });
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" });

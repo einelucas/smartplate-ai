@@ -14,6 +14,10 @@ const isPublicRoute = createRouteMatcher([
   "/shared(.*)",
   "/community/invite(.*)",
   "/api/community/groups/invite(.*)",
+  // Chamado pelo Strava (servidor-a-servidor, sem sessão Clerk) — validado
+  // internamente pelo próprio handler via STRAVA_WEBHOOK_VERIFY_TOKEN, não
+  // uma API pública genérica.
+  "/api/integrations/strava/webhook(.*)",
 ]);
 
 // 2. Define a route group for Meal Plan. We want to check subscription

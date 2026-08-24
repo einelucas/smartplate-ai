@@ -279,6 +279,18 @@ Pendências:
 
 ---
 
+> **Status desta rodada (seções 7-12):** Desafios (novas métricas + grupo) e
+> Ranking (períodos/escopos) implementados, testados end-to-end contra o banco
+> real (migration aplicada, `npm run challenges:seed` criou os 7 desafios reais,
+> `npx tsc`/`npm run build` limpos). Connected Apps (arquitetura + criptografia +
+> tela) e Compartilhamento externo genérico implementados e testados
+> estruturalmente. Integração Strava: toda a arquitetura (OAuth, refresh,
+> sync, webhook, disconnect) está implementada e revisada contra a
+> documentação oficial do Strava, mas **não há credenciais Strava configuradas
+> neste ambiente** — por isso "conectar de verdade", "sincronizar atividades
+> reais" e "webhook real" continuam `[ ]` até serem testados contra uma conta
+> Strava de verdade, conforme o critério combinado para esta tarefa.
+
 # 7. Desafios
 
 ## Novas métricas
@@ -305,22 +317,27 @@ BALANCED_DAYS
 
 ## Exemplos
 
-- [ ] Atividade em 4 dias durante a semana
-- [ ] 150 minutos ativos
-- [ ] 300 minutos ativos
-- [ ] Complete 10 atividades
-- [ ] Complete 20 refeições planejadas
-- [ ] Mantenha sequência por 7 dias
-- [ ] Alimentação + atividade em 5 dias
+- [x] Atividade em 4 dias durante a semana
+- [x] 150 minutos ativos
+- [x] 300 minutos ativos
+- [x] Complete 10 atividades
+- [x] Complete 20 refeições planejadas
+- [x] Mantenha sequência por 7 dias
+- [x] Alimentação + atividade em 5 dias
+
+> Os 7 desafios acima foram realmente criados no banco (`npm run challenges:seed`,
+> idempotente) como `Challenge.scope = GLOBAL` com as métricas/metas/janelas
+> correspondentes — confirmado consultando o banco após rodar o script duas vezes
+> (segunda vez: 0 criados, 7 já existentes).
 
 ## Grupos
 
-- [ ] Permitir desafios exclusivos de grupos
-- [ ] Ranking interno
-- [ ] Progresso individual
-- [ ] Progresso coletivo
-- [ ] XP de recompensa
-- [ ] Notificação ao completar
+- [x] Permitir desafios exclusivos de grupos (já existia antes desta tarefa; comportamento preservado)
+- [x] Ranking interno (novo: `GET /api/community/challenges/[id]/ranking`, critério progresso → percentual → tempo de conclusão como desempate)
+- [x] Progresso individual (já existia)
+- [x] Progresso coletivo (novo: campo `collective` no endpoint acima, soma do progresso de cada participante sem reprocessar o mesmo evento)
+- [x] XP de recompensa (já existia — continua via `XpEvent`, nunca `totalXp +=`)
+- [x] Notificação ao completar (novo: model `Notification` + integração real no `NotificationsBell`, sem toggle falso)
 
 ---
 
@@ -328,29 +345,34 @@ BALANCED_DAYS
 
 ## Ranking principal
 
-- [ ] Continuar baseado em XP
-- [ ] Não usar distância como ranking principal
-- [ ] Não favorecer um tipo específico de esporte
+- [x] Continuar baseado em XP
+- [x] Não usar distância como ranking principal
+- [x] Não favorecer um tipo específico de esporte
 
 Fontes de XP:
 
-- [ ] Alimentação
-- [ ] Atividade
-- [ ] Sequência
-- [ ] Conquistas
-- [ ] Desafios
+- [x] Alimentação
+- [x] Atividade
+- [x] Sequência (novo: XP de marco de streak — 7/14/30/60/100 dias, uma vez por marco, nunca por dia)
+- [x] Conquistas (novo: XP por raridade no desbloqueio de conquista do catálogo novo — `achievement-engine.ts`)
+- [x] Desafios
+
+> `getXpBreakdown()` expõe a soma por fonte (FOOD/ACTIVITY/STREAK/ACHIEVEMENT/CHALLENGE)
+> via `GET /api/community/gamification` (`xpBreakdown`) — sem duplicar `XpEvent`,
+> só agrupando o que já existe por `eventType`. Ainda sem um gráfico dedicado no
+> frontend para essa quebra (fica exposta na API, não visualizada).
 
 ## Períodos
 
-- [ ] Semanal
-- [ ] Mensal
-- [ ] Geral
+- [x] Semanal
+- [x] Mensal
+- [x] Geral
 
 ## Escopo
 
-- [ ] Comunidade geral
-- [ ] Amigos
-- [ ] Grupo
+- [x] Comunidade geral (agora também exclui usuários bloqueados em qualquer direção — gap encontrado e corrigido nesta tarefa)
+- [x] Amigos
+- [x] Grupo
 
 ---
 
@@ -360,16 +382,16 @@ Criar uma arquitetura genérica para integrações externas.
 
 ## P1 — Base
 
-- [ ] Criar módulo `Connected Apps`
-- [ ] Criar tela de integrações
-- [ ] Criar entidade `ConnectedApp`
-- [ ] Armazenar provider
-- [ ] Armazenar scopes
-- [ ] Salvar data de conexão
-- [ ] Salvar última sincronização
-- [ ] Permitir desconectar integração
-- [ ] Proteger tokens
-- [ ] Nunca salvar token sensível sem proteção
+- [x] Criar módulo `Connected Apps`
+- [x] Criar tela de integrações (`/profile/connected-apps`, acessível pelo Perfil — sem sexto item na BottomNav)
+- [x] Criar entidade `ConnectedApp`
+- [x] Armazenar provider
+- [x] Armazenar scopes
+- [x] Salvar data de conexão
+- [x] Salvar última sincronização
+- [x] Permitir desconectar integração
+- [x] Proteger tokens (AES-256-GCM, `TOKEN_ENCRYPTION_KEY` só em env)
+- [x] Nunca salvar token sensível sem proteção
 
 Modelo conceitual:
 
@@ -407,44 +429,102 @@ FITBIT
 OTHER
 ```
 
-- [ ] Impedir duplicidade com `externalId`
-- [ ] Identificar origem no histórico privado
-- [ ] Não assumir que todas as fontes podem ser compartilhadas socialmente
-- [ ] Tratar política de cada provedor separadamente
+- [x] Impedir duplicidade com `externalId` (`ActivityLog` mantém `@@unique([source, externalId])`; `ExternalActivityCache` usa `@@unique([userId, provider, externalId])`)
+- [x] Identificar origem no histórico privado (badge "Origem: Registrado no SmartPlate" / "Origem: Strava" no histórico de atividades)
+- [x] Não assumir que todas as fontes podem ser compartilhadas socialmente (`EXTERNAL_PROVIDER_POLICIES` — `allowSocialSharing: false` para todo provider externo)
+- [x] Tratar política de cada provedor separadamente (`lib/integrations/provider-policy.ts` — nunca `if (source === "STRAVA")` espalhado)
+
+> `ActivityLog.source` migrou de `String` para o enum `ActivitySource` (migration
+> aditiva com `ALTER COLUMN ... USING`, preservando o único registro existente —
+> confirmado antes da migration que era `MANUAL`). Mas nesta implementação
+> **nenhum dado de provider externo é gravado em `ActivityLog`** — só `MANUAL`.
+> Atividades do Strava vivem exclusivamente em `ExternalActivityCache` (privado,
+> expira em 7 dias), nunca entram em XP/streak/desafio/ranking. Ver nota de
+> política na seção 11.
 
 ---
 
 # 11. Integração Strava
 
+**Atualização:** nesta rodada o usuário conectou uma conta Strava real
+(`STRAVA_CLIENT_ID`/`SECRET` configurados por ele) e o fluxo completo rodou de
+ponta a ponta — confirmado consultando o banco diretamente: `ConnectedApp`
+com `status = CONNECTED` e `connectedAt`/`lastSyncedAt` reais, e uma linha
+real em `ExternalActivityCache` ("Caminhada vespertina", `WALKING`, 70 min,
+6,34 km) idêntica ao exemplo que o próprio usuário reportou. Isso valida
+genuinamente OAuth, troca de código por token, criptografia de armazenamento,
+sincronização e normalização — não é mais só "arquitetura pronta". O que
+ainda não foi exercitado fica listado abaixo, item a item.
+
 ## Conta
 
-- [ ] Conectar Strava via OAuth 2.0
-- [ ] Gerenciar access token
-- [ ] Gerenciar refresh token
-- [ ] Renovar tokens automaticamente
-- [ ] Permitir desconectar Strava
+- [x] Conectar Strava via OAuth 2.0 — **validado**: linha real em
+      `ConnectedApp` com `status = CONNECTED` após o fluxo completo
+      (autorizar → callback → troca de código) rodar contra o Strava real.
+- [x] Gerenciar access token — armazenamento sempre criptografado (AES-256-GCM);
+      round-trip de criptografia/decriptação + rejeição de payload adulterado
+      testados nesta tarefa, e agora também confirmado em uso real (token da
+      conexão acima só existe criptografado no banco).
+- [x] Gerenciar refresh token — mesma criptografia; `packStravaTokenResponse`
+      sempre persiste o refresh token mais recente devolvido, nunca reaproveita
+      o anterior.
+- [ ] Renovar tokens automaticamente — `ensureFreshStravaAccessToken` implementada
+      (renova quando faltam <5min para expirar), mas o access token da conexão
+      atual ainda não expirou (dura ~6h) — o fluxo de renovação em si ainda não
+      foi observado acontecendo de verdade.
+- [ ] Permitir desconectar Strava — rota implementada e revisada (revoga + limpa
+      tokens/cache local mesmo se a revogação remota falhar), mas não exercitada
+      nesta tarefa para não desconectar a conexão real do usuário sem pedir.
 
 ## Sincronização privada
 
-- [ ] Buscar atividades autorizadas
-- [ ] Converter atividade para modelo interno
-- [ ] Evitar duplicidades
-- [ ] Registrar origem `STRAVA`
-- [ ] Mostrar no histórico privado do usuário
-- [ ] Implementar sincronização incremental
+- [x] Buscar atividades autorizadas — **validado**: sincronização real trouxe
+      uma atividade real do Strava para `ExternalActivityCache`.
+- [x] Converter atividade para modelo interno — confirmado com dado real:
+      atividade "Caminhada vespertina" do Strava mapeada corretamente para
+      `activityType = WALKING`.
+- [x] Evitar duplicidades — `upsert` por `[userId, provider, externalId]`.
+- [x] Registrar origem `STRAVA` — confirmado na linha real do banco.
+- [x] Mostrar no histórico privado do usuário — **melhorado nesta tarefa**:
+      histórico agora unificado (Todas/SmartPlate/Strava), com estado vazio
+      correto por fonte, card e modal de detalhe dedicados — corrigido o bug de
+      UX em que "Nenhuma atividade registrada" aparecia mesmo com atividade
+      Strava disponível.
+- [ ] Implementar sincronização incremental — lógica via `lastSyncedAt`
+      implementada e usada na primeira sincronização; ainda não houve uma
+      segunda sincronização nesta conta para confirmar que o filtro
+      incremental (`after`) realmente evita rebuscar tudo de novo.
 
 ## Webhooks
 
-- [ ] Receber nova atividade
-- [ ] Receber alteração
-- [ ] Receber exclusão
-- [ ] Atualizar ActivityLog correspondente
+- [ ] Receber nova atividade — handler `POST` implementado e revisado contra o
+      protocolo oficial (payload `aspect_type/object_id/owner_id/...`), não
+      registrado nem testado contra webhooks reais do Strava.
+- [ ] Receber alteração — idem.
+- [ ] Receber exclusão — idem (remove o `ExternalActivityCache` correspondente).
+- [ ] Atualizar ActivityLog correspondente — **decisão de design, não pendência**:
+      por política de privacidade (ver nota acima), o webhook nunca escreve em
+      `ActivityLog` — só em `ExternalActivityCache`. O item, ao pé da letra, não
+      se aplica a esta arquitetura; mantido `[ ]` para não sugerir algo que não
+      foi implementado como descrito.
+
+Script administrativo pronto para registrar a subscription quando houver domínio
+de produção: `npm run strava:webhook -- create <callbackUrl>` (ver
+`scripts/register-strava-webhook.cjs`).
 
 ## Privacidade
 
-- [ ] Revisar políticas atuais da API antes da implementação
-- [ ] Não expor dados externos a terceiros sem permissão/política compatível
-- [ ] Separar dados privados sincronizados de conteúdo social
+- [x] Revisar políticas atuais da API antes da implementação (consultado
+      developers.strava.com/docs/authentication e /docs/webhooks nesta tarefa)
+- [x] Não expor dados externos a terceiros sem permissão/política compatível
+      (`ExternalActivityCache` só é lido pelo próprio dono; nunca aparece em
+      posts automáticos, feed, ranking ou desafio)
+- [x] Separar dados privados sincronizados de conteúdo social (isolamento total
+      entre `ExternalActivityCache` e `CommunityPost`/`XpEvent`/`ChallengeParticipant`)
+
+> Dados sincronizados via API do Strava são privados e não alimentam diretamente
+> o feed ou ranking público. O compartilhamento social usa apenas conteúdo
+> explicitamente fornecido pelo próprio usuário.
 
 ---
 
@@ -465,22 +545,22 @@ Criar publicação
 
 ## `Compartilhar de outro app`
 
-- [ ] Permitir link fornecido pelo usuário
-- [ ] Permitir imagem fornecida pelo usuário
-- [ ] Permitir legenda
-- [ ] Salvar origem/provedor
-- [ ] Mostrar badge da origem
-- [ ] Nunca buscar e redistribuir automaticamente dados proibidos pela API externa
+- [x] Permitir link fornecido pelo usuário (validado https-only; bloqueia `javascript:`/`data:`/`file:`)
+- [x] Permitir imagem fornecida pelo usuário (reaproveita `lib/storage/local-file-storage.ts`, mesmo storage de ProgressPhoto/avatar — MIME/tamanho validados, ownership checada antes de aceitar no post)
+- [x] Permitir legenda
+- [x] Salvar origem/provedor
+- [x] Mostrar badge da origem ("Compartilhado de {provider}" no `PostCard`)
+- [x] Nunca buscar e redistribuir automaticamente dados proibidos pela API externa (sem scraping — só mostra link/imagem/legenda que o usuário forneceu; nenhuma distância/pace/mapa preenchida automaticamente)
 
 Possíveis origens:
 
-- [ ] Strava
-- [ ] Garmin
-- [ ] Apple Fitness
-- [ ] Samsung Health
-- [ ] Nike Run Club
-- [ ] Adidas Running
-- [ ] Outros
+- [x] Strava
+- [x] Garmin
+- [x] Apple Fitness
+- [x] Samsung Health
+- [x] Nike Run Club
+- [x] Adidas Running
+- [x] Outros
 
 ---
 

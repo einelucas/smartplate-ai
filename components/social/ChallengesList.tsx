@@ -2,10 +2,12 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import { Plus, Target } from "lucide-react";
 import { useChallenges, useCommunityMe, useGroup } from "@/hooks/useCommunity";
 import ChallengeCard from "./ChallengeCard";
-import CreateChallengeModal from "./CreateChallengeModal";
+
+const CreateChallengeModal = dynamic(() => import("./CreateChallengeModal"), { ssr: false });
 
 export default function ChallengesList({ scope, groupId }: { scope: "global" | "group"; groupId?: string }) {
   const { data, isLoading, isError } = useChallenges(scope, groupId);

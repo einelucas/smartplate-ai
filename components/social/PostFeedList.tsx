@@ -2,21 +2,48 @@
 // Feed reutilizável (comunidade geral ou grupo). Sempre dados reais — sem mocks.
 "use client";
 
+import { useState } from "react";
 import { MessageSquareHeart } from "lucide-react";
 import { useCommunityFeed } from "@/hooks/useCommunity";
 import { useCommunityTermsGate } from "./CommunityTermsGate";
 import PostComposer from "./PostComposer";
 import PostCard from "./PostCard";
+import type { CommunityPostType } from "@/types/community";
+
+type FeedFilter = "ALL" | "ACTIVITY" | "ACHIEVEMENT" | "EXTERNAL_SHARE";
+
+const FEED_FILTERS: { key: FeedFilter; label: string }[] = [
+  { key: "ALL", label: "Tudo" },
+  { key: "ACTIVITY", label: "Atividades" },
+  { key: "ACHIEVEMENT", label: "Conquistas" },
+  { key: "EXTERNAL_SHARE", label: "Compartilhados" },
+];
 
 export default function PostFeedList({ groupId }: { groupId?: string }) {
   const { data, isLoading, isError, fetchNextPage, hasNextPage, isFetchingNextPage } = useCommunityFeed(groupId);
   const { guard, modal } = useCommunityTermsGate();
+  const [filter, setFilter] = useState<FeedFilter>("ALL");
 
-  const posts = data?.pages.flatMap((page) => page.items) ?? [];
+  const allPosts = data?.pages.flatMap((page) => page.items) ?? [];
+  const posts = filter === "ALL" ? allPosts : allPosts.filter((post) => post.type === (filter as CommunityPostType));
 
   return (
     <div className="space-y-4">
       <PostComposer groupId={groupId} onRequireTerms={guard} />
+
+      <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1">
+        {FEED_FILTERS.map((f) => (
+          <button
+            key={f.key}
+            onClick={() => setFilter(f.key)}
+            className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
+              filter === f.key ? "bg-[#007BFF] text-white" : "bg-white border border-slate-200 text-slate-600"
+            }`}
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
 
       {isLoading && (
         <div className="space-y-4">
@@ -47,10 +74,16 @@ export default function PostFeedList({ groupId }: { groupId?: string }) {
           <div className="w-14 h-14 mx-auto bg-[#007BFF]/10 rounded-2xl flex items-center justify-center mb-4">
             <MessageSquareHeart className="text-[#007BFF]" size={24} />
           </div>
-          <p className="font-semibold text-slate-700">
-            {groupId ? "Este grupo ainda não tem publicações." : "A comunidade ainda está começando."}
-          </p>
-          <p className="text-sm text-slate-500 mt-1">Compartilhe sua primeira conquista ou uma mensagem de consistência.</p>
+          {filter !== "ALL" && allPosts.length > 0 ? (
+            <p className="font-semibold text-slate-700">Nenhum post desse tipo por aqui ainda.</p>
+          ) : (
+            <>
+              <p className="font-semibold text-slate-700">
+                {groupId ? "Este grupo ainda não tem publicações." : "A comunidade ainda está começando."}
+              </p>
+              <p className="text-sm text-slate-500 mt-1">Compartilhe sua primeira conquista ou uma mensagem de consistência.</p>
+            </>
+          )}
         </div>
       )}
 

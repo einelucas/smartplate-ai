@@ -54,6 +54,18 @@ export function getUtcWeekWindow(now: Date = new Date()): { start: Date; end: Da
 }
 
 /**
+ * Janela do mês corrente em UTC (dia 1 00:00 -> último dia 23:59:59.999).
+ * Mesma simplificação do ranking semanal: uniforme para todos os usuários,
+ * não ajustada por timezone individual.
+ */
+export function getUtcMonthWindow(now: Date = new Date()): { start: Date; end: Date } {
+  const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 0, 0, 0, 0));
+  const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1, 0, 0, 0, 0));
+  end.setUTCMilliseconds(-1);
+  return { start, end };
+}
+
+/**
  * Semana local (segunda a domingo) que contém a data local informada
  * ("YYYY-MM-DD"). Faz aritmética de calendário pura sobre a string — nunca
  * calcula o instante UTC da meia-noite local (evitaria lidar com offset/DST

@@ -4,17 +4,23 @@
 import { useUser } from "@clerk/nextjs";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import toast from "react-hot-toast";
 import { motion } from "framer-motion";
 import { Sparkles, Flame, Droplets, Target, ChefHat, PlayCircle, RefreshCw, Star } from "lucide-react";
 import Link from "next/link";
 import StatCard from "./StatCard";
 import AdherenceRing from "./AdherenceRing";
-import WeightChart from "./WeightChart";
-import RegisterActivityModal from "./RegisterActivityModal";
+import ChartSkeleton from "./skeletons/ChartSkeleton";
 import { useActivitySummary } from "@/hooks/useActivities";
-import { ACTIVITY_TYPE_ICON_KEY, findActivityTypeLabel } from "@/lib/activity/options";
+import { useActivityHistory } from "@/hooks/useActivityHistory";
+import { ACTIVITY_TYPE_ICON_KEY } from "@/lib/activity/options";
 import { resolveIcon } from "@/components/icon-registry";
+
+// recharts é pesado e a atividade só abre sob clique — ambos tirados do
+// bundle inicial da Home, a rota mais visitada do app.
+const WeightChart = dynamic(() => import("./WeightChart"), { ssr: false, loading: () => <ChartSkeleton /> });
+const RegisterActivityModal = dynamic(() => import("./RegisterActivityModal"), { ssr: false });
 
 const DAY_ORDER = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 const MEAL_TIMES: Record<string, string> = { breakfast: "07:30", lunch: "12:30", snack: "15:30", dinner: "19:30" };
@@ -25,6 +31,7 @@ export default function HomeDashboard() {
   const queryClient = useQueryClient();
   const [showActivityModal, setShowActivityModal] = useState(false);
   const { data: activitySummary } = useActivitySummary();
+  const { manualItems, externalItems } = useActivityHistory();
 
   const today = new Date();
   const hour = today.getHours();
@@ -109,7 +116,14 @@ export default function HomeDashboard() {
       if (!res.ok) throw new Error("Erro ao atualizar refeição");
       return res.json();
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["meal-plans"] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["meal-plans"] });
+      queryClient.invalidateQueries({ queryKey: ["community", "gamification"] });
+      queryClient.invalidateQueries({ queryKey: ["community", "me"] });
+      queryClient.invalidateQueries({ queryKey: ["achievements"] });
+      queryClient.invalidateQueries({ queryKey: ["community", "challenges"] });
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+    },
     onError: (error: Error) => toast.error(error.message),
   });
 
@@ -277,22 +291,36 @@ export default function HomeDashboard() {
           {/* Atividade física */}
           <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
             <h3 className="font-bold text-slate-800 mb-4">Atividade</h3>
-            <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Esta semana</p>
+            <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Esta semana no SmartPlate</p>
             <p className="text-2xl font-bold text-slate-800 mt-1">{activitySummary?.thisWeek.count ?? 0} atividades</p>
             <p className="text-sm text-slate-500">{activitySummary?.thisWeek.minutes ?? 0} min ativos</p>
 
-            {activitySummary?.lastActivity && (
-              <div className="flex items-center gap-2 mt-4 pt-4 border-t border-slate-100">
-                {(() => {
-                  const LastIcon = resolveIcon(ACTIVITY_TYPE_ICON_KEY[activitySummary.lastActivity.activityType]);
-                  return <LastIcon size={18} weight="duotone" className="text-[#007BFF] flex-shrink-0" />;
-                })()}
-                <p className="text-sm text-slate-600 truncate">
-                  {activitySummary.lastActivity.activityType === "OTHER" && activitySummary.lastActivity.customActivityName
-                    ? activitySummary.lastActivity.customActivityName
-                    : findActivityTypeLabel(activitySummary.lastActivity.activityType)}{" "}
-                  • {activitySummary.lastActivity.durationMin} min
-                </p>
+            {(manualItems[0] || externalItems[0]) && (
+              <div className="mt-4 pt-4 border-t border-slate-100 space-y-2.5">
+                <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Atividades recentes</p>
+                {manualItems[0] && (
+                  <div className="flex items-center gap-2">
+                    {(() => {
+                      const LastIcon = resolveIcon(ACTIVITY_TYPE_ICON_KEY[manualItems[0].activityType]);
+                      return <LastIcon size={18} weight="duotone" className="text-[#007BFF] flex-shrink-0" />;
+                    })()}
+                    <p className="text-sm text-slate-600 truncate">
+                      <span className="text-slate-400">SmartPlate •</span> {manualItems[0].title} • {manualItems[0].durationMin} min
+                    </p>
+                  </div>
+                )}
+                {externalItems[0] && (
+                  <div className="flex items-center gap-2">
+                    {(() => {
+                      const LastIcon = resolveIcon(ACTIVITY_TYPE_ICON_KEY[externalItems[0].activityType]);
+                      return <LastIcon size={18} weight="duotone" className="text-[#FC4C02] flex-shrink-0" />;
+                    })()}
+                    <p className="text-sm text-slate-600 truncate">
+                      <span className="text-slate-400">Strava •</span> {externalItems[0].title}
+                      {externalItems[0].durationMin ? ` • ${externalItems[0].durationMin} min` : ""}
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 

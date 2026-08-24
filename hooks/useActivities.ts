@@ -47,6 +47,10 @@ function invalidateActivityRelated(queryClient: QueryClient) {
   queryClient.invalidateQueries({ queryKey: ["community", "gamification"] });
   queryClient.invalidateQueries({ queryKey: ["achievements"] });
   queryClient.invalidateQueries({ queryKey: ["community", "me"] });
+  // Registrar atividade pode completar um desafio (progresso recalculado no
+  // servidor) — a lista de desafios/notificações precisa refletir isso.
+  queryClient.invalidateQueries({ queryKey: ["community", "challenges"] });
+  queryClient.invalidateQueries({ queryKey: ["notifications"] });
 }
 
 export function useActivities() {

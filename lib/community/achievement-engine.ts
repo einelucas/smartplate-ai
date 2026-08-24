@@ -14,7 +14,8 @@ import { prisma } from "@/lib/prisma";
 import { safeParse } from "@/lib/mealplan";
 import { getLocalDateString, getLocalWeekRange } from "./dates";
 import type { Db } from "./types";
-import { ACHIEVEMENT_CATALOG, type AchievementDefinition } from "./achievement-catalog";
+import { awardXpEvent } from "./gamification";
+import { ACHIEVEMENT_CATALOG, ACHIEVEMENT_RARITY_XP, getAchievementRarity, type AchievementDefinition } from "./achievement-catalog";
 
 export type AchievementStatus = "UNLOCKED" | "LOCKED" | "COMING_SOON";
 
@@ -27,14 +28,34 @@ export interface AchievementResult extends AchievementDefinition {
 // ─── Desbloqueio idempotente (mesmo padrão de tryCreateXpEvent) ───────────
 
 export async function unlockAchievement(db: Db, userId: string, code: string) {
+  let created;
   try {
-    return await db.userAchievement.create({ data: { userId, achievementCode: code } });
+    created = await db.userAchievement.create({ data: { userId, achievementCode: code } });
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
       return null; // já desbloqueada (idempotência garantida pelo @@unique)
     }
     throw error;
   }
+
+  // XP de conquista — centralizado aqui (checklist seção 8, itens 35-37),
+  // nunca hardcoded em componente. idempotencyKey garante que mesmo uma
+  // corrida concorrente (ver comentário em reconcileAchievements) nunca
+  // duplica o XP: o @@unique acima já impede a segunda UserAchievement, e
+  // mesmo que chegasse aqui duas vezes, awardXpEvent tem sua própria
+  // idempotência via XpEvent.idempotencyKey.
+  const definition = ACHIEVEMENT_CATALOG[code];
+  const xpAmount = ACHIEVEMENT_RARITY_XP[getAchievementRarity(definition ?? {})];
+  await awardXpEvent(db, {
+    userId,
+    eventType: "ACHIEVEMENT_UNLOCKED",
+    points: xpAmount,
+    idempotencyKey: `achievement:${userId}:${code}`,
+    referenceType: "Achievement",
+    referenceId: code,
+  });
+
+  return created;
 }
 
 // ─── Coleta agrupada de estatísticas reais (uma leva de queries, não dezenas) ─

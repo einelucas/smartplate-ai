@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useUser } from "@clerk/nextjs";
 import { motion, AnimatePresence } from "framer-motion";
@@ -24,7 +25,11 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { celebrateAchievements, celebrateStreakIfMilestone } from "@/components/social/AchievementCelebration";
-import GeneratePlanModal, { GeneratePlanFormData } from "./GeneratePlanModal";
+import type { GeneratePlanFormData } from "./GeneratePlanModal";
+
+// Formulário de geração (IA) só abre sob clique — não precisa entrar no
+// bundle inicial de /mealplan.
+const GeneratePlanModal = dynamic(() => import("./GeneratePlanModal"), { ssr: false });
 
 // ─── Tipos locais ─────────────────────────────────────────────────────────────
 
@@ -377,6 +382,11 @@ export default function MealPlanDashboard() {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["meal-plans"] });
+      queryClient.invalidateQueries({ queryKey: ["community", "gamification"] });
+      queryClient.invalidateQueries({ queryKey: ["community", "me"] });
+      queryClient.invalidateQueries({ queryKey: ["achievements"] });
+      queryClient.invalidateQueries({ queryKey: ["community", "challenges"] });
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
       celebrateAchievements(data?.gamification?.newlyUnlocked);
       celebrateStreakIfMilestone(data?.gamification?.currentStreak);
     },

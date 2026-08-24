@@ -12,7 +12,9 @@
     "start": "next start",
     "lint": "next lint",
     "stripe:listen": "stripe isten --forward-to localhost:3000/api/webhook",
-    "beta:generate": "node --env-file=.env scripts/generate-beta-codes.cjs"
+    "beta:generate": "node --env-file=.env scripts/generate-beta-codes.cjs",
+    "strava:webhook": "node --env-file=.env scripts/register-strava-webhook.cjs",
+    "challenges:seed": "node --env-file=.env scripts/seed-challenge-templates.cjs"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.9.6",
@@ -33,6 +35,7 @@
     "react-chartjs-2": "^5.3.1",
     "react-dom": "^19.0.0",
     "react-hot-toast": "^2.6.0",
+    "react-icons": "^5.7.0",
     "recharts": "^3.7.0",
     "stripe": "^17.7.0",
     "ws": "^8.18.0",

@@ -61,6 +61,8 @@ import {
   PersonSimpleTaiChiIcon,
   PulseIcon,
   DotsThreeOutlineIcon,
+  WatchIcon,
+  HeartbeatIcon,
   type Icon,
 } from "@phosphor-icons/react";
 
@@ -115,6 +117,9 @@ export const ICON_REGISTRY = {
   PersonSimpleTaiChi: PersonSimpleTaiChiIcon,
   Pulse: PulseIcon,
   DotsThreeOutline: DotsThreeOutlineIcon,
+  // Connected Apps (ver app/profile/connected-apps/page.tsx)
+  Watch: WatchIcon,
+  Heartbeat: HeartbeatIcon,
 } satisfies Record<string, Icon>;
 
 export type IconKey = keyof typeof ICON_REGISTRY;

@@ -1,15 +1,18 @@
 // components/NotificationsBell.tsx
 // Sino de notificações global (renderizado pelo AppSidebar em toda página
-// autenticada). MVP: notificações = solicitações de amizade pendentes,
-// derivadas do Friendship existente (sem necessidade de um modelo próprio de
-// notificação/leitura — a solicitação some da lista assim que é respondida).
+// autenticada). Combina duas fontes: solicitações de amizade pendentes
+// (derivadas do Friendship existente, sem leitura/não-leitura própria — some
+// da lista assim que é respondida) e notificações reais persistidas
+// (Notification — hoje só "desafio concluído", ver lib/community/
+// gamification.ts).
 "use client";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { Bell, Check, X, Users } from "lucide-react";
+import { Bell, Check, X, Users, Trophy } from "lucide-react";
 import { useFriends, useRespondFriendRequest } from "@/hooks/useCommunity";
+import { useNotifications, useMarkAllNotificationsRead } from "@/hooks/useNotifications";
 import type { FriendEntry } from "@/types/community";
 
 function Avatar({ avatarUrl, name }: { avatarUrl?: string | null; name: string }) {
@@ -30,14 +33,24 @@ export default function NotificationsBell() {
   const router = useRouter();
   const { data } = useFriends();
   const respondRequest = useRespondFriendRequest();
+  const { data: notificationsData } = useNotifications();
+  const markAllRead = useMarkAllNotificationsRead();
 
   const incoming = data?.incomingPending ?? [];
-  const count = incoming.length;
+  const notifications = notificationsData?.notifications ?? [];
+  const unreadNotificationCount = notificationsData?.unreadCount ?? 0;
+  const count = incoming.length + unreadNotificationCount;
 
   return (
     <div className="relative">
       <button
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => {
+          const next = !open;
+          setOpen(next);
+          // Marca como lidas ao abrir — não deixamos um "toggle falso": o
+          // contador some de verdade, persistido no banco.
+          if (next && unreadNotificationCount > 0) markAllRead.mutate();
+        }}
         className="relative w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center hover:bg-slate-200 transition-colors"
       >
         <Bell size={18} className="text-slate-600" />
@@ -62,13 +75,24 @@ export default function NotificationsBell() {
                 <h3 className="font-semibold text-slate-800 text-sm">Notificações</h3>
               </div>
 
-              {count === 0 ? (
+              {incoming.length === 0 && notifications.length === 0 ? (
                 <div className="p-6 text-center">
                   <Bell className="mx-auto text-slate-300 mb-2" size={24} />
                   <p className="text-sm text-slate-400">Nenhuma notificação nova.</p>
                 </div>
               ) : (
                 <div className="p-2">
+                  {notifications.map((n) => (
+                    <div key={n.id} className="flex items-start gap-3 p-2.5 rounded-xl hover:bg-slate-50">
+                      <div className="w-9 h-9 flex-shrink-0 bg-amber-50 rounded-full flex items-center justify-center">
+                        <Trophy size={16} className="text-amber-500" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-slate-700 font-medium">{n.title}</p>
+                        <p className="text-xs text-slate-500 mt-0.5">{n.body}</p>
+                      </div>
+                    </div>
+                  ))}
                   {incoming.map((f: FriendEntry) => (
                     <div key={f.friendshipId} className="flex items-start gap-3 p-2.5 rounded-xl hover:bg-slate-50">
                       <Avatar avatarUrl={f.avatarUrl} name={f.displayName || "U"} />

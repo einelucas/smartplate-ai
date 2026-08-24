@@ -64,6 +64,11 @@ model Profile {
   communityComments       CommunityComment[]
   communityReactions      CommunityReaction[]
   contentReports          ContentReport[]
+  notifications           Notification[]
+
+  // Relações — Integrações externas (Connected Apps)
+  connectedApps          ConnectedApp[]
+  externalActivityCaches ExternalActivityCache[]
 }
 
 // 🔥 NOVO MODELO PARA DETALHES NUTRICIONAIS
@@ -221,11 +226,15 @@ model ProgressPhoto {
 
 // Registro de atividade física — privado por padrão (só some da esfera
 // privada quando o usuário compartilha explicitamente via CommunityPost).
-// `source`/`externalId` preparam integrações futuras (Strava, Garmin, Health
-// Connect, Apple/Samsung Health, Fitbit) sem implementá-las agora — cada
-// registro manual usa source="MANUAL" e externalId=null; o Postgres trata
-// múltiplos NULL como distintos numa unique constraint, então isso nunca
-// colide entre registros manuais.
+// IMPORTANTE: ActivityLog é sempre um registro GAMIFICADO (gera XP/streak/
+// progresso de desafio — ver lib/community/gamification.ts) e só existe para
+// `source = MANUAL` nesta implementação. Atividades sincronizadas de
+// provedores externos (Strava etc.) NUNCA viram ActivityLog — elas ficam em
+// ExternalActivityCache, que é puramente privado e nunca alimenta
+// gamificação (ver lib/integrations/provider-policy.ts). `source`/
+// `externalId` seguem preparados no schema para uma eventual futura política
+// que permita a um provedor "promover" uma atividade a ActivityLog completo
+// mediante confirmação explícita do usuário — não implementado agora.
 model ActivityLog {
   id      String  @id @default(uuid())
   userId  String
@@ -238,7 +247,7 @@ model ActivityLog {
   intensity          String? // LIGHT | MODERATE | HIGH — ver lib/activity/options.ts
   notes              String?
 
-  source     String  @default("MANUAL")
+  source     ActivitySource @default(MANUAL)
   externalId String?
 
   performedAt DateTime
@@ -250,6 +259,17 @@ model ActivityLog {
 
   @@unique([source, externalId])
   @@index([userId, performedAt])
+}
+
+enum ActivitySource {
+  MANUAL
+  STRAVA
+  GARMIN
+  HEALTH_CONNECT
+  APPLE_HEALTH
+  SAMSUNG_HEALTH
+  FITBIT
+  OTHER
 }
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -364,6 +384,18 @@ enum ChallengeMetric {
   ACTIVE_DAYS
   MEAL_COMPLETIONS
   STREAK_DAYS
+  // Métricas de atividade física — ver lib/community/challenge-metrics.ts
+  // para o cálculo central de cada uma (sempre recalculado no servidor a
+  // partir de ActivityLog/DailyActivity, nunca aceito do cliente).
+  ACTIVITY_COUNT
+  ACTIVITY_MINUTES
+  WALKING_DAYS
+  RUNNING_DAYS
+  CYCLING_DAYS
+  STRENGTH_DAYS
+  // Dia com refeição concluída E atividade elegível no mesmo dia local
+  // (mesma regra da conquista BALANCED_ROUTINE_WEEK/CONSISTENT_ROUTINE).
+  BALANCED_DAYS
 }
 
 enum PostType {
@@ -373,6 +405,10 @@ enum PostType {
   CHALLENGE
   PLAN_SHARE
   ACTIVITY
+  // Conteúdo compartilhado pelo próprio usuário de outro app (link/imagem/
+  // legenda fornecidos por ele) — nunca dado obtido via API de integração.
+  // Ver seção "Compartilhamento externo genérico" do README.
+  EXTERNAL_SHARE
 }
 
 enum ReactionType {
@@ -477,8 +513,8 @@ model DailyActivity {
   // teto diário de XP de atividade física, separado do xpEarned geral.
   activityXpEarned          Int     @default(0)
 
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([userId, date])
   @@index([userId])
@@ -612,7 +648,7 @@ model CommunityPost {
   // snapshot em `metadata`, nunca um join ao vivo (ActivityLog pode ser
   // editado/apagado depois; o post mantém seu registro histórico).
   activityLogId String?      @unique
-  activityLog    ActivityLog? @relation(fields: [activityLogId], references: [id], onDelete: SetNull)
+  activityLog   ActivityLog? @relation(fields: [activityLogId], references: [id], onDelete: SetNull)
 
   reactions CommunityReaction[]
   comments  CommunityComment[]
@@ -662,4 +698,109 @@ model ContentReport {
 
   @@index([status])
   @@index([targetType, targetId])
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// NOTIFICAÇÕES
+// ══════════════════════════════════════════════════════════════════════════
+
+// Notificação mínima real e persistida (ex.: desafio concluído). `type` fica
+// String (não enum) de propósito — assim como XpEvent.eventType, é uma lista
+// que deve crescer sem exigir migration a cada novo tipo. `data` carrega
+// referências (ex.: challengeId) para navegação, nunca dado privado.
+model Notification {
+  id      String  @id @default(uuid())
+  userId  String
+  profile Profile @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  type  String
+  title String
+  body  String
+  data  Json?
+
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, createdAt])
+  @@index([userId, readAt])
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// INTEGRAÇÕES EXTERNAS (CONNECTED APPS)
+// ══════════════════════════════════════════════════════════════════════════
+
+enum ConnectedAppProvider {
+  STRAVA
+  GARMIN
+  HEALTH_CONNECT
+  APPLE_HEALTH
+  SAMSUNG_HEALTH
+  FITBIT
+  OTHER
+}
+
+enum ConnectedAppStatus {
+  CONNECTED
+  DISCONNECTED
+  ERROR
+}
+
+// Uma linha por (usuário, provedor). Tokens NUNCA em texto puro — sempre
+// through lib/integrations/token-crypto.ts (AES-256-GCM, chave só em env).
+// Ver lib/integrations/provider-policy.ts para o que cada provider pode ou
+// não fazer (nunca checar `provider === "STRAVA"` espalhado pelo código).
+model ConnectedApp {
+  id      String  @id @default(uuid())
+  userId  String
+  profile Profile @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  provider ConnectedAppProvider
+  status   ConnectedAppStatus   @default(CONNECTED)
+
+  scopes         String[]
+  providerUserId String? // ex.: athlete id do Strava — nunca exposto a outros usuários
+
+  accessTokenEncrypted  String?   @db.Text
+  refreshTokenEncrypted String?   @db.Text
+  expiresAt             DateTime?
+
+  connectedAt    DateTime  @default(now())
+  lastSyncedAt   DateTime?
+  disconnectedAt DateTime?
+  lastError      String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, provider])
+  @@index([userId])
+}
+
+// Cache PRIVADO e TRANSITÓRIO de atividades de provedores externos.
+// Propositalmente separado de ActivityLog: nunca gera XpEvent, nunca conta
+// em streak/desafio/ranking, nunca vira post automaticamente — ver
+// lib/integrations/provider-policy.ts (allowPersistentActivity/
+// allowPublicGamification = false para todo provider externo). Expira em
+// no máximo `EXTERNAL_ACTIVITY_CACHE_MAX_DAYS` (ver lib/integrations/
+// provider-policy.ts) e é purgado por purgeExpiredExternalActivityCache().
+model ExternalActivityCache {
+  id      String  @id @default(uuid())
+  userId  String
+  profile Profile @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  provider   ConnectedAppProvider
+  externalId String
+
+  activityType String // mapeado para lib/activity/options.ts na exibição
+  name         String?
+  durationMin  Int
+  distanceKm   Float?
+  performedAt  DateTime
+
+  cachedAt  DateTime @default(now())
+  expiresAt DateTime
+
+  @@unique([userId, provider, externalId])
+  @@index([userId, provider])
+  @@index([expiresAt])
 }

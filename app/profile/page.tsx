@@ -1,22 +1,27 @@
 "use client";
 
 import { useUser, useClerk } from "@clerk/nextjs";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Image from "next/image";
+import Link from "next/link";
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import { Toaster } from "react-hot-toast";
 import { useRouter } from "next/navigation";
 import { Spinner } from "@/components/spinner";
-import { Camera, Scale, Ruler, Target, LogOut, Edit, Flame, Star, Trophy } from "lucide-react";
-import WeightChart from "@/components/WeightChart";
+import { Camera, Scale, Ruler, Target, LogOut, Edit, Flame, Star, Trophy, Plug } from "lucide-react";
 import AdherenceRing from "@/components/AdherenceRing";
-import EditProfileModal from "@/components/EditProfileModal";
+import ChartSkeleton from "@/components/skeletons/ChartSkeleton";
+import ProfileSkeleton from "@/components/skeletons/ProfileSkeleton";
 import BeforeAfterSection from "@/components/BeforeAfterSection";
 import BetaTesterBadge from "@/components/BetaTesterBadge";
 import AchievementsSummaryCard from "@/components/AchievementsSummaryCard";
 import ActivitySummaryCard from "@/components/ActivitySummaryCard";
 import { useProfile } from "@/hooks/useProfile";
 import { formatHeightMeters, findLabel, DIET_GOALS, DIET_TYPES, COOKING_LEVELS, BUDGET_LEVELS } from "@/lib/profile/options";
+
+const WeightChart = dynamic(() => import("@/components/WeightChart"), { ssr: false, loading: () => <ChartSkeleton /> });
+const EditProfileModal = dynamic(() => import("@/components/EditProfileModal"), { ssr: false });
 
 interface WeightLog {
   id: string;
@@ -62,6 +67,7 @@ export default function ProfilePage() {
   const { isLoaded, isSignedIn, user } = useUser();
   const { signOut } = useClerk();
   const router = useRouter();
+  const queryClient = useQueryClient();
 
   const {
     physicalData,
@@ -128,7 +134,10 @@ export default function ProfilePage() {
 
   const handleSignOut = () => {
     if (confirm("Deseja realmente sair?")) {
-      signOut(() => router.push("/"));
+      signOut(() => {
+        queryClient.clear();
+        router.push("/");
+      });
     }
   };
 
@@ -152,12 +161,7 @@ export default function ProfilePage() {
   const isLoading = isLoadingWeightLogs || profileHookLoading;
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-slate-50">
-        <Spinner />
-        <span className="ml-2 text-slate-600">Carregando dados...</span>
-      </div>
-    );
+    return <ProfileSkeleton />;
   }
 
   return (
@@ -305,6 +309,12 @@ export default function ProfilePage() {
               <h3 className="font-semibold text-slate-800">Configurações</h3>
             </div>
             <div className="p-2">
+              <Link href="/profile/connected-apps" className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 transition-colors">
+                <div className="w-9 h-9 bg-[#007BFF]/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <Plug size={16} className="text-[#007BFF]" />
+                </div>
+                <span className="text-sm font-medium text-slate-700 flex-1 text-left">Apps conectados</span>
+              </Link>
               <button onClick={handleSignOut} className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-red-50 transition-colors">
                 <div className="w-9 h-9 bg-red-100 rounded-lg flex items-center justify-center flex-shrink-0">
                   <LogOut size={16} className="text-red-500" />

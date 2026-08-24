@@ -3,12 +3,14 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { motion } from "framer-motion";
 import { Plus, KeyRound, Users2 } from "lucide-react";
 import { useMyGroups } from "@/hooks/useCommunity";
 import type { GroupSummary } from "@/types/community";
-import CreateGroupModal from "./CreateGroupModal";
-import JoinWithCodeModal from "./JoinWithCodeModal";
+
+const CreateGroupModal = dynamic(() => import("./CreateGroupModal"), { ssr: false });
+const JoinWithCodeModal = dynamic(() => import("./JoinWithCodeModal"), { ssr: false });
 
 const ROLE_LABELS: Record<string, string> = { OWNER: "Dono", ADMIN: "Admin", MEMBER: "Membro" };
 

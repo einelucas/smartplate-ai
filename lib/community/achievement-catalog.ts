@@ -51,6 +51,20 @@ export const ACHIEVEMENT_CATEGORY_LABELS: Record<AchievementCategory, string> = 
 
 export type AchievementAvailability = "AVAILABLE" | "COMING_SOON";
 
+// Raridade decide o XP concedido no desbloqueio (ver ACHIEVEMENT_RARITY_XP)
+// — nunca hardcoded em componente algum. Campo opcional: entradas sem
+// `rarity` explícita usam COMMON (a maioria das 57 conquistas do catálogo
+// são marcos comuns, não precisam de tagueamento individual).
+export type AchievementRarity = "COMMON" | "UNCOMMON" | "RARE" | "EPIC" | "SPECIAL";
+
+export const ACHIEVEMENT_RARITY_XP: Record<AchievementRarity, number> = {
+  COMMON: 10,
+  UNCOMMON: 20,
+  RARE: 40,
+  EPIC: 75,
+  SPECIAL: 100,
+};
+
 export interface AchievementDefinition {
   code: string;
   title: string;
@@ -63,6 +77,12 @@ export interface AchievementDefinition {
   availability: AchievementAvailability;
   /** Só relevante quando availability = COMING_SOON — texto exibido no lugar do progresso. */
   comingSoonReason?: string;
+  /** Ausente = COMMON. Ver ACHIEVEMENT_RARITY_XP para o XP concedido em cada nível. */
+  rarity?: AchievementRarity;
+}
+
+export function getAchievementRarity(definition: Pick<AchievementDefinition, "rarity">): AchievementRarity {
+  return definition.rarity ?? "COMMON";
 }
 
 const WATER_REASON = "Disponível quando o registro de hidratação for lançado no SmartPlate.";
@@ -93,6 +113,7 @@ export const ACHIEVEMENT_CATALOG: Record<string, AchievementDefinition> = {
     icon: "Flask",
     target: 1,
     availability: "AVAILABLE",
+    rarity: "SPECIAL",
   }),
   PROFILE_COMPLETE: def({
     code: "PROFILE_COMPLETE",
@@ -198,6 +219,7 @@ export const ACHIEVEMENT_CATALOG: Record<string, AchievementDefinition> = {
   }),
   MEALS_100: def({
     code: "MEALS_100",
+    rarity: "RARE",
     title: "100 Refeições",
     description: "Completou 100 refeições planejadas.",
     unlockDescription: "Complete 100 refeições planejadas.",
@@ -276,6 +298,7 @@ export const ACHIEVEMENT_CATALOG: Record<string, AchievementDefinition> = {
   }),
   WATER_GOAL_30_DAYS: def({
     code: "WATER_GOAL_30_DAYS",
+    rarity: "RARE",
     title: "30 Dias Hidratado",
     description: "Atingiu a meta diária em 30 dias diferentes.",
     unlockDescription: "Atinja a meta diária em 30 dias diferentes.",
@@ -344,6 +367,7 @@ export const ACHIEVEMENT_CATALOG: Record<string, AchievementDefinition> = {
   }),
   STREAK_30: def({
     code: "STREAK_30",
+    rarity: "UNCOMMON",
     title: "Um Mês",
     description: "Alcançou 30 dias consecutivos ativos.",
     unlockDescription: "Alcance 30 dias consecutivos ativos.",
@@ -355,6 +379,7 @@ export const ACHIEVEMENT_CATALOG: Record<string, AchievementDefinition> = {
   }),
   STREAK_60: def({
     code: "STREAK_60",
+    rarity: "RARE",
     title: "60 Dias",
     description: "Alcançou 60 dias consecutivos ativos.",
     unlockDescription: "Alcance 60 dias consecutivos ativos.",
@@ -366,6 +391,7 @@ export const ACHIEVEMENT_CATALOG: Record<string, AchievementDefinition> = {
   }),
   STREAK_100: def({
     code: "STREAK_100",
+    rarity: "EPIC",
     title: "100 Dias",
     description: "Alcançou 100 dias consecutivos ativos.",
     unlockDescription: "Alcance 100 dias consecutivos ativos.",
@@ -377,6 +403,7 @@ export const ACHIEVEMENT_CATALOG: Record<string, AchievementDefinition> = {
   }),
   STREAK_365: def({
     code: "STREAK_365",
+    rarity: "SPECIAL",
     title: "Imparável",
     description: "Alcançou 365 dias consecutivos ativos.",
     unlockDescription: "Alcance 365 dias consecutivos ativos.",
@@ -410,6 +437,7 @@ export const ACHIEVEMENT_CATALOG: Record<string, AchievementDefinition> = {
   }),
   WEIGHT_LOGS_25: def({
     code: "WEIGHT_LOGS_25",
+    rarity: "UNCOMMON",
     title: "Histórico em Construção",
     description: "Fez 25 registros válidos de peso.",
     unlockDescription: "Faça 25 registros válidos de peso.",
@@ -440,6 +468,7 @@ export const ACHIEVEMENT_CATALOG: Record<string, AchievementDefinition> = {
   }),
   PROGRESS_30_DAYS: def({
     code: "PROGRESS_30_DAYS",
+    rarity: "RARE",
     title: "Um Mês de Jornada",
     description: "Tem registros de progresso separados por pelo menos 30 dias.",
     unlockDescription: "Tenha registros de progresso separados por pelo menos 30 dias.",
@@ -503,6 +532,7 @@ export const ACHIEVEMENT_CATALOG: Record<string, AchievementDefinition> = {
   }),
   ACTIVITIES_100: def({
     code: "ACTIVITIES_100",
+    rarity: "RARE",
     title: "100 Atividades",
     description: "Registrou 100 atividades físicas.",
     unlockDescription: "Registre 100 atividades físicas.",
@@ -553,6 +583,7 @@ export const ACHIEVEMENT_CATALOG: Record<string, AchievementDefinition> = {
   }),
   ACTIVE_30_DAYS_TOTAL: def({
     code: "ACTIVE_30_DAYS_TOTAL",
+    rarity: "RARE",
     title: "30 Dias em Movimento",
     description: "Registrou atividade física em 30 dias diferentes.",
     unlockDescription: "Registre atividade física em 30 dias diferentes — não precisam ser consecutivos.",
@@ -585,6 +616,7 @@ export const ACHIEVEMENT_CATALOG: Record<string, AchievementDefinition> = {
   }),
   CONSISTENT_ROUTINE: def({
     code: "CONSISTENT_ROUTINE",
+    rarity: "RARE",
     title: "Consistência Total",
     description: "Manteve uma rotina equilibrada de alimentação e atividade por várias semanas.",
     unlockDescription: "Alcance uma Semana Equilibrada em pelo menos 4 semanas diferentes.",
@@ -659,6 +691,7 @@ export const ACHIEVEMENT_CATALOG: Record<string, AchievementDefinition> = {
   }),
   FIRST_CHALLENGE_COMPLETED: def({
     code: "FIRST_CHALLENGE_COMPLETED",
+    rarity: "UNCOMMON",
     title: "Primeiro Desafio",
     description: "Participou e concluiu o primeiro desafio.",
     unlockDescription: "Participe e conclua seu primeiro desafio.",

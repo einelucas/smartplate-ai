@@ -2,6 +2,7 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import {
@@ -22,7 +23,9 @@ import { resolveIcon } from "@/components/icon-registry";
 import { ACTIVITY_TYPE_ICON_KEY, findActivityIntensityLabel, findActivityTypeLabel } from "@/lib/activity/options";
 import type { CommunityPostSummary } from "@/types/community";
 import CommentSection from "./CommentSection";
-import ReportModal from "./ReportModal";
+import ExternalProviderBadge from "./ExternalProviderBadge";
+
+const ReportModal = dynamic(() => import("./ReportModal"), { ssr: false });
 
 const REACTIONS: { type: "LIKE" | "FIRE" | "CLAP" | "STRONG"; icon: Icon }[] = [
   { type: "LIKE", icon: ThumbsUpIcon },
@@ -50,6 +53,9 @@ type ActivityMetadata = {
   performedAt?: string;
   xpAwarded?: number;
 };
+// Conteúdo é sempre o que o usuário forneceu — nunca dado obtido via API
+// (ver POST /api/community/posts, ramo EXTERNAL_SHARE).
+type ExternalShareMetadata = { provider?: string; url?: string | null; imageUrl?: string | null };
 
 export default function PostCard({
   post,
@@ -321,6 +327,32 @@ function PostBody({
             <FireIcon size={14} weight="fill" /> +{meta.xpAwarded} XP
           </p>
         )}
+      </div>
+    );
+  }
+
+  if (post.type === "EXTERNAL_SHARE") {
+    const meta = (post.metadata ?? {}) as ExternalShareMetadata;
+    return (
+      <div className="border border-slate-100 rounded-xl overflow-hidden">
+        {post.text && <p className="text-slate-700 text-sm whitespace-pre-wrap break-words p-3 pb-0">{post.text}</p>}
+        {meta.imageUrl && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={meta.imageUrl} alt="" className="w-full max-h-80 object-cover" />
+        )}
+        <div className="p-3 flex items-center justify-between gap-2">
+          <ExternalProviderBadge provider={meta.provider} />
+          {meta.url && (
+            <a
+              href={meta.url}
+              target="_blank"
+              rel="noopener noreferrer nofollow"
+              className="text-xs font-semibold text-[#007BFF] hover:underline flex-shrink-0"
+            >
+              Abrir conteúdo externo ↗
+            </a>
+          )}
+        </div>
       </div>
     );
   }

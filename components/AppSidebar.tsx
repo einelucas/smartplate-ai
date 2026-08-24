@@ -3,8 +3,9 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useUser, SignOutButton } from "@clerk/nextjs";
+import { usePathname, useRouter } from "next/navigation";
+import { useUser, useClerk } from "@clerk/nextjs";
+import { useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { Leaf, Menu, X, Sparkles, LogOut } from "lucide-react";
 import NotificationsBell from "@/components/NotificationsBell";
@@ -15,10 +16,26 @@ import { NAV_ITEMS, findActiveNavItem } from "@/lib/navigation";
 export default function AppSidebar({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const { user } = useUser();
+  const { signOut } = useClerk();
+  const router = useRouter();
+  const queryClient = useQueryClient();
   const pathname = usePathname();
   const { data: meData } = useCommunityMe();
 
   const currentItem = findActiveNavItem(pathname);
+
+  // Limpa todo o cache do React Query antes de sair — sem isso, dados
+  // privados do usuário anterior (perfil, gamificação, feed) ficariam
+  // visíveis por um instante para o próximo usuário que logar no mesmo
+  // navegador, já que as query keys não incluem o userId.
+  const handleSignOut = () => {
+    if (confirm("Deseja realmente sair?")) {
+      signOut(() => {
+        queryClient.clear();
+        router.push("/");
+      });
+    }
+  };
 
   // Identidade pública (SocialProfile) é a fonte oficial; Clerk é usado como
   // fallback temporário enquanto a query carrega.
@@ -84,7 +101,7 @@ export default function AppSidebar({ children }: { children: React.ReactNode }) 
           {NAV_ITEMS.map((item) => {
             const isActive = currentItem?.href === item.href;
             return (
-              <Link key={item.href} href={item.href}>
+              <Link key={item.href} href={item.href} prefetch={item.showInMobileNav}>
                 <motion.div
                   whileHover={{ x: 4 }}
                   whileTap={{ scale: 0.97 }}
@@ -126,11 +143,13 @@ export default function AppSidebar({ children }: { children: React.ReactNode }) 
               )}
             </AnimatePresence>
             {sidebarOpen && (
-              <SignOutButton>
-                <button className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0" title="Sair">
-                  <LogOut size={16} />
-                </button>
-              </SignOutButton>
+              <button
+                onClick={handleSignOut}
+                className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0"
+                title="Sair"
+              >
+                <LogOut size={16} />
+              </button>
             )}
           </div>
         </div>

@@ -4,10 +4,17 @@
 // rotas. Idempotência via XpEvent.idempotencyKey é a garantia de que marcar/
 // desmarcar repetidamente uma refeição (ou reenviar/editar uma atividade)
 // nunca gera XP duplicado.
-import { Prisma } from "@prisma/client";
+import { Prisma, type ChallengeMetric } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import type { Db } from "./types";
-import { diffInCalendarDays, getLocalDateString, getUtcWeekWindow, toUtcDateOnly } from "./dates";
+import { getBlockedUserIds } from "./authz";
+import {
+  diffInCalendarDays,
+  getLocalDateString,
+  getUtcMonthWindow,
+  getUtcWeekWindow,
+  toUtcDateOnly,
+} from "./dates";
 import {
   type AchievementCode,
   computeLevel,
@@ -24,6 +31,19 @@ import {
 } from "@/lib/activity/options";
 
 export const MEAL_COMPLETION_XP = 10;
+
+// XP concedido uma única vez por marco de streak (nunca todo dia — ver
+// checklist seção 8, item 38). Chave de idempotência inclui o marco, não a
+// "corrida" de streak: se o usuário perder e reconstruir o streak até o
+// mesmo número, o XP não é concedido de novo (é um marco de conta, como uma
+// conquista, não um bônus recorrente).
+export const STREAK_MILESTONE_XP: Record<number, number> = {
+  7: 20,
+  14: 40,
+  30: 75,
+  60: 100,
+  100: 150,
+};
 
 // ─── Primitivas ─────────────────────────────────────────────────────────────
 
@@ -70,6 +90,23 @@ async function creditXp(db: Db, userId: string, points: number): Promise<{ total
   return { totalXp: gamification.totalXp };
 }
 
+/**
+ * Primitiva pública de concessão de XP idempotente — usada tanto
+ * internamente (refeição/atividade/desafio/streak) quanto por
+ * achievement-engine.ts para XP de conquista. Nunca fazer
+ * `gamification.totalXp += n` diretamente em nenhum lugar do código; sempre
+ * passar por aqui (ou pelas funções específicas acima), que sempre passam
+ * por XpEvent primeiro.
+ */
+export async function awardXpEvent(
+  db: Db,
+  params: { userId: string; eventType: string; points: number; idempotencyKey: string; referenceType?: string; referenceId?: string }
+): Promise<boolean> {
+  const granted = await tryCreateXpEvent(db, params);
+  if (granted && params.points > 0) await creditXp(db, params.userId, params.points);
+  return granted;
+}
+
 // ─── Conquistas (motor antigo — FIRST_ACTION/STREAK_*/XP_*/FIRST_CHALLENGE/FIRST_GROUP) ─
 
 export async function checkAndUnlockAchievements(
@@ -109,10 +146,46 @@ export async function checkAndUnlockAchievements(
 
 // ─── Progresso de desafios (sempre calculado no servidor) ──────────────────
 
-type ChallengeMetric = "ACTIVE_DAYS" | "MEAL_COMPLETIONS" | "STREAK_DAYS";
 type ProgressChange = { mode: "increment"; amount: number } | { mode: "set"; value: number };
 
-export async function recordChallengeCompletion(db: Db, userId: string, challengeId: string, rewardXp: number) {
+// ACTIVE_DAYS/MEAL_COMPLETIONS/STREAK_DAYS continuam com progresso mantido
+// por incremento/set em tempo real (dentro de qualifyDayForStreak/
+// recordMealCompletion) — o modelo original, intacto. Só as métricas abaixo
+// usam o modelo novo (recalculado do zero a cada escrita relevante).
+
+// Métricas de atividade física — sempre RECALCULADAS do zero a partir de
+// ActivityLog/DailyActivity a cada escrita relevante (nunca incrementadas),
+// porque "dias distintos com X" não é seguro de expressar como um contador
+// incremental sem risco de drift. O custo é uma query por desafio ativo do
+// usuário nessas métricas — tipicamente zero ou poucos.
+const RECOMPUTED_ACTIVITY_METRICS: ChallengeMetric[] = [
+  "ACTIVITY_COUNT",
+  "ACTIVITY_MINUTES",
+  "WALKING_DAYS",
+  "RUNNING_DAYS",
+  "CYCLING_DAYS",
+  "STRENGTH_DAYS",
+  "BALANCED_DAYS",
+];
+
+const METRIC_TO_ACTIVITY_TYPE: Partial<Record<ChallengeMetric, string>> = {
+  WALKING_DAYS: "WALKING",
+  RUNNING_DAYS: "RUNNING",
+  CYCLING_DAYS: "CYCLING",
+  STRENGTH_DAYS: "STRENGTH",
+};
+
+function isRecomputedActivityMetric(metric: ChallengeMetric): boolean {
+  return RECOMPUTED_ACTIVITY_METRICS.includes(metric);
+}
+
+export async function recordChallengeCompletion(
+  db: Db,
+  userId: string,
+  challengeId: string,
+  rewardXp: number,
+  challengeTitle: string
+) {
   const idempotencyKey = `challenge_complete:${challengeId}:${userId}`;
   const created = await tryCreateXpEvent(db, {
     userId,
@@ -130,6 +203,19 @@ export async function recordChallengeCompletion(db: Db, userId: string, challeng
     where: { userId, completedAt: { not: null }, challengeId: { not: challengeId } },
   });
   await checkAndUnlockAchievements(db, userId, { firstChallengeCompleted: completedCountBefore === 0 });
+
+  // Notificação mínima real (integrada ao NotificationsBell) — nunca
+  // duplicada, porque esta função inteira só roda uma vez por desafio
+  // (gate acima: `if (!created) return`).
+  await db.notification.create({
+    data: {
+      userId,
+      type: "CHALLENGE_COMPLETED",
+      title: "🏆 Desafio concluído!",
+      body: rewardXp > 0 ? `Você completou "${challengeTitle}" e ganhou +${rewardXp} XP.` : `Você completou "${challengeTitle}".`,
+      data: { challengeId, rewardXp },
+    },
+  });
 }
 
 async function updateChallengeProgress(db: Db, userId: string, metric: ChallengeMetric, change: ProgressChange) {
@@ -155,7 +241,82 @@ async function updateChallengeProgress(db: Db, userId: string, metric: Challenge
     });
 
     if (willComplete) {
-      await recordChallengeCompletion(db, userId, participant.challengeId, participant.challenge.rewardXp);
+      await recordChallengeCompletion(db, userId, participant.challengeId, participant.challenge.rewardXp, participant.challenge.title);
+    }
+  }
+}
+
+/** Valor bruto (não capado) de uma métrica de atividade recalculada, no intervalo [startsAt, endsAt]. */
+async function computeActivityMetricValue(
+  db: Db,
+  userId: string,
+  metric: ChallengeMetric,
+  startsAt: Date,
+  endsAt: Date,
+  timezone?: string | null
+): Promise<number> {
+  if (metric === "ACTIVITY_COUNT") {
+    return db.activityLog.count({ where: { userId, performedAt: { gte: startsAt, lte: endsAt } } });
+  }
+  if (metric === "ACTIVITY_MINUTES") {
+    const agg = await db.activityLog.aggregate({
+      where: { userId, performedAt: { gte: startsAt, lte: endsAt } },
+      _sum: { durationMin: true },
+    });
+    return agg._sum.durationMin ?? 0;
+  }
+  if (metric === "BALANCED_DAYS") {
+    return db.dailyActivity.count({
+      where: { userId, date: { gte: startsAt, lte: endsAt }, mealCompleted: true, physicalActivityCompleted: true },
+    });
+  }
+  const activityType = METRIC_TO_ACTIVITY_TYPE[metric];
+  if (!activityType) return 0;
+  const rows = await db.activityLog.findMany({
+    where: { userId, activityType, performedAt: { gte: startsAt, lte: endsAt } },
+    select: { performedAt: true },
+  });
+  const distinctDays = new Set(rows.map((row) => getLocalDateString(row.performedAt, timezone)));
+  return distinctDays.size;
+}
+
+/**
+ * Recalcula (do zero, nunca incrementa) o progresso de todo desafio ativo
+ * cujo `metric` esteja em `metrics` — chamar depois de qualquer escrita que
+ * possa afetá-las (novo ActivityLog, refeição concluída para BALANCED_DAYS).
+ * Sem participantes elegíveis, não executa nenhuma query extra.
+ */
+export async function recomputeChallengeProgressForMetrics(db: Db, userId: string, metrics: ChallengeMetric[]) {
+  const relevant = metrics.filter(isRecomputedActivityMetric);
+  if (relevant.length === 0) return;
+
+  const now = new Date();
+  const participants = await db.challengeParticipant.findMany({
+    where: {
+      userId,
+      completedAt: null,
+      challenge: { metric: { in: relevant }, startsAt: { lte: now }, endsAt: { gte: now } },
+    },
+    include: { challenge: true },
+  });
+  if (participants.length === 0) return;
+
+  const socialProfile = await db.socialProfile.findUnique({ where: { userId }, select: { timezone: true } });
+
+  for (const participant of participants) {
+    const { challenge } = participant;
+    const windowEnd = now < challenge.endsAt ? now : challenge.endsAt;
+    const value = await computeActivityMetricValue(db, userId, challenge.metric, challenge.startsAt, windowEnd, socialProfile?.timezone);
+    const cappedProgress = Math.min(value, challenge.target);
+    const willComplete = cappedProgress >= challenge.target;
+
+    await db.challengeParticipant.update({
+      where: { id: participant.id },
+      data: { progress: cappedProgress, ...(willComplete ? { completedAt: now } : {}) },
+    });
+
+    if (willComplete) {
+      await recordChallengeCompletion(db, userId, challenge.id, challenge.rewardXp, challenge.title);
     }
   }
 }
@@ -241,6 +402,19 @@ async function qualifyDayForStreak(
     });
     currentStreak = streak;
 
+    const milestoneXp = STREAK_MILESTONE_XP[streak];
+    if (milestoneXp) {
+      const granted = await tryCreateXpEvent(db, {
+        userId,
+        eventType: "STREAK_MILESTONE",
+        points: milestoneXp,
+        idempotencyKey: `streak_milestone:${userId}:${streak}`,
+        referenceType: "Streak",
+        referenceId: String(streak),
+      });
+      if (granted) await creditXp(db, userId, milestoneXp);
+    }
+
     await updateChallengeProgress(db, userId, "ACTIVE_DAYS", { mode: "increment", amount: 1 });
     await updateChallengeProgress(db, userId, "STREAK_DAYS", { mode: "set", value: streak });
   }
@@ -293,6 +467,9 @@ export async function recordMealCompletion(
   // ACTIVE_DAYS/STREAK_DAYS já são atualizados dentro de qualifyDayForStreak
   // quando isNewQualifyingDay — não duplicar aqui.
   void isNewQualifyingDay;
+  // BALANCED_DAYS depende de mealCompleted + physicalActivityCompleted no
+  // mesmo dia — só pode mudar aqui se hoje já tinha atividade registrada.
+  await recomputeChallengeProgressForMetrics(db, userId, ["BALANCED_DAYS"]);
 
   return { xpAwarded: true, currentStreak, newlyUnlocked };
 }
@@ -307,6 +484,10 @@ export async function recordMealCompletion(
 // pode ser retroativa ("Hoje ou uma atividade anterior"). Por isso todo o
 // cálculo de dia/streak/teto usa `performedAt`, nunca o instante do POST —
 // registrar uma corrida de ontem credita XP/streak a ontem, não a hoje.
+//
+// Esta função só é chamada para ActivityLog MANUAL (POST /api/activities) —
+// atividades de provider externo (Strava etc.) nunca chegam aqui, por
+// política central (ver lib/integrations/provider-policy.ts).
 
 export async function recordActivityLog(
   db: Db,
@@ -393,6 +574,16 @@ export async function recordActivityLog(
     totalXp,
   });
 
+  await recomputeChallengeProgressForMetrics(db, userId, [
+    "ACTIVITY_COUNT",
+    "ACTIVITY_MINUTES",
+    "WALKING_DAYS",
+    "RUNNING_DAYS",
+    "CYCLING_DAYS",
+    "STRENGTH_DAYS",
+    "BALANCED_DAYS",
+  ]);
+
   return { xpAwarded: totalAwarded, currentStreak, newlyUnlocked };
 }
 
@@ -412,16 +603,26 @@ export async function computeInitialChallengeProgress(
   if (metric === "ACTIVE_DAYS") {
     return db.dailyActivity.count({ where: { userId, date: { gte: startsAt, lte: now }, qualifiesForStreak: true } });
   }
-  // MEAL_COMPLETIONS: soma de qualifyingActions no período (aproximação — cada ação
-  // qualificante hoje é uma conclusão de refeição).
-  const result = await db.dailyActivity.aggregate({
-    where: { userId, date: { gte: startsAt, lte: now } },
-    _sum: { qualifyingActions: true },
-  });
-  return result._sum.qualifyingActions ?? 0;
+  if (metric === "MEAL_COMPLETIONS") {
+    // Aproximação — cada ação qualificante hoje é uma conclusão de refeição
+    // (mesma limitação de sempre; não é uma contagem exata de refeições).
+    const result = await db.dailyActivity.aggregate({
+      where: { userId, date: { gte: startsAt, lte: now } },
+      _sum: { qualifyingActions: true },
+    });
+    return result._sum.qualifyingActions ?? 0;
+  }
+  if (isRecomputedActivityMetric(metric)) {
+    const socialProfile = await db.socialProfile.findUnique({ where: { userId }, select: { timezone: true } });
+    return computeActivityMetricValue(db, userId, metric, startsAt, now, socialProfile?.timezone);
+  }
+  return 0;
 }
 
-// ─── Ranking semanal (a partir de XpEvent, nunca de totalXp) ──────────────
+// ─── Ranking (a partir de XpEvent, nunca de totalXp) ───────────────────────
+
+export type RankingPeriod = "weekly" | "monthly" | "all";
+export type RankingScope = "global" | "friends" | "group";
 
 export type RankingEntry = {
   rank: number;
@@ -429,44 +630,77 @@ export type RankingEntry = {
   username: string | null;
   displayName: string;
   avatarUrl: string | null;
-  weeklyXp: number;
+  xp: number;
 };
 
-export async function getWeeklyRanking(params: {
-  scope: "global" | "group";
-  groupId?: string;
-  limit?: number;
-}): Promise<RankingEntry[]> {
-  const { start, end } = getUtcWeekWindow();
-  const limit = params.limit ?? 50;
+export type RankingResult = {
+  ranking: RankingEntry[];
+  /** Posição/XP do próprio usuário, mesmo fora do Top N retornado em `ranking`. `null` se ele não é elegível neste escopo (ex.: showXp=false no escopo global). */
+  viewer: { rank: number; xp: number } | null;
+};
 
-  let userIds: string[] | undefined;
-  if (params.scope === "group" && params.groupId) {
-    const members = await prisma.groupMember.findMany({ where: { groupId: params.groupId }, select: { userId: true } });
-    userIds = members.map((member) => member.userId);
-    if (userIds.length === 0) return [];
+function getPeriodWindow(period: RankingPeriod): { start?: Date; end?: Date } {
+  if (period === "weekly") return getUtcWeekWindow();
+  if (period === "monthly") return getUtcMonthWindow();
+  return {};
+}
+
+export async function getRanking(params: {
+  period: RankingPeriod;
+  scope: RankingScope;
+  groupId?: string;
+  viewerUserId: string;
+  limit?: number;
+}): Promise<RankingResult> {
+  const { period, scope, groupId, viewerUserId } = params;
+  const limit = params.limit ?? 50;
+  const { start, end } = getPeriodWindow(period);
+
+  let eligibleUserIds: string[];
+
+  if (scope === "group") {
+    if (!groupId) return { ranking: [], viewer: null };
+    const members = await prisma.groupMember.findMany({ where: { groupId }, select: { userId: true } });
+    eligibleUserIds = members.map((member) => member.userId);
+  } else if (scope === "friends") {
+    const friendships = await prisma.friendship.findMany({
+      where: { status: "ACCEPTED", OR: [{ userAId: viewerUserId }, { userBId: viewerUserId }] },
+      select: { userAId: true, userBId: true },
+    });
+    const friendIds = friendships.map((f) => (f.userAId === viewerUserId ? f.userBId : f.userAId));
+    eligibleUserIds = [viewerUserId, ...friendIds];
+  } else {
+    // global: só perfis descobríveis e com XP público (respeita a
+    // preferência de privacidade do próprio usuário), excluindo qualquer
+    // usuário bloqueado nos dois sentidos em relação a quem está olhando.
+    const [publicProfiles, blockedIds] = await Promise.all([
+      prisma.socialProfile.findMany({ where: { isDiscoverable: true, showXp: true }, select: { userId: true } }),
+      getBlockedUserIds(prisma, viewerUserId),
+    ]);
+    eligibleUserIds = publicProfiles.map((profile) => profile.userId).filter((id) => !blockedIds.has(id));
   }
+
+  if (eligibleUserIds.length === 0) return { ranking: [], viewer: null };
+
+  const dateFilter = start && end ? { createdAt: { gte: start, lte: end } } : {};
 
   const grouped = await prisma.xpEvent.groupBy({
     by: ["userId"],
-    where: {
-      createdAt: { gte: start, lte: end },
-      ...(userIds ? { userId: { in: userIds } } : {}),
-    },
+    where: { userId: { in: eligibleUserIds }, ...dateFilter },
     _sum: { points: true },
     orderBy: { _sum: { points: "desc" } },
-    take: limit,
   });
 
-  if (grouped.length === 0) return [];
+  if (grouped.length === 0) return { ranking: [], viewer: null };
 
+  const top = grouped.slice(0, limit);
   const socialProfiles = await prisma.socialProfile.findMany({
-    where: { userId: { in: grouped.map((g) => g.userId) } },
-    select: { userId: true, username: true, displayName: true, avatarUrl: true, showXp: true },
+    where: { userId: { in: top.map((entry) => entry.userId) } },
+    select: { userId: true, username: true, displayName: true, avatarUrl: true },
   });
   const byUserId = new Map(socialProfiles.map((profile) => [profile.userId, profile]));
 
-  return grouped.map((entry, index) => {
+  const ranking: RankingEntry[] = top.map((entry, index) => {
     const social = byUserId.get(entry.userId);
     return {
       rank: index + 1,
@@ -474,7 +708,34 @@ export async function getWeeklyRanking(params: {
       username: social?.username ?? null,
       displayName: social?.displayName ?? "Usuário SmartPlate",
       avatarUrl: social?.avatarUrl ?? null,
-      weeklyXp: entry._sum.points ?? 0,
+      xp: entry._sum.points ?? 0,
     };
   });
+
+  const viewerIndex = grouped.findIndex((entry) => entry.userId === viewerUserId);
+  const viewer = viewerIndex >= 0 ? { rank: viewerIndex + 1, xp: grouped[viewerIndex]._sum.points ?? 0 } : null;
+
+  return { ranking, viewer };
+}
+
+// ─── XP por fonte (Alimentação/Atividade/Sequência/Conquistas/Desafios) ───
+
+const EVENT_TYPE_TO_XP_SOURCE: Record<string, "FOOD" | "ACTIVITY" | "STREAK" | "ACHIEVEMENT" | "CHALLENGE"> = {
+  MEAL_COMPLETED: "FOOD",
+  ACTIVITY_BASE: "ACTIVITY",
+  ACTIVITY_DURATION_BONUS: "ACTIVITY",
+  ACTIVITY_FIRST_OF_DAY: "ACTIVITY",
+  STREAK_MILESTONE: "STREAK",
+  ACHIEVEMENT_UNLOCKED: "ACHIEVEMENT",
+  CHALLENGE_COMPLETED: "CHALLENGE",
+};
+
+export async function getXpBreakdown(userId: string): Promise<Record<"FOOD" | "ACTIVITY" | "STREAK" | "ACHIEVEMENT" | "CHALLENGE", number>> {
+  const grouped = await prisma.xpEvent.groupBy({ by: ["eventType"], where: { userId }, _sum: { points: true } });
+  const bySource = { FOOD: 0, ACTIVITY: 0, STREAK: 0, ACHIEVEMENT: 0, CHALLENGE: 0 };
+  for (const entry of grouped) {
+    const source = EVENT_TYPE_TO_XP_SOURCE[entry.eventType] ?? "ACTIVITY";
+    bySource[source] += entry._sum.points ?? 0;
+  }
+  return bySource;
 }

@@ -4,13 +4,20 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import { Activity as ActivityIcon } from "lucide-react";
 import { useActivitySummary } from "@/hooks/useActivities";
-import RegisterActivityModal from "./RegisterActivityModal";
-import ActivityHistoryModal from "./ActivityHistoryModal";
+import { useActivityHistory } from "@/hooks/useActivityHistory";
+import { getProviderDisplay } from "@/lib/integrations/provider-display";
+
+const RegisterActivityModal = dynamic(() => import("./RegisterActivityModal"), { ssr: false });
+const ActivityHistoryModal = dynamic(() => import("./ActivityHistoryModal"), { ssr: false });
 
 export default function ActivitySummaryCard() {
   const { data: summary, isLoading, isError } = useActivitySummary();
+  // Só para exibir a contagem Strava separadamente (item 10) — NUNCA somada
+  // às métricas de gamificação acima, que continuam vindo só de ActivityLog.
+  const { externalItems } = useActivityHistory();
   const [showRegister, setShowRegister] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
 
@@ -34,10 +41,17 @@ export default function ActivitySummaryCard() {
 
       {!isLoading && !isError && summary && (
         <>
-          <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Este mês</p>
+          <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Este mês no SmartPlate</p>
           <p className="text-2xl font-bold text-slate-800 mt-1">{summary.thisMonth.count} atividades</p>
           <p className="text-sm text-slate-500">{summary.thisMonth.minutes} min ativos</p>
           <p className="text-sm text-slate-500 mt-0.5">{summary.thisMonth.distinctDays} dias ativos este mês</p>
+
+          {externalItems.length > 0 && (
+            <p className="text-xs text-slate-400 mt-2 pt-2 border-t border-slate-100">
+              {getProviderDisplay(externalItems[0].source).label} • {externalItems.length} atividade
+              {externalItems.length === 1 ? "" : "s"} sincronizada{externalItems.length === 1 ? "" : "s"} recentemente
+            </p>
+          )}
 
           <div className="flex gap-3 mt-4">
             <button

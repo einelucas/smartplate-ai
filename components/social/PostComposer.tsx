@@ -2,13 +2,16 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import { useUser } from "@clerk/nextjs";
 import Image from "next/image";
-import { Send, UtensilsCrossed } from "lucide-react";
+import { Send, UtensilsCrossed, Link2 } from "lucide-react";
 import { PersonSimpleRunIcon } from "@phosphor-icons/react";
 import { useCreatePost } from "@/hooks/useCommunity";
-import SharePlanModal from "./SharePlanModal";
-import RegisterActivityModal from "../RegisterActivityModal";
+
+const SharePlanModal = dynamic(() => import("./SharePlanModal"), { ssr: false });
+const RegisterActivityModal = dynamic(() => import("../RegisterActivityModal"), { ssr: false });
+const ExternalShareModal = dynamic(() => import("./ExternalShareModal"), { ssr: false });
 
 export default function PostComposer({
   groupId,
@@ -21,6 +24,7 @@ export default function PostComposer({
   const [text, setText] = useState("");
   const [showShare, setShowShare] = useState(false);
   const [showActivity, setShowActivity] = useState(false);
+  const [showExternalShare, setShowExternalShare] = useState(false);
   const createPost = useCreatePost(groupId);
 
   const submit = () => {
@@ -63,6 +67,13 @@ export default function PostComposer({
           <UtensilsCrossed size={16} />
         </button>
         <button
+          onClick={() => onRequireTerms(() => setShowExternalShare(true))}
+          className="w-9 h-9 bg-slate-100 hover:bg-slate-200 rounded-xl flex items-center justify-center text-slate-600 flex-shrink-0"
+          title="Compartilhar de outro app"
+        >
+          <Link2 size={16} />
+        </button>
+        <button
           onClick={submit}
           disabled={createPost.isPending || !text.trim()}
           className="w-9 h-9 bg-[#007BFF] hover:bg-[#0056b3] rounded-xl flex items-center justify-center text-white flex-shrink-0 disabled:opacity-40"
@@ -73,6 +84,7 @@ export default function PostComposer({
 
       {showShare && <SharePlanModal groupId={groupId} onClose={() => setShowShare(false)} />}
       <RegisterActivityModal isOpen={showActivity} onClose={() => setShowActivity(false)} defaultGroupId={groupId} />
+      {showExternalShare && <ExternalShareModal groupId={groupId} onClose={() => setShowExternalShare(false)} />}
     </div>
   );
 }

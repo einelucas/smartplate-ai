@@ -7,6 +7,7 @@ import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tansta
 import toast from "react-hot-toast";
 import type {
   BlockedUserEntry,
+  ChallengeRankingEntry,
   ChallengeSummary,
   CommunityCommentSummary,
   CommunityPostSummary,
@@ -15,6 +16,8 @@ import type {
   GroupSummary,
   ModerationReportEntry,
   RankingEntry,
+  RankingPeriod,
+  RankingScope,
   SocialUserSummary,
 } from "@/types/community";
 
@@ -40,7 +43,9 @@ const keys = {
   groupMembers: (groupId: string) => ["community", "group-members", groupId] as const,
   invitePreview: (code: string) => ["community", "invite-preview", code] as const,
   challenges: (scope: "global" | "group", groupId?: string) => ["community", "challenges", scope, groupId ?? null] as const,
-  ranking: (scope: "global" | "group", groupId?: string) => ["community", "ranking", scope, groupId ?? null] as const,
+  ranking: (period: RankingPeriod, scope: RankingScope, groupId?: string) =>
+    ["community", "ranking", period, scope, groupId ?? null] as const,
+  challengeRanking: (challengeId: string) => ["community", "challenge-ranking", challengeId] as const,
   gamification: ["community", "gamification"] as const,
   moderationReports: (status: string) => ["community", "moderation-reports", status] as const,
 };
@@ -91,6 +96,9 @@ export function useCommunityFeed(groupId?: string) {
     },
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+    // Feed é o conteúdo mais dinâmico do app (outros usuários postam o
+    // tempo todo) — staleTime bem menor que o default global de 60s.
+    staleTime: 15_000,
   });
 }
 
@@ -98,12 +106,15 @@ export function useCreatePost(groupId?: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: {
-      type: "TEXT" | "ACHIEVEMENT" | "STREAK" | "CHALLENGE" | "PLAN_SHARE" | "ACTIVITY";
+      type: "TEXT" | "ACHIEVEMENT" | "STREAK" | "CHALLENGE" | "PLAN_SHARE" | "ACTIVITY" | "EXTERNAL_SHARE";
       text?: string;
       achievementCode?: string;
       streakMilestone?: number;
       shareToken?: string;
       activityLogId?: string;
+      externalShareProvider?: string;
+      externalShareUrl?: string;
+      externalShareImageUrl?: string;
       groupId?: string;
     }) => apiFetch("/api/community/posts", { method: "POST", body: JSON.stringify({ ...input, groupId: input.groupId ?? groupId }) }),
     onSuccess: () => {
@@ -162,6 +173,7 @@ export function useComments(postId: string | null) {
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
     enabled: !!postId,
+    staleTime: 15_000,
   });
 }
 
@@ -475,15 +487,28 @@ export function useDeleteChallenge(scope: "global" | "group", groupId?: string) 
 
 // ─── Ranking / gamificação ──────────────────────────────────────────────────
 
-export function useRanking(scope: "global" | "group", groupId?: string) {
+export function useRanking(period: RankingPeriod, scope: RankingScope, groupId?: string) {
   return useQuery({
-    queryKey: keys.ranking(scope, groupId),
+    queryKey: keys.ranking(period, scope, groupId),
     queryFn: () => {
-      const params = new URLSearchParams({ scope });
+      const params = new URLSearchParams({ period, scope });
       if (groupId) params.set("groupId", groupId);
-      return apiFetch<{ ranking: RankingEntry[]; viewerUserId: string }>(`/api/community/ranking?${params.toString()}`);
+      return apiFetch<{ ranking: RankingEntry[]; viewer: { rank: number; xp: number } | null; viewerUserId: string }>(
+        `/api/community/ranking?${params.toString()}`
+      );
     },
-    enabled: scope === "global" || !!groupId,
+    enabled: scope !== "group" || !!groupId,
+  });
+}
+
+export function useChallengeRanking(challengeId: string | null) {
+  return useQuery({
+    queryKey: keys.challengeRanking(challengeId ?? "none"),
+    queryFn: () =>
+      apiFetch<{ ranking: ChallengeRankingEntry[]; collective: { progress: number; target: number; participantCount: number } | null }>(
+        `/api/community/challenges/${challengeId}/ranking`
+      ),
+    enabled: !!challengeId,
   });
 }
 

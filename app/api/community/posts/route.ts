@@ -91,6 +91,21 @@ export async function POST(request: Request) {
       performedAt: activityLog.performedAt,
       xpAwarded: xpSum._sum.points ?? 0,
     };
+  } else if (type === "EXTERNAL_SHARE") {
+    // Conteúdo é sempre o que o próprio usuário forneceu — nunca buscamos
+    // nem redistribuímos dado de nenhuma API externa aqui (sem scraping).
+    // url já foi validada (https-only) pelo createPostSchema; imageUrl
+    // precisa ter sido gerada pelo upload deste MESMO usuário (nunca aceitar
+    // a URL de upload de outra pessoa).
+    const imageUrl = parsed.data.externalShareImageUrl;
+    if (imageUrl && !imageUrl.startsWith(`/uploads/community-share-${userId}/`)) {
+      return NextResponse.json({ error: "Imagem inválida" }, { status: 403 });
+    }
+    metadata = {
+      provider: parsed.data.externalShareProvider,
+      url: parsed.data.externalShareUrl ?? null,
+      imageUrl: imageUrl ?? null,
+    };
   }
 
   const post = await prisma.communityPost.create({

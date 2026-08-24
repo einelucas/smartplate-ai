@@ -1,21 +1,27 @@
 // components/ActivityHistoryModal.tsx
+// Histórico de atividades — visualmente unificado (SmartPlate + providers
+// externos privados), mas as fontes continuam separadas internamente
+// (ActivityLog nunca vira Strava, Strava nunca vira ActivityLog). Ver
+// hooks/useActivityHistory.ts para o DTO de apresentação.
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Trash2, Pencil, Check, Share2, CalendarX } from "lucide-react";
-import { findActivityIntensityLabel, findActivityTypeLabel, ACTIVITY_TYPE_ICON_KEY } from "@/lib/activity/options";
+import { findActivityIntensityLabel, ACTIVITY_TYPE_ICON_KEY } from "@/lib/activity/options";
 import { resolveIcon } from "@/components/icon-registry";
-import { useActivities, useDeleteActivity, useUpdateActivity, type ActivityLogEntry } from "@/hooks/useActivities";
+import { useDeleteActivity, useUpdateActivity, type ActivityLogEntry } from "@/hooks/useActivities";
 import { useCreatePost, useMyGroups } from "@/hooks/useCommunity";
+import { useConnectedApps } from "@/hooks/useConnectedApps";
+import { useActivityHistory, type ActivityHistoryItem } from "@/hooks/useActivityHistory";
+import { getProviderDisplay } from "@/lib/integrations/provider-display";
+import ActivitySourceBadge from "@/components/ActivitySourceBadge";
+
+const ExternalActivityDetailModal = dynamic(() => import("./ExternalActivityDetailModal"), { ssr: false });
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" });
-}
-
-function activityDisplayName(activity: ActivityLogEntry): string {
-  if (activity.activityType === "OTHER" && activity.customActivityName) return activity.customActivityName;
-  return findActivityTypeLabel(activity.activityType);
 }
 
 function ShareRow({ activity, onDone }: { activity: ActivityLogEntry; onDone: () => void }) {
@@ -84,7 +90,8 @@ function ShareRow({ activity, onDone }: { activity: ActivityLogEntry; onDone: ()
   );
 }
 
-function ActivityRow({ activity }: { activity: ActivityLogEntry }) {
+function ActivityRow({ item }: { item: ActivityHistoryItem }) {
+  const activity = item.raw as ActivityLogEntry;
   const updateActivity = useUpdateActivity();
   const deleteActivity = useDeleteActivity();
   const [editing, setEditing] = useState(false);
@@ -135,7 +142,7 @@ function ActivityRow({ activity }: { activity: ActivityLogEntry }) {
         ) : (
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-slate-700">
-              {activityDisplayName(activity)} <span className="text-slate-400 font-normal">• {formatDate(activity.performedAt)}</span>
+              {item.title} <span className="text-slate-400 font-normal">• {formatDate(item.performedAt)}</span>
             </p>
             <p className="text-xs text-slate-400 truncate">
               {activity.durationMin} min
@@ -143,6 +150,9 @@ function ActivityRow({ activity }: { activity: ActivityLogEntry }) {
               {activity.intensity ? ` • ${findActivityIntensityLabel(activity.intensity)}` : ""}
               {activity.notes ? ` • ${activity.notes}` : ""}
             </p>
+            <div className="mt-1">
+              <ActivitySourceBadge source="MANUAL" />
+            </div>
           </div>
         )}
 
@@ -179,9 +189,67 @@ function ActivityRow({ activity }: { activity: ActivityLogEntry }) {
   );
 }
 
-export default function ActivityHistoryModal({ onClose }: { onClose: () => void }) {
-  const { data: activities, isLoading, isError } = useActivities();
-  const list = activities ?? [];
+function ExternalActivityRow({ item, onOpen }: { item: ActivityHistoryItem; onOpen: () => void }) {
+  const display = getProviderDisplay(item.source);
+  const Icon = resolveIcon(ACTIVITY_TYPE_ICON_KEY[item.activityType] ?? display.icon);
+
+  return (
+    <button type="button" onClick={onOpen} className="w-full text-left p-3 rounded-xl hover:bg-slate-50 transition-colors">
+      <div className="flex items-center gap-3">
+        <div className="w-11 h-11 rounded-xl bg-slate-100 flex items-center justify-center flex-shrink-0">
+          <Icon size={20} weight="duotone" className={display.accentClassName} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-slate-700 truncate">
+            {item.title} <span className="text-slate-400 font-normal">• {formatDate(item.performedAt)}</span>
+          </p>
+          <p className="text-xs text-slate-400 truncate">
+            {item.durationMin ? `${item.durationMin} min` : ""}
+            {item.distanceKm ? ` • ${item.distanceKm} km` : ""}
+          </p>
+          <div className="mt-1">
+            <ActivitySourceBadge source={item.source} showLock />
+          </div>
+        </div>
+      </div>
+    </button>
+  );
+}
+
+type FilterKey = "ALL" | "MANUAL" | string;
+
+export default function ActivityHistoryModal({
+  onClose,
+  initialFilter = "ALL",
+}: {
+  onClose: () => void;
+  initialFilter?: FilterKey;
+}) {
+  const { manualItems, externalItems, allItems, isLoading, isError } = useActivityHistory();
+  const { data: connectedApps } = useConnectedApps();
+  const connectedProviders = useMemo(
+    () => (connectedApps?.apps ?? []).filter((a) => a.status === "CONNECTED").map((a) => a.provider),
+    [connectedApps]
+  );
+
+  const [filter, setFilter] = useState<FilterKey>(initialFilter);
+  const [detailItem, setDetailItem] = useState<ActivityHistoryItem | null>(null);
+
+  const tabs = useMemo(() => {
+    const base: { key: FilterKey; label: string }[] = [
+      { key: "ALL", label: "Todas" },
+      { key: "MANUAL", label: "SmartPlate" },
+    ];
+    for (const provider of connectedProviders) {
+      base.push({ key: provider, label: getProviderDisplay(provider).label });
+    }
+    return base;
+  }, [connectedProviders]);
+
+  const visibleItems =
+    filter === "ALL" ? allItems : filter === "MANUAL" ? manualItems : externalItems.filter((item) => item.source === filter);
+
+  const nothingAnywhere = manualItems.length === 0 && externalItems.length === 0;
 
   return (
     <AnimatePresence>
@@ -206,21 +274,63 @@ export default function ActivityHistoryModal({ onClose }: { onClose: () => void 
             </button>
           </div>
 
+          {tabs.length > 2 && (
+            <div className="px-3 pt-3 flex-shrink-0">
+              <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1">
+                {tabs.map((tab) => (
+                  <button
+                    key={tab.key}
+                    onClick={() => setFilter(tab.key)}
+                    className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
+                      filter === tab.key ? "bg-[#007BFF] text-white" : "bg-slate-100 text-slate-600"
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="p-3 overflow-y-auto flex-1">
             {isLoading && <p className="text-sm text-slate-400 p-3">Carregando...</p>}
             {isError && !isLoading && <p className="text-sm text-slate-400 text-center py-8">Não foi possível carregar seu histórico.</p>}
-            {!isLoading && !isError && list.length === 0 && (
-              <div className="text-center py-10">
-                <CalendarX className="mx-auto text-slate-300 mb-2" size={28} />
-                <p className="text-sm text-slate-500">Nenhuma atividade registrada ainda.</p>
-              </div>
+
+            {!isLoading && !isError && (
+              <>
+                {nothingAnywhere ? (
+                  <div className="text-center py-10">
+                    <CalendarX className="mx-auto text-slate-300 mb-2" size={28} />
+                    <p className="text-sm text-slate-500">Nenhuma atividade encontrada.</p>
+                    <p className="text-xs text-slate-400 mt-1">
+                      Registre uma atividade no SmartPlate ou conecte um aplicativo para acompanhar suas atividades.
+                    </p>
+                  </div>
+                ) : visibleItems.length === 0 ? (
+                  <div className="text-center py-10">
+                    <CalendarX className="mx-auto text-slate-300 mb-2" size={28} />
+                    <p className="text-sm text-slate-500">
+                      {filter === "MANUAL"
+                        ? "Nenhuma atividade registrada diretamente no SmartPlate ainda."
+                        : `Nenhuma atividade sincronizada do ${getProviderDisplay(filter).label} ainda.`}
+                    </p>
+                  </div>
+                ) : (
+                  visibleItems.map((item) =>
+                    item.isPrivateExternal ? (
+                      <ExternalActivityRow key={`${item.source}-${item.id}`} item={item} onOpen={() => setDetailItem(item)} />
+                    ) : (
+                      <ActivityRow key={`${item.source}-${item.id}`} item={item} />
+                    )
+                  )
+                )}
+              </>
             )}
-            {list.map((activity) => (
-              <ActivityRow key={activity.id} activity={activity} />
-            ))}
           </div>
         </motion.div>
       </motion.div>
+
+      {detailItem && <ExternalActivityDetailModal item={detailItem} onClose={() => setDetailItem(null)} />}
     </AnimatePresence>
   );
 }
