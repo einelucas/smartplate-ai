@@ -16,8 +16,10 @@ import MealTypeIcon, { type MealType } from "./MealTypeIcon";
 import { useActivitySummary } from "@/hooks/useActivities";
 import { useActivityHistory } from "@/hooks/useActivityHistory";
 import { useActivityGoals } from "@/hooks/useActivityGoals";
+import { useHydrationSummary } from "@/hooks/useHydration";
 import { ACTIVITY_TYPE_ICON_KEY, ACTIVITY_GOAL_METRIC_LABELS } from "@/lib/activity/options";
 import { resolveIcon } from "@/components/icon-registry";
+import HydrationCard from "@/components/HydrationCard";
 
 // recharts é pesado e a atividade só abre sob clique — ambos tirados do
 // bundle inicial da Home, a rota mais visitada do app.
@@ -37,6 +39,7 @@ export default function HomeDashboard() {
   const { manualItems, externalItems } = useActivityHistory();
   const { data: goalsData } = useActivityGoals();
   const primaryGoal = goalsData?.goals.find((g) => g.isActive) ?? null;
+  const { data: hydrationSummary } = useHydrationSummary();
 
   const today = new Date();
   const hour = today.getHours();
@@ -200,7 +203,13 @@ export default function HomeDashboard() {
           {/* Stats */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <StatCard icon={Flame} label="Calorias hoje" value={todayCalories.toString()} subtext={latestPlan ? `/ ${latestPlan.calories || "—"} kcal` : undefined} color="orange" />
-            <StatCard icon={Droplets} label="Hidratação" value="—" subtext="em breve" color="blue" />
+            <StatCard
+              icon={Droplets}
+              label="Hidratação"
+              value={hydrationSummary ? hydrationSummary.totalMl.toLocaleString("pt-BR") : "—"}
+              subtext={hydrationSummary ? `/ ${hydrationSummary.goalMl.toLocaleString("pt-BR")} ml` : undefined}
+              color="blue"
+            />
             <StatCard icon={Target} label="Meta semanal" value={`${daysWithMeals}/7`} subtext="dias" color="green" />
             <StatCard icon={Star} label="Receitas favoritas" value={(favoritePlansData?.plans?.length ?? 0).toString()} color="purple" />
           </div>
@@ -295,6 +304,9 @@ export default function HomeDashboard() {
               </div>
             </div>
           </div>
+
+          {/* Hidratação */}
+          <HydrationCard />
 
           {/* Atividade física */}
           <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">

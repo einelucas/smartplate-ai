@@ -3,9 +3,8 @@
 // CHECKLIST_CONQUISTAS.md, seções 49-61). Código é o ID estável em banco
 // (UserAchievement.achievementCode); título/descrição podem mudar livremente
 // sem quebrar nada. `availability: "COMING_SOON"` marca conquistas cujo
-// módulo de dados ainda não existe (hidratação, atividade física, streak
-// definitivo, desafios, favoritos/troca ambíguos, metas pessoais) — nunca
-// avaliadas nem desbloqueadas enquanto assim estiverem.
+// módulo de dados ainda não existe (streak definitivo, favoritos/troca
+// ambíguos) — nunca avaliadas nem desbloqueadas enquanto assim estiverem.
 //
 // Este é um catálogo NOVO e complementar ao de lib/community/achievements.ts
 // (motor antigo de FIRST_ACTION/STREAK_*/XP_*/FIRST_CHALLENGE/FIRST_GROUP,
@@ -85,7 +84,6 @@ export function getAchievementRarity(definition: Pick<AchievementDefinition, "ra
   return definition.rarity ?? "COMMON";
 }
 
-const WATER_REASON = "Disponível quando o registro de hidratação for lançado no SmartPlate.";
 const STREAK_REASON = "Disponível quando a regra definitiva de sequência (dia ativo) for formalizada.";
 
 function def(entry: AchievementDefinition): AchievementDefinition {
@@ -260,8 +258,7 @@ export const ACHIEVEMENT_CATALOG: Record<string, AchievementDefinition> = {
     category: "HYDRATION",
     icon: "Drop",
     target: 1,
-    availability: "COMING_SOON",
-    comingSoonReason: WATER_REASON,
+    availability: "AVAILABLE",
   }),
   FIRST_WATER_GOAL: def({
     code: "FIRST_WATER_GOAL",
@@ -271,8 +268,7 @@ export const ACHIEVEMENT_CATALOG: Record<string, AchievementDefinition> = {
     category: "HYDRATION",
     icon: "Drop",
     target: 1,
-    availability: "COMING_SOON",
-    comingSoonReason: WATER_REASON,
+    availability: "AVAILABLE",
   }),
   WATER_GOAL_3_DAYS: def({
     code: "WATER_GOAL_3_DAYS",
@@ -282,8 +278,7 @@ export const ACHIEVEMENT_CATALOG: Record<string, AchievementDefinition> = {
     category: "HYDRATION",
     icon: "Drop",
     target: 3,
-    availability: "COMING_SOON",
-    comingSoonReason: WATER_REASON,
+    availability: "AVAILABLE",
   }),
   WATER_GOAL_7_DAYS: def({
     code: "WATER_GOAL_7_DAYS",
@@ -293,8 +288,7 @@ export const ACHIEVEMENT_CATALOG: Record<string, AchievementDefinition> = {
     category: "HYDRATION",
     icon: "Drop",
     target: 7,
-    availability: "COMING_SOON",
-    comingSoonReason: WATER_REASON,
+    availability: "AVAILABLE",
   }),
   WATER_GOAL_30_DAYS: def({
     code: "WATER_GOAL_30_DAYS",
@@ -305,8 +299,7 @@ export const ACHIEVEMENT_CATALOG: Record<string, AchievementDefinition> = {
     category: "HYDRATION",
     icon: "Waves",
     target: 30,
-    availability: "COMING_SOON",
-    comingSoonReason: WATER_REASON,
+    availability: "AVAILABLE",
   }),
   WATER_LOGS_50: def({
     code: "WATER_LOGS_50",
@@ -316,8 +309,7 @@ export const ACHIEVEMENT_CATALOG: Record<string, AchievementDefinition> = {
     category: "HYDRATION",
     icon: "Drop",
     target: 50,
-    availability: "COMING_SOON",
-    comingSoonReason: WATER_REASON,
+    availability: "AVAILABLE",
   }),
   WATER_WEEK_CONSISTENCY: def({
     code: "WATER_WEEK_CONSISTENCY",
@@ -327,8 +319,7 @@ export const ACHIEVEMENT_CATALOG: Record<string, AchievementDefinition> = {
     category: "HYDRATION",
     icon: "Drop",
     target: 7,
-    availability: "COMING_SOON",
-    comingSoonReason: WATER_REASON,
+    availability: "AVAILABLE",
   }),
 
   // ── Sequência / Streak ─────────────────────────────────────────────────
@@ -707,8 +698,7 @@ export const ACHIEVEMENT_CATALOG: Record<string, AchievementDefinition> = {
     category: "SPECIAL",
     icon: "Sparkle",
     target: 1,
-    availability: "COMING_SOON",
-    comingSoonReason: "Disponível quando hidratação estiver pronta (atividade física já é considerada).",
+    availability: "AVAILABLE",
   }),
 };
 

@@ -564,8 +564,13 @@ Origens: Strava, Garmin, Apple Fitness, Samsung Health, Nike Run Club, Adidas Ru
 > Seção original de validação pós-implementação. A funcionalidade em si está
 > implementada e em uso (confirmado lendo `POST /api/beta/redeem`,
 > `GET /api/beta/status`, integração no onboarding e no Perfil/`/subscribe`).
-> **A checklist de QA formal abaixo (38.1-38.12) não foi executada item a
-> item como testes literais nesta sessão** — ver Parte 2 pra isso.
+> **Atualização 2026-08-25**: a QA formal abaixo (ver "38 (continuação)") foi
+> executada nesta sessão — concorrência e múltiplos-códigos/usuários agora
+> têm cobertura automatizada real (`tests/beta/redeem-concurrency.test.ts`,
+> contra o banco de fato via `Promise.all`, não simulação); a entropia do
+> gerador de códigos foi corrigida (era insuficiente — ver item novo abaixo).
+> O único item que continua pendente é o ciclo logout/login com conta Clerk
+> real (ver "38 (continuação)" para o porquê e o roteiro manual).
 
 Confirmado por leitura direta do código:
 
@@ -573,13 +578,15 @@ Confirmado por leitura direta do código:
 - [x] `codeHash` único (`@unique`), código puro nunca persistido
 - [x] Um código = no máximo um usuário (`redeemedByUserId` único + claim atômico via `updateMany`)
 - [x] Um usuário = no máximo um código Beta (checado antes do resgate)
-- [x] Concorrência: claim atômico (`updateMany` com `WHERE redeemedByUserId: null`) — só um vencedor sob corrida
-- [x] Retry idempotente: reenviar o mesmo código pelo mesmo usuário retorna o grant já existente, não duplica
+- [x] Concorrência: claim atômico (`updateMany` com `WHERE redeemedByUserId: null`) — só um vencedor sob corrida — **agora com teste automatizado real** (`tests/beta/redeem-concurrency.test.ts`, 2 e 10 requisições concorrentes via `Promise.all`)
+- [x] Retry idempotente: reenviar o mesmo código pelo mesmo usuário retorna o grant já existente, não duplica — testado
 - [x] Resolução central de Premium (`resolvePremiumAccess`): Stripe ativo OU `PremiumGrant` válido
 - [x] Código Beta nunca mexe em `stripeSubscriptionId`/`subscriptionActive`
-- [x] Usuário já Premium via Stripe não consegue consumir um código Beta (bloqueado explicitamente)
+- [x] Usuário já Premium via Stripe não consegue consumir um código Beta (bloqueado explicitamente) — testado
 - [x] Campo de código no onboarding é opcional, nunca bloqueia o fluxo
 - [x] Perfil mostra status Beta real (ativo até X / expirado), nunca expõe código/hash
+- [x] **Corrigido 2026-08-25**: entropia do gerador insuficiente (3 segmentos de 4 caracteres ≈ 59,4 bits, abaixo do mínimo de 128) — aumentado para 7 segmentos (≈ 138,7 bits, alfabeto real de 31 símbolos sem 0/O/1/I/L) em `lib/beta/codes.ts` e `scripts/generate-beta-codes.cjs`, com validação retrocompatível (aceita o formato antigo de 3 segmentos já distribuído). Continua usando `crypto.randomBytes` (nunca `Math.random`), hash SHA-256 sem pepper — aceitável aqui porque a entropia do próprio código (não uma senha escolhida por humano) já torna força-bruta inviável. Coberto por `tests/beta/codes.test.ts`.
+- [x] Lógica de resgate extraída para `lib/beta/redeem.ts` (`redeemBetaCodeForUser`), reutilizada pela rota HTTP e pelos testes automatizados — mesmo comportamento, sem duplicar regra
 
 ---
 
@@ -656,9 +663,9 @@ Sessão C (Hidratação) não foi feita — ver Parte 2.
 
 - [x] Catálogo central implementado (`lib/community/achievement-catalog.ts`), fiel ao spec original de 50 conquistas
 - [x] 24+ conquistas `AVAILABLE` (onboarding, refeições, peso, fotos, social, atividade, meta pessoal)
-- [ ] Conquistas de Hidratação (7) — continuam `COMING_SOON`, sem `WaterLog` (ver Parte 2)
-- [ ] `FIRST_FAVORITE`/`FIRST_MEAL_SWAP` — continuam `COMING_SOON`, dependem de auditoria de favoritos/troca no Plano Semanal (ver Parte 2)
-- [ ] `BALANCED_WEEK` — depende de hidratação (ver Parte 2)
+- [x] **Atualizado 2026-08-25**: Conquistas de Hidratação (7) — `WaterLog` implementado, critério real conectado, `AVAILABLE` (ver seção 39)
+- [ ] `FIRST_FAVORITE`/`FIRST_MEAL_SWAP` — continuam `COMING_SOON`, dependem de auditoria de favoritos/troca no Plano Semanal (fora do escopo desta sessão)
+- [x] **Atualizado 2026-08-25**: `BALANCED_WEEK` — hidratação pronta, critério combinado (refeição + atividade + água na mesma semana) testado e `AVAILABLE` (ver seção 39)
 
 ---
 
@@ -683,7 +690,7 @@ Sessão C (Hidratação) não foi feita — ver Parte 2.
 - [x] Peso
 - [x] Atividades — **corrigido nesta reorganização**: `ActivityLog` existe, catálogo de atividade é `AVAILABLE`
 - [x] Desafios — **corrigido nesta reorganização**: `FIRST_CHALLENGE_COMPLETED`/`FIRST_CHALLENGE_JOINED` são `AVAILABLE`
-- [ ] Água — catálogo pronto, mas sem `WaterLog` ainda (`COMING_SOON`)
+- [x] Água — **atualizado 2026-08-25**: `WaterLog` implementado, catálogo `AVAILABLE` (ver seção 39)
 - [ ] Streak — catálogo pronto, mas regra formal de "dia ativo" definitiva do streak provisório antigo ainda não substitui os `STREAK_*` do catálogo novo (continuam `COMING_SOON` por decisão deliberada — ver seção 6)
 
 Regras: [x] uma única fonte de cálculo, [x] `progress` nunca maior que `target` na UI, [x] `unlockedAt` nunca muda depois do desbloqueio.
@@ -745,43 +752,55 @@ Pendentes (ver Parte 2/3): `FIRST_WATER_LOG` e demais conquistas de Hidratação
 
 > Itens com escopo já claro, dependendo só de execução — não de uma decisão de produto em aberto.
 
-# 39. Hidratação — próxima funcionalidade do núcleo
+# 39. Hidratação — implementado
 
-> Implementar depois de validar o sistema Beta (já validado — ver Parte 1, seção 38).
+> **Atualização 2026-08-25**: implementado e testado nesta sessão. Evidência:
+> `prisma/migrations/20260825120000_add_hydration/`, `lib/hydration/*`,
+> `app/api/hydration/*`, `hooks/useHydration.tsx`, `components/Hydration*.tsx`,
+> 45 testes automatizados em `tests/hydration/*` (todos passando). Distinção
+> importante: tudo abaixo está **implementado e testado automaticamente**
+> (backend/domínio, contra o banco real). A validação manual da interface no
+> navegador **não foi executada** nesta sessão — não há ferramenta de
+> automação de navegador disponível no ambiente; o card foi verificado via
+> build de produção bem-sucedido, TypeScript/lint limpos, e chamadas HTTP
+> reais ao servidor de dev confirmando a rejeição de requisições sem sessão
+> (ver seção 38). Recomenda-se uma passada visual manual antes de considerar
+> a tela 100% validada para usuários reais.
 
 ## 39.1 Estrutura
 
-- [ ] Criar `WaterLog`
-- [ ] Relacionar ao Profile/usuário
-- [ ] Registrar quantidade em ml
-- [ ] Registrar data/hora
-- [ ] Criar meta diária de água
-- [ ] Permitir meta configurável pelo usuário
-- [ ] Tratar timezone corretamente
+- [x] Criado `WaterLog` (migration `20260825120000_add_hydration`)
+- [x] Relacionado ao `Profile` via `@relation` real em `userId` (FK, `onDelete: Cascade`), não um `userId` solto
+- [x] Quantidade em ml (`amountMl Int`, validado 1-5000)
+- [x] Data/hora (`loggedAt DateTime`, default `now()`)
+- [x] Meta diária de água — campo `Profile.dailyWaterGoalMl Int @default(2500)`
+- [x] Meta configurável pelo usuário (`GET`/`PATCH /api/hydration/goal`, validado 500-10000ml)
+- [x] Timezone tratado corretamente — reaproveita `lib/community/dates.ts` (já existente, usado por atividades/streak/ranking), sem nenhum offset fixo hardcoded; "hoje" sempre calculado a partir de `SocialProfile.timezone` (IANA, já coletado no onboarding), com fallback seguro pra UTC se inválido/ausente
 
-Modelo conceitual:
+Modelo conceitual original (mantido acima como referência histórica) — implementado com adaptações à arquitetura real do projeto: relação formal a `Profile` (não `userId` solto), sem coluna extra de status, e `dailyWaterGoalMl` vive em `Profile` (não em `WaterLog`):
 
 ```prisma
 model WaterLog {
-  id        String   @id @default(uuid())
-  userId    String
-  amountMl  Int
-  loggedAt  DateTime @default(now())
+  id       String   @id @default(uuid())
+  userId   String
+  profile  Profile  @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  amountMl Int
+  loggedAt DateTime @default(now())
   createdAt DateTime @default(now())
 
   @@index([userId, loggedAt])
 }
 ```
 
-Possível campo: `dailyWaterGoalMl Int?`
-
 ## 39.2 API
 
-- [ ] GET dos registros do dia
-- [ ] POST novo consumo
-- [ ] DELETE de registro incorreto
-- [ ] Endpoint/resumo diário
-- [ ] Validar quantidade no backend (nunca negativo, nunca absurdo)
+- [x] GET dos registros do dia (`GET /api/hydration/logs?date=`, timezone-aware, só os registros do próprio usuário)
+- [x] POST novo consumo (`POST /api/hydration/logs`, valida `amountMl`/`loggedAt`, default `loggedAt` = agora)
+- [x] DELETE de registro incorreto (`DELETE /api/hydration/logs/[id]`, ownership confirmada no próprio `deleteMany({where:{id,userId}})`, 404 se não existir/não for do usuário)
+- [x] **Adicionado além do previsto originalmente**: PATCH de correção (`PATCH /api/hydration/logs/[id]`, mesma validação da criação, mesma proteção de propriedade)
+- [x] Endpoint de resumo diário (`GET /api/hydration/summary`) no formato exato pedido (`date`, `timezone`, `totalMl`, `goalMl`, `remainingMl`, `progressPercentage`, `goalCompleted`, `logs`) — `remainingMl` nunca negativo, `totalMl` real nunca truncado acima da meta, `progressPercentage` limitado a 100 só na exibição
+- [x] **Adicionado além do previsto originalmente**: endpoint de histórico semanal (`GET /api/hydration/history`)
+- [x] Validação de quantidade no backend via Zod (`lib/hydration/validation.ts`) — nunca negativo/zero/decimal/acima do máximo, nunca confia só na validação do cliente
 
 ## 39.3 Interface
 
@@ -790,56 +809,72 @@ Possível campo: `dailyWaterGoalMl Int?`
 
 1.450 / 2.500 ml
 
-[ +250 ml ] [ +500 ml ]
+[ +250 ml ] [ +500 ml ] [ Outro valor ]
 
 ████████░░░░ 58%
 ```
 
-- [ ] Card de hidratação no Início
-- [ ] Total consumido + meta + barra de progresso
-- [ ] Botões `+250 ml` / `+500 ml` / quantidade personalizada
-- [ ] Permitir desfazer/excluir
-- [ ] Estado vazio, loading, erros
+- [x] Card de hidratação no Início (`components/HydrationCard.tsx`, integrado em `HomeDashboard.tsx`; StatCard de hidratação no topo também passou a mostrar dado real em vez de "em breve")
+- [x] Total consumido + meta + restante + percentual + barra de progresso
+- [x] Botões `+250 ml` / `+500 ml` / quantidade personalizada (modal dedicado, `HydrationCustomAmountModal.tsx`)
+- [x] Desfazer (toast com botão "Desfazer" que exclui exatamente o registro recém-criado pelo id retornado pela API, nunca "o mais recente" por ordenação) e excluir (no histórico)
+- [x] Estado vazio (card continua mostrando os botões de registro), loading (skeleton), erro de carregamento (com botão "Tentar de novo"), erro de mutação (toast), sucesso (toast + atualização otimista), meta atingida, consumo acima da meta — todos implementados; **não exercitados visualmente num navegador real nesta sessão** (ver nota no topo da seção)
 
 ## 39.4 Histórico
 
-- [ ] Histórico diário e semanal
-- [ ] Permitir corrigir registros
+- [x] Histórico diário e semanal (`HydrationHistoryModal.tsx` — barras simples e acessíveis por dia da semana local, sem nova biblioteca de gráficos, reaproveitando o padrão de card/modal já usado no resto do app)
+- [x] Permitir corrigir registros (editar quantidade e horário) e excluir registros incorretos, direto no histórico
 
-## 39.5 Gamificação futura
+## 39.5 Gamificação — implementado
 
-- [ ] Não dar XP a cada copo
-- [ ] Evento `WATER_GOAL_COMPLETED`, no máximo 1x/dia, idempotente por usuário+data
-- [ ] Ativa as 7 conquistas de Hidratação do catálogo (já prontas, `COMING_SOON`)
-- [ ] Ativa `BALANCED_WEEK` (seção 50) em conjunto com atividade já pronta
+- [x] Não dá XP a cada copo (evento gravado com `points: 0`, só gateia idempotência/conquista)
+- [x] Evento `WATER_GOAL_COMPLETED`, no máximo 1x por usuário por data local, idempotente — **testado automaticamente** (`tests/hydration/gamification.test.ts`): primeira vez, múltiplos copos depois de bater a meta, duas chamadas concorrentes via `Promise.all`, apagar-e-recriar no mesmo dia, novo dia permite novo evento, meta não atingida não gera evento. Garantia real é no banco (`idempotencyKey` único + captura de P2002), não só na UI. Alterar a meta isoladamente nunca aciona o evento (a reavaliação só é chamada pelas rotas de registro de consumo, nunca pela rota de meta — `app/api/hydration/goal/route.ts` nunca importa `reevaluateWaterGoalForDay`)
+- [x] Ativa as 7 conquistas de Hidratação do catálogo (`FIRST_WATER_LOG`, `FIRST_WATER_GOAL`, `WATER_GOAL_3_DAYS`, `WATER_GOAL_7_DAYS`, `WATER_GOAL_30_DAYS`, `WATER_LOGS_50`, `WATER_WEEK_CONSISTENCY`) — de `COMING_SOON` para `AVAILABLE`, critério real conectado a dados reais em `lib/community/achievement-engine.ts`, **testado individualmente** em `tests/hydration/achievements.test.ts` (positivo e negativo)
+- [x] Ativa `BALANCED_WEEK` (seção 50) em conjunto com atividade física já implementada — critério usado: pelo menos um dia com refeição concluída, um dia com atividade física e um dia com meta de água atingida, na mesma semana local (não necessariamente o mesmo dia; o catálogo original não especifica um número de dias para este código especificamente, diferente do `BALANCED_ROUTINE_WEEK`, que exige 5 dias — interpretação registrada como tal em `lib/hydration/gamification.ts`, não uma regra inventada). **Testado automaticamente, positivo e negativo** (`tests/hydration/gamification.test.ts` e `tests/hydration/achievements.test.ts`)
 
 ---
 
-# 38 (continuação) — QA formal do Beta ainda não executada
+# 38 (continuação) — QA formal do Beta
 
-A funcionalidade está implementada (Parte 1). O que segue é rodar de fato este
-roteiro de teste manual, item a item:
+> **Atualização 2026-08-25**: executado nesta sessão. Ambiente usado: o banco
+> configurado em `DATABASE_URL` (`.env`) — só existe um banco no projeto, sem
+> branch de teste dedicada; usado com contas fixture sintéticas
+> (`userId` prefixado com `test-`, formato que o Clerk nunca gera), sempre
+> criadas e removidas dentro do próprio teste (`tests/helpers/fixtures.ts`).
+> Confirmado por contagem de linhas antes/depois (`Profile`/`BetaCode`/
+> `PremiumGrant`) que a suíte não deixou nenhum resíduo. Nenhum dado de
+> conta real foi lido, alterado ou exposto.
 
 ## Concorrência
 
-- [ ] Testar duas requisições simultâneas com o mesmo código, confirmar que só uma recebe acesso e só um `PremiumGrant` é criado
+- [x] **Testado automaticamente** (`tests/beta/redeem-concurrency.test.ts`): duas requisições simultâneas com o mesmo código via `Promise.all` contra o banco real — confirmado que só uma recebe acesso (`ok:true`), a outra é rejeitada com 409, e só um `PremiumGrant` é criado. Repetido também com 10 requisições concorrentes (só 1 vencedora, 9 rejeitadas) para reforçar a garantia sob carga maior.
 
 ## Teste real com múltiplos usuários
 
-- [ ] Criar 2+ contas de teste distintas
-- [ ] Ativar Código A com Conta A, confirmar Premium
-- [ ] Tentar Código A com Conta B, confirmar rejeição
-- [ ] Tentar outro código com Conta A (que já usou um), confirmar rejeição
-- [ ] Logout/login, confirmar que o acesso Beta persiste corretamente
+- [x] **Testado automaticamente** com contas fixture sintéticas (não contas Clerk reais — ver nota acima): Ativar Código A com Conta A → confirma Premium (`PremiumGrant` criado, `expiresAt` futuro)
+- [x] **Testado automaticamente**: Tentar Código A com Conta B → rejeição (409)
+- [x] **Testado automaticamente**: Tentar Código B (não usado) com Conta A (que já usou o Código A) → rejeição
+- [x] **Testado automaticamente** (bônus, não pedido originalmente): reenviar o mesmo código pela mesma conta (retry) → idempotente, não duplica o `PremiumGrant`; código inativo/expirado/conta já Premium via Stripe → rejeitados sem consumir o código
+- [ ] **Pendente — bloqueado por ambiente**: logout/login com conta Clerk real, confirmando que o acesso Beta persiste e a autorização do backend reconhece corretamente após a nova sessão. Não há credenciais de conta Clerk de teste nem uma forma de automatizar login/logout do Clerk neste ambiente (sem navegador/browser automation disponível na sessão). **Roteiro manual para quem for validar**: 1) criar/usar uma conta real no ambiente de dev; 2) resgatar um código Beta gerado por `npm run beta:generate -- --count 1 --days 30`; 3) confirmar acesso Premium no `/subscribe` ou Perfil; 4) fazer logout; 5) fazer login de novo com a mesma conta; 6) confirmar que o Perfil/`/subscribe` ainda mostra o Beta ativo (a leitura vem de `resolvePremiumAccess` no backend a partir do `PremiumGrant`, não de estado de sessão/cliente, então o resultado esperado é persistir — mas isso não foi observado ao vivo nesta sessão).
 
 ## Gerador administrativo
 
-- [ ] Confirmar existência e funcionamento de um gerador de lote de códigos com alta entropia, hash-only no banco
-- [ ] Confirmar que arquivo de códigos gerados (se existir) está no `.gitignore`
+- [x] Confirmado e **corrigido**: gerador existe (`scripts/generate-beta-codes.cjs`), usa `crypto.randomBytes` (nunca `Math.random`), grava só o hash no banco. A entropia estava insuficiente (≈59,4 bits) — corrigida para ≈138,7 bits (ver seção 38 acima). Testado em `tests/beta/codes.test.ts` (formato, alfabeto, entropia, compatibilidade retroativa).
+- [x] Confirmado: `/generated/beta-codes-*.txt` está no `.gitignore` (linha já existente, não precisou de alteração); confirmado via `git ls-files`/`git status` que nenhum arquivo de códigos está rastreado; confirmado via `git grep` que nenhum código Beta real está hardcoded em nenhum arquivo rastreado (só placeholders de UI como `SPBETA-XXXX-XXXX-XXXX`)
 
 ## Build
 
-- [ ] Rodar `npm run build` focado nesta área e confirmar nenhum secret no bundle do client
+- [x] `npm run build` executado com sucesso (sem erros novos). Auditoria específica: nenhum `process.env` em `components/`/`hooks/`; nenhum import de `lib/prisma`, `lib/beta/codes` ou `lib/beta/redeem` em componente/hook cliente; único env var com prefixo `NEXT_PUBLIC_` é `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` (público por design do Clerk); `DATABASE_URL`/`CLERK_SECRET_KEY`/`STRIPE_SECRET_KEY`/demais secrets sem prefixo público. Nenhum valor real de secret foi impresso neste processo.
+- [x] Teste HTTP ao vivo (servidor de dev local, `curl`): todas as rotas novas (`/api/hydration/*`, `/api/beta/redeem`) retornam 307 com `x-clerk-auth-status: signed-out` para requisição sem sessão — mesmo comportamento de uma rota já existente (`/api/activities`) usada como controle.
+
+## Nota de evidência — Hidratação (seção 39) + QA Beta (seção 38), 2026-08-25
+
+- **Banco/migration**: `prisma/migrations/20260825120000_add_hydration/` (aditiva — `WaterLog`, `Profile.dailyWaterGoalMl`, `DailyActivity.waterGoalCompleted`), aplicada via workflow seguro (`migrate diff` + `db execute` + `migrate resolve`, nunca `db push`/`migrate reset`), `prisma validate`/`prisma generate` ok, `prisma migrate status` confirma "up to date".
+- **Principais arquivos novos**: `lib/hydration/{validation,stats,gamification}.ts`, `app/api/hydration/{logs,logs/[id],goal,summary,history}/route.ts`, `hooks/useHydration.tsx`, `components/Hydration{Card,CustomAmountModal,GoalModal,HistoryModal}.tsx`, `lib/beta/redeem.ts`, `tests/**`.
+- **Principais arquivos alterados**: `prisma/schema.prisma`, `lib/community/dates.ts` (nova `withTimezoneBuffer`, reexportada em `lib/activity/stats.ts` por compatibilidade), `lib/community/achievement-catalog.ts`/`achievement-engine.ts` (hidratação + `BALANCED_WEEK` de `COMING_SOON` para `AVAILABLE`), `lib/beta/codes.ts` + `scripts/generate-beta-codes.cjs` (entropia), `app/api/beta/redeem/route.ts` (agora chama `lib/beta/redeem.ts`), `components/HomeDashboard.tsx`.
+- **Testes**: infraestrutura mínima nova — Node `node:test` + `tsx` (só pra resolver os aliases `@/` e TypeScript que o projeto já usa; nenhum framework de teste como Jest/Vitest/Mocha foi adicionado). `npm test` → **67/67 testes passando** (`tests/hydration/*`: validação, timezone/fronteira de dia, CRUD, propriedade/segurança no nível do banco, idempotência/concorrência da gamificação, conquistas; `tests/beta/*`: formato/entropia dos códigos, concorrência real e múltiplos usuários/códigos do resgate Beta). Banco usado nos testes é o mesmo de `DATABASE_URL` — sem branch de teste dedicada no projeto; todas as fixtures são sintéticas (`userId` prefixado `test-`) e comprovadamente limpas ao final (contagem de linhas antes/depois idêntica).
+- **Lint/typecheck/build**: `npx tsc --noEmit` limpo (0 erros); `next lint` sem nenhum warning novo nos arquivos desta tarefa (warnings restantes são todos pré-existentes, em arquivos não tocados); `npm run build` concluído com sucesso, todas as rotas novas aparecem no manifesto.
+- **Pendências e por quê**: (1) ciclo logout/login com conta Clerk real para o Beta — bloqueado por falta de credenciais de teste e de automação de navegador neste ambiente, roteiro manual documentado acima; (2) validação visual manual da interface de hidratação num navegador — não executada (sem ferramenta de browser automation disponível), compensada parcialmente por build bem-sucedido + testes de domínio/API + checagem HTTP ao vivo de autenticação.
 
 ---
 

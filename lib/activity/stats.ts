@@ -9,7 +9,10 @@
 // ExternalActivityCache, ver lib/integrations/provider-policy.ts), mas o
 // filtro abaixo é explícito mesmo assim, por clareza e defesa em profundidade.
 import type { Db } from "@/lib/community/types";
-import { getLocalDateString, getLocalMonthRange, getLocalWeekRange, toUtcDateOnly } from "@/lib/community/dates";
+import { getLocalDateString, getLocalMonthRange, getLocalWeekRange, toUtcDateOnly, withTimezoneBuffer } from "@/lib/community/dates";
+
+// Reexportado por compatibilidade com quem já importa daqui (ex.: lib/activity/insights.ts) — a definição real mora em lib/community/dates.ts, reaproveitada também por lib/hydration/*.
+export { withTimezoneBuffer };
 
 export interface ActivityLogSample {
   performedAt: Date;
@@ -103,15 +106,6 @@ export function resolveMostPracticedType(
   }
 
   return best ? { type: best[0], count: best[1].count } : null;
-}
-
-/** Margem de segurança contra offset de timezone ao converter data local -> instante UTC de busca. */
-export function withTimezoneBuffer(startLocalStr: string, endLocalStr: string): { gte: Date; lte: Date } {
-  const gte = toUtcDateOnly(startLocalStr);
-  gte.setUTCDate(gte.getUTCDate() - 2);
-  const lte = toUtcDateOnly(endLocalStr);
-  lte.setUTCDate(lte.getUTCDate() + 2);
-  return { gte, lte };
 }
 
 export interface MonthlyActivityStats extends PeriodStats {

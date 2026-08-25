@@ -34,6 +34,10 @@ model Profile {
   dailyTip     String?
   dailyTipDate DateTime?
 
+  // Hidratação — meta pessoal configurável (ver lib/hydration). 2500ml é só
+  // um fallback inicial, nunca uma recomendação médica personalizada.
+  dailyWaterGoalMl Int @default(2500)
+
   // Papel na comunidade (moderação)
   role ProfileRole @default(USER)
 
@@ -69,6 +73,7 @@ model Profile {
   postFeedFeedback        PostFeedFeedback[]
   activityGoals           ActivityGoal[]
   activityInsights        ActivityInsight[]
+  waterLogs               WaterLog[]
 
   // Relações — Integrações externas (Connected Apps)
   connectedApps          ConnectedApp[]
@@ -516,6 +521,11 @@ model DailyActivity {
   // XP ganho especificamente por ActivityLog no dia — usado para aplicar o
   // teto diário de XP de atividade física, separado do xpEarned geral.
   activityXpEarned          Int     @default(0)
+  // Meta diária de água atingida NAQUELE dia (goal vigente na época, não
+  // recalculado retroativamente se a meta mudar depois) — usado por
+  // WATER_GOAL_*_DAYS/BALANCED_WEEK. Nunca alimenta qualifiesForStreak (o
+  // streak geral do SmartPlate não muda com esta tarefa).
+  waterGoalCompleted        Boolean @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -755,6 +765,21 @@ model ActivityInsight {
   createdAt DateTime @default(now())
 
   @@index([userId, periodStart])
+}
+
+// Registro individual de consumo de água (funcionalidade 39). Meta diária
+// fica em Profile.dailyWaterGoalMl — ver lib/hydration/*.
+model WaterLog {
+  id      String  @id @default(uuid())
+  userId  String
+  profile Profile @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  amountMl Int
+  loggedAt DateTime @default(now())
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, loggedAt])
 }
 
 // ══════════════════════════════════════════════════════════════════════════

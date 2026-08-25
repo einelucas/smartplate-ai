@@ -16,9 +16,11 @@ const path = require("path");
 const { PrismaClient } = require("@prisma/client");
 
 const BETA_CODE_PREFIX = "SPBETA";
-const ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ"; // sem 0/O, 1/I/L
+const ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ"; // sem 0/O, 1/I/L (31 símbolos = log2(31) ≈ 4,95 bits/caractere)
 const SEGMENT_LENGTH = 4;
-const SEGMENT_COUNT = 3;
+// 7 segmentos de 4 = 28 caracteres * log2(31) ≈ 138,7 bits de entropia (>= 128 bits exigidos).
+// Mantido em espelho com lib/beta/codes.ts — nunca gerar com um valor menor.
+const SEGMENT_COUNT = 7;
 
 function randomSegment(length) {
   const bytes = crypto.randomBytes(length);

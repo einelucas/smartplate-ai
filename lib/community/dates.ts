@@ -30,6 +30,20 @@ export function toUtcDateOnly(dateStr: string): Date {
   return new Date(`${dateStr}T00:00:00.000Z`);
 }
 
+/**
+ * Margem de segurança contra offset de timezone ao converter um intervalo de
+ * datas locais (YYYY-MM-DD) num range de busca em UTC — usada por qualquer
+ * módulo que agregue registros datados por instante (ActivityLog, WaterLog,
+ * ...) dentro de uma janela local. Nunca duplicar este cálculo por módulo.
+ */
+export function withTimezoneBuffer(startLocalStr: string, endLocalStr: string): { gte: Date; lte: Date } {
+  const gte = toUtcDateOnly(startLocalStr);
+  gte.setUTCDate(gte.getUTCDate() - 2);
+  const lte = toUtcDateOnly(endLocalStr);
+  lte.setUTCDate(lte.getUTCDate() + 2);
+  return { gte, lte };
+}
+
 /** Diferença em dias inteiros entre duas datas UTC-midnight (b - a). */
 export function diffInCalendarDays(a: Date, b: Date): number {
   const msPerDay = 24 * 60 * 60 * 1000;

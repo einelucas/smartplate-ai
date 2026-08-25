@@ -5,12 +5,18 @@ import crypto from "crypto";
 
 export const BETA_CODE_PREFIX = "SPBETA";
 
-// Alfabeto sem caracteres visualmente confusos: sem 0/O, 1/I/L.
+// Alfabeto sem caracteres visualmente confusos: sem 0/O, 1/I/L (31 símbolos = log2(31) ≈ 4,95 bits/caractere).
 const ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
 const SEGMENT_LENGTH = 4;
-const SEGMENT_COUNT = 3;
+// 7 segmentos de 4 = 28 caracteres * log2(31) ≈ 138,7 bits de entropia (>= 128 bits exigidos).
+// Todo código NOVO é gerado com este tamanho — nunca reduzir sem recalcular a entropia.
+const SEGMENT_COUNT = 7;
+// Formato antigo (3 segmentos ≈ 59,4 bits) já foi distribuído antes desta correção — o mínimo
+// aceito na validação continua baixo só para não invalidar códigos reais já em circulação;
+// isso não afeta a entropia dos códigos gerados a partir de agora.
+const MIN_SEGMENT_COUNT = 3;
 
-const BETA_CODE_FORMAT = new RegExp(`^${BETA_CODE_PREFIX}(-[A-Z0-9]{${SEGMENT_LENGTH}}){${SEGMENT_COUNT}}$`);
+const BETA_CODE_FORMAT = new RegExp(`^${BETA_CODE_PREFIX}(-[A-Z0-9]{${SEGMENT_LENGTH}}){${MIN_SEGMENT_COUNT},${SEGMENT_COUNT}}$`);
 
 function randomSegment(length: number): string {
   const bytes = crypto.randomBytes(length);

@@ -15,6 +15,7 @@ import { safeParse } from "@/lib/mealplan";
 import { getLocalDateString, getLocalWeekRange } from "./dates";
 import type { Db } from "./types";
 import { awardXpEvent } from "./gamification";
+import { hasCompletedBalancedWeek } from "@/lib/hydration/gamification";
 import { ACHIEVEMENT_CATALOG, ACHIEVEMENT_RARITY_XP, getAchievementRarity, type AchievementDefinition } from "./achievement-catalog";
 
 export type AchievementStatus = "UNLOCKED" | "LOCKED" | "COMING_SOON";
@@ -90,6 +91,11 @@ interface RawStats {
   // Alimentação + atividade
   completeRoutineDaysCount: number; // dias com refeição concluída E atividade
   balancedWeeksCount: number; // semanas com >=5 dias "rotina completa"
+  // Hidratação
+  waterLogCount: number; // total de registros válidos de água
+  waterLogDistinctDaysCount: number; // dias locais distintos com >=1 registro de água
+  waterGoalCompletedDaysCount: number; // dias em que a meta diária de água foi atingida
+  balancedWeekAchieved: boolean; // BALANCED_WEEK — ver hasCompletedBalancedWeek
   // Desafios
   challengeJoinedCount: number;
   challengeCompletedCount: number;
@@ -171,6 +177,9 @@ async function getRawStats(userId: string): Promise<RawStats> {
     challengeJoinedCount,
     challengeCompletedCount,
     activityGoalMetEventCount,
+    waterLogs,
+    waterGoalCompletedDaysCount,
+    balancedWeekAchieved,
   ] = await Promise.all([
     prisma.profile.findUnique({ where: { userId }, select: { onboardingCompletedAt: true, dietType: true } }),
     prisma.userPreferences.findUnique({ where: { userId }, select: { dietGoal: true } }),
@@ -198,6 +207,9 @@ async function getRawStats(userId: string): Promise<RawStats> {
     prisma.challengeParticipant.count({ where: { userId } }),
     prisma.challengeParticipant.count({ where: { userId, completedAt: { not: null } } }),
     prisma.xpEvent.count({ where: { userId, eventType: "ACTIVITY_GOAL_MET" } }),
+    prisma.waterLog.findMany({ where: { userId }, select: { loggedAt: true } }),
+    prisma.dailyActivity.count({ where: { userId, waterGoalCompleted: true } }),
+    hasCompletedBalancedWeek(prisma, userId),
   ]);
 
   const timezone = socialProfile?.timezone;
@@ -262,6 +274,10 @@ async function getRawStats(userId: string): Promise<RawStats> {
   }
   const balancedWeeksCount = countWeeksAtLeast(balancedDaysPerWeek, 5);
 
+  // ── Hidratação ──
+  const waterLocalDays = new Set<string>();
+  for (const log of waterLogs) waterLocalDays.add(getLocalDateString(log.loggedAt, timezone));
+
   return {
     onboardingCompleted: !!profile?.onboardingCompletedAt,
     profileComplete,
@@ -290,6 +306,10 @@ async function getRawStats(userId: string): Promise<RawStats> {
     activityWeeksWith2PlusDaysCount,
     completeRoutineDaysCount,
     balancedWeeksCount,
+    waterLogCount: waterLogs.length,
+    waterLogDistinctDaysCount: waterLocalDays.size,
+    waterGoalCompletedDaysCount,
+    balancedWeekAchieved,
     challengeJoinedCount,
     challengeCompletedCount,
     personalGoalReached: activityGoalMetEventCount > 0,
@@ -369,6 +389,18 @@ function computeProgress(code: string, target: number, stats: RawStats): { progr
       return bool(stats.balancedWeeksCount >= 1);
     case "CONSISTENT_ROUTINE":
       return count(stats.balancedWeeksCount);
+    case "FIRST_WATER_LOG":
+    case "WATER_LOGS_50":
+      return count(stats.waterLogCount);
+    case "FIRST_WATER_GOAL":
+    case "WATER_GOAL_3_DAYS":
+    case "WATER_GOAL_7_DAYS":
+    case "WATER_GOAL_30_DAYS":
+      return count(stats.waterGoalCompletedDaysCount);
+    case "WATER_WEEK_CONSISTENCY":
+      return count(stats.waterLogDistinctDaysCount);
+    case "BALANCED_WEEK":
+      return bool(stats.balancedWeekAchieved);
     case "FIRST_CHALLENGE_JOINED":
       return count(stats.challengeJoinedCount);
     case "FIRST_CHALLENGE_COMPLETED":
