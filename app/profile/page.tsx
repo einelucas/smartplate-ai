@@ -2,7 +2,6 @@
 
 import { useUser, useClerk } from "@clerk/nextjs";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import dynamic from "next/dynamic";
@@ -20,6 +19,7 @@ import ActivitySummaryCard from "@/components/ActivitySummaryCard";
 import ActivityGoalsCard from "@/components/ActivityGoalsCard";
 import ActivityInsightsCard from "@/components/ActivityInsightsCard";
 import { useProfile } from "@/hooks/useProfile";
+import Avatar from "@/components/social/Avatar";
 import { formatHeightMeters, findLabel, DIET_GOALS, DIET_TYPES, COOKING_LEVELS, BUDGET_LEVELS } from "@/lib/profile/options";
 import { calculateMealAdherence } from "@/lib/mealplan";
 
@@ -146,13 +146,13 @@ export default function ProfilePage() {
           <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
             <div className="flex flex-col items-center mb-6 text-center">
               <div className="relative mb-4">
-                {avatarUrl ? (
-                  <Image src={avatarUrl} alt={displayName} width={96} height={96} className="w-24 h-24 rounded-full object-cover shadow-lg" />
-                ) : (
-                  <div className="w-24 h-24 bg-gradient-to-br from-[#007BFF] to-[#28A745] rounded-full flex items-center justify-center text-3xl text-white shadow-lg">
-                    {displayName.charAt(0)}
-                  </div>
-                )}
+                <Avatar
+                  avatarUrl={avatarUrl}
+                  name={displayName}
+                  sizeClassName="w-24 h-24 shadow-lg"
+                  textSizeClassName="text-3xl"
+                  fallbackClassName="bg-gradient-to-br from-[#007BFF] to-[#28A745] text-white"
+                />
                 <button
                   onClick={() => setIsEditModalOpen(true)}
                   className="absolute bottom-0 right-0 w-8 h-8 bg-[#28A745] rounded-full flex items-center justify-center border-2 border-white shadow"

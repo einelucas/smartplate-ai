@@ -5,11 +5,11 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, Scale, Target, ChefHat, Save, Upload, Loader, User as UserIcon, AtSign } from "lucide-react";
 import { useUser } from "@clerk/nextjs";
 import toast from "react-hot-toast";
-import Image from "next/image";
 import { useProfile } from "@/hooks/useProfile";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { DIET_TYPES, ALLERGY_OPTIONS, FOOD_SUGGESTION_OPTIONS, COOKING_LEVELS, DIET_GOALS, BUDGET_LEVELS, MAX_PREP_TIME_OPTIONS, ACTIVITY_LEVELS } from "@/lib/profile/options";
 import type { PhysicalData, SocialProfileSummary, UserPreferences } from "@/types/profile";
+import Avatar from "@/components/social/Avatar";
 
 interface EditProfileModalProps {
   isOpen: boolean;
@@ -242,13 +242,13 @@ export default function EditProfileModal({ isOpen, onClose, physicalData, prefer
                 <div className="space-y-5">
                   <div className="flex items-center gap-4">
                     <div className="relative">
-                      {socialProfile?.avatarUrl ? (
-                        <Image src={socialProfile.avatarUrl} alt="Foto de perfil" width={80} height={80} className="w-20 h-20 rounded-full object-cover border-4 border-slate-100" />
-                      ) : (
-                        <div className="w-20 h-20 bg-gradient-to-br from-[#007BFF] to-[#28A745] rounded-full flex items-center justify-center text-3xl text-white">
-                          {user?.firstName?.charAt(0) || "👤"}
-                        </div>
-                      )}
+                      <Avatar
+                        avatarUrl={socialProfile?.avatarUrl}
+                        name={user?.firstName || "U"}
+                        sizeClassName="w-20 h-20 border-4 border-slate-100"
+                        textSizeClassName="text-3xl"
+                        fallbackClassName="bg-gradient-to-br from-[#007BFF] to-[#28A745] text-white"
+                      />
                       {uploadingImage && (
                         <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center">
                           <Loader size={24} className="text-white animate-spin" />

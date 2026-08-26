@@ -15,11 +15,14 @@ export default function Avatar({
   name,
   sizeClassName = "w-10 h-10",
   textSizeClassName = "text-sm",
+  fallbackClassName = "bg-slate-100 text-slate-500",
 }: {
   avatarUrl?: string | null;
   name: string;
   sizeClassName?: string;
   textSizeClassName?: string;
+  /** Cor de fundo/texto das iniciais quando não há foto — ex.: um card de destaque pode querer um gradiente de marca em vez do cinza padrão. */
+  fallbackClassName?: string;
 }) {
   const [failed, setFailed] = useState(false);
 
@@ -31,7 +34,7 @@ export default function Avatar({
 
   return (
     <div
-      className={`${sizeClassName} bg-slate-100 rounded-full flex items-center justify-center ${textSizeClassName} font-bold text-slate-500 flex-shrink-0 overflow-hidden`}
+      className={`${sizeClassName} ${showImage ? "" : fallbackClassName} rounded-full flex items-center justify-center ${textSizeClassName} font-bold flex-shrink-0 overflow-hidden`}
     >
       {showImage ? (
         // eslint-disable-next-line @next/next/no-img-element
