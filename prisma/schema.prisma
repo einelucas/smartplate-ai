@@ -1,7 +1,14 @@
 // prisma/schema.prisma (versão atualizada)
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  // Pooled (PgBouncer, transaction mode) — usada em runtime pela aplicação.
+  url       = env("DATABASE_URL")
+  // Conexão direta (sem pooler) — usada só por comandos de schema/migration
+  // (migrate deploy/dev, db push). Advisory locks do Prisma Migrate exigem
+  // sessão estável, que uma conexão pooled em modo transação não garante —
+  // sem isso, uma migration pode ficar travada esperando um lock preso numa
+  // conexão reaproveitada pelo pooler para outra query qualquer.
+  directUrl = env("DIRECT_URL")
 }
 
 generator client {
