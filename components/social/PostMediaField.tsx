@@ -21,8 +21,15 @@ export default function PostMediaField({
   variant = "icon",
   disabled,
 }: {
-  /** Chamado com o File final (já cortado) pronto pra upload, ou null quando removido. */
-  onChange: (file: File | null) => void;
+  /**
+   * Chamado com o File final (já cortado) pronto pra upload, ou null quando
+   * removido. `dimensions` é a largura/altura reais do arquivo final (depois
+   * do crop e do redimensionamento proporcional) — usadas pelo feed pra
+   * reservar o espaço da imagem antes dela carregar, sem esperar o
+   * navegador decodificar o arquivo (evita o card "crescer" enquanto a
+   * imagem carrega).
+   */
+  onChange: (file: File | null, dimensions?: { width: number; height: number }) => void;
   onError?: (message: string) => void;
   /** "icon" = botão compacto (toolbar do composer). "dropzone" = área maior (ex.: External Share). */
   variant?: "icon" | "dropzone";
@@ -57,13 +64,13 @@ export default function PostMediaField({
     setShowCropper(true);
   };
 
-  const handleCropApply = (croppedFile: File) => {
+  const handleCropApply = (croppedFile: File, dimensions: { width: number; height: number }) => {
     setCurrent((prev) => {
       if (prev) URL.revokeObjectURL(prev.objectUrl);
       return { file: croppedFile, objectUrl: URL.createObjectURL(croppedFile) };
     });
     setShowCropper(false);
-    onChange(croppedFile);
+    onChange(croppedFile, dimensions);
   };
 
   const handleCropCancel = () => {

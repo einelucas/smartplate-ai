@@ -59,8 +59,10 @@ type ActivityMetadata = {
   performedAt?: string;
   xpAwarded?: number;
   imageUrl?: string | null;
+  imageWidth?: number;
+  imageHeight?: number;
 };
-type TextMetadata = { imageUrl?: string | null };
+type TextMetadata = { imageUrl?: string | null; imageWidth?: number; imageHeight?: number };
 // Conteúdo é sempre o que o usuário forneceu — nunca dado obtido via API
 // (ver POST /api/community/posts, ramo EXTERNAL_SHARE).
 type ExternalShareMetadata = { provider?: string; url?: string | null; imageUrl?: string | null };
@@ -72,17 +74,38 @@ type ExternalShareMetadata = { provider?: string; url?: string | null; imageUrl?
  * volta pra imagens mais estreitas que o card não ficarem esticadas.
  * Viewer completo (ImageViewerDialog, já object-contain) ao tocar.
  *
- * Correção: antes usava object-cover com h-auto + max-h-[70vh], que corta
- * qualquer imagem cuja altura natural (na largura do card) excedesse 70vh
- * — exatamente o problema de "imagem cortada no Desktop" (mais comum em
- * fotos verticais 3:4/4:5/9:16, que numa largura de card típica ultrapassam
- * 70vh facilmente).
+ * Correção histórica: antes usava object-cover com h-auto + max-h-[70vh],
+ * que corta qualquer imagem cuja altura natural (na largura do card)
+ * excedesse 70vh — problema de "imagem cortada no Desktop" (mais comum em
+ * fotos verticais 3:4/4:5/9:16).
+ *
+ * width/height (quando o post tem — ver imageWidth/imageHeight em
+ * lib/community/post-draft.ts): atributos NATIVOS do <img>, não CSS — é
+ * assim que o navegador reserva a proporção correta do espaço ANTES de
+ * baixar um byte da imagem (suportado desde 2021 em todos os browsers
+ * modernos), eliminando o "card crescendo enquanto a imagem carrega".
+ * Posts antigos (sem essas dimensões salvas) continuam sem essa reserva —
+ * não há como saber a proporção sem re-baixar a imagem, fora do escopo
+ * desta correção. Enquanto a imagem não termina de carregar, mostra um
+ * esqueleto pulsante em vez de card vazio/crescendo aos poucos.
  */
-function PostImage({ src, onOpen }: { src: string; onOpen: () => void }) {
+function PostImage({ src, width, height, onOpen }: { src: string; width?: number; height?: number; onOpen: () => void }) {
+  const [loaded, setLoaded] = useState(false);
+
   return (
-    <button type="button" onClick={onOpen} className="block w-full rounded-xl overflow-hidden bg-slate-100">
+    <button type="button" onClick={onOpen} className="block w-full rounded-xl overflow-hidden bg-slate-100 relative">
+      {!loaded && <div className="absolute inset-0 animate-pulse bg-slate-200" />}
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={src} alt="" className="block mx-auto w-auto h-auto max-w-full max-h-[70vh] object-contain" />
+      <img
+        src={src}
+        alt=""
+        width={width}
+        height={height}
+        loading="lazy"
+        onLoad={() => setLoaded(true)}
+        className="block mx-auto w-auto h-auto max-w-full max-h-[70vh] object-contain transition-opacity duration-300"
+        style={{ opacity: loaded ? 1 : 0 }}
+      />
     </button>
   );
 }
@@ -377,7 +400,7 @@ function PostBody({
         )}
         {meta.imageUrl && (
           <div className="mt-3">
-            <PostImage src={meta.imageUrl} onOpen={() => setViewerSrc(meta.imageUrl!)} />
+            <PostImage src={meta.imageUrl} width={meta.imageWidth} height={meta.imageHeight} onOpen={() => setViewerSrc(meta.imageUrl!)} />
           </div>
         )}
         {viewerSrc && <ImageViewerDialog src={viewerSrc} onClose={() => setViewerSrc(null)} />}
@@ -415,7 +438,7 @@ function PostBody({
 
   // TEXT (padrão) — texto opcional + foto opcional (item 7-9: qualquer
   // combinação é válida, já garantida pelo backend via createPostSchema).
-  const { imageUrl } = (post.metadata ?? {}) as TextMetadata;
+  const { imageUrl, imageWidth, imageHeight } = (post.metadata ?? {}) as TextMetadata;
   return (
     <div>
       {post.text && (
@@ -425,7 +448,7 @@ function PostBody({
       )}
       {imageUrl && (
         <div className={post.text ? "mt-3" : ""}>
-          <PostImage src={imageUrl} onOpen={() => setViewerSrc(imageUrl)} />
+          <PostImage src={imageUrl} width={imageWidth} height={imageHeight} onOpen={() => setViewerSrc(imageUrl)} />
         </div>
       )}
       {viewerSrc && <ImageViewerDialog src={viewerSrc} onClose={() => setViewerSrc(null)} />}

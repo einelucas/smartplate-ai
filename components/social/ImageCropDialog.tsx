@@ -28,7 +28,7 @@ export default function ImageCropDialog({
   imageSrc: string;
   originalFile: File;
   onCancel: () => void;
-  onApply: (file: File) => void;
+  onApply: (file: File, dimensions: { width: number; height: number }) => void;
 }) {
   const [aspectKey, setAspectKey] = useState<AspectKey>("ORIGINAL");
   const [naturalSize, setNaturalSize] = useState<{ width: number; height: number } | null>(null);
@@ -48,14 +48,14 @@ export default function ImageCropDialog({
     if (!croppedAreaPixels || applying) return;
     setApplying(true);
     try {
-      const file = await getCroppedImageFile({
+      const { file, width, height } = await getCroppedImageFile({
         imageSrc,
         croppedAreaPixels,
         rotation,
         fileName: originalFile.name.replace(/\.[^.]+$/, "") + (outputMimeType(originalFile.type) === "image/png" ? ".png" : ".webp"),
         mimeType: outputMimeType(originalFile.type),
       });
-      onApply(file);
+      onApply(file, { width, height });
     } catch {
       setApplying(false);
     }

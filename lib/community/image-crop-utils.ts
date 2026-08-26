@@ -52,13 +52,19 @@ function rotatedBoundingBox(width: number, height: number, rotation: number) {
   };
 }
 
+export interface CroppedImageResult {
+  file: File;
+  width: number;
+  height: number;
+}
+
 export async function getCroppedImageFile(params: {
   imageSrc: string;
   croppedAreaPixels: CropArea;
   rotation: number;
   fileName: string;
   mimeType: "image/webp" | "image/png";
-}): Promise<File> {
+}): Promise<CroppedImageResult> {
   const { imageSrc, croppedAreaPixels, rotation, fileName, mimeType } = params;
   const image = await loadImage(imageSrc);
 
@@ -102,5 +108,5 @@ export async function getCroppedImageFile(params: {
     cropCanvas.toBlob((b) => (b ? resolve(b) : reject(new Error("Falha ao gerar imagem"))), mimeType, OUTPUT_QUALITY);
   });
 
-  return new File([blob], fileName, { type: mimeType });
+  return { file: new File([blob], fileName, { type: mimeType }), width: outWidth, height: outHeight };
 }

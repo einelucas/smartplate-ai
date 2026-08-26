@@ -39,7 +39,14 @@ export async function GET(_request: Request, context: Params) {
   const result = await streamPrivateImage(imageUrl);
   if (!result) return NextResponse.json({ error: "Imagem não encontrada." }, { status: 404 });
 
+  // A imagem de um post nunca muda depois de publicada (não existe edição de
+  // foto, só de texto) — seguro cachear de forma agressiva no navegador de
+  // quem já teve acesso autorizado. "private" continua correto (não é
+  // pública, cada visitante precisa da própria autorização), mas não há
+  // motivo pra expirar em 5 minutos e forçar reautenticar/reconsultar banco/
+  // Blob de novo a cada rolagem — isso que fazia a segunda+ visualização da
+  // mesma imagem ser tão lenta quanto a primeira.
   return new NextResponse(result.stream, {
-    headers: { "Content-Type": result.contentType, "Cache-Control": "private, max-age=300" },
+    headers: { "Content-Type": result.contentType, "Cache-Control": "private, max-age=31536000, immutable" },
   });
 }

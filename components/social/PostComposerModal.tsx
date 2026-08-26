@@ -252,7 +252,7 @@ export default function PostComposerModal({
               <div className="flex items-center gap-2">
                 <PostMediaField
                   variant="icon"
-                  onChange={(file) => setDraft((d) => ({ ...d, mediaFile: file }))}
+                  onChange={(file, dimensions) => setDraft((d) => ({ ...d, mediaFile: file, mediaDimensions: dimensions ?? null }))}
                   onError={setError}
                   disabled={isPublishing}
                 />

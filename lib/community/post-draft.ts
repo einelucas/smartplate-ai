@@ -15,12 +15,14 @@ export type PostDestination = { type: "GLOBAL" } | { type: "GROUP"; groupId: str
 export interface PostDraft {
   text: string;
   mediaFile: File | null;
+  /** Largura/altura reais de mediaFile (depois do crop) — usadas pro feed reservar o espaço da imagem antes dela carregar. */
+  mediaDimensions: { width: number; height: number } | null;
   attachment: PostAttachment | null;
   destination: PostDestination;
 }
 
 export function createEmptyDraft(destination: PostDestination = { type: "GLOBAL" }): PostDraft {
-  return { text: "", mediaFile: null, attachment: null, destination };
+  return { text: "", mediaFile: null, mediaDimensions: null, attachment: null, destination };
 }
 
 export function isDraftPublishable(draft: PostDraft): boolean {
@@ -39,6 +41,8 @@ export function draftToCreatePostInput(
   type: "TEXT" | "ACHIEVEMENT" | "PLAN_SHARE" | "ACTIVITY" | "EXTERNAL_SHARE";
   text?: string;
   imageUrl?: string;
+  imageWidth?: number;
+  imageHeight?: number;
   achievementCode?: string;
   shareToken?: string;
   activityLogId?: string;
@@ -49,18 +53,45 @@ export function draftToCreatePostInput(
 } {
   const text = draft.text.trim() || undefined;
   const groupId = draft.destination.type === "GROUP" ? draft.destination.groupId : undefined;
+  // Só faz sentido anexar dimensões à MESMA imagem que está sendo enviada
+  // agora — nunca reaproveitar de um draft anterior.
+  const dimensions = uploadedImageUrl && draft.mediaDimensions ? draft.mediaDimensions : undefined;
 
   if (!draft.attachment) {
-    return { type: "TEXT", text, imageUrl: uploadedImageUrl, groupId };
+    return { type: "TEXT", text, imageUrl: uploadedImageUrl, imageWidth: dimensions?.width, imageHeight: dimensions?.height, groupId };
   }
 
   switch (draft.attachment.type) {
     case "MEAL":
-      return { type: "PLAN_SHARE", text, imageUrl: uploadedImageUrl, shareToken: draft.attachment.shareToken, groupId };
+      return {
+        type: "PLAN_SHARE",
+        text,
+        imageUrl: uploadedImageUrl,
+        imageWidth: dimensions?.width,
+        imageHeight: dimensions?.height,
+        shareToken: draft.attachment.shareToken,
+        groupId,
+      };
     case "ACTIVITY":
-      return { type: "ACTIVITY", text, imageUrl: uploadedImageUrl, activityLogId: draft.attachment.activityId, groupId };
+      return {
+        type: "ACTIVITY",
+        text,
+        imageUrl: uploadedImageUrl,
+        imageWidth: dimensions?.width,
+        imageHeight: dimensions?.height,
+        activityLogId: draft.attachment.activityId,
+        groupId,
+      };
     case "ACHIEVEMENT":
-      return { type: "ACHIEVEMENT", text, imageUrl: uploadedImageUrl, achievementCode: draft.attachment.achievementCode, groupId };
+      return {
+        type: "ACHIEVEMENT",
+        text,
+        imageUrl: uploadedImageUrl,
+        imageWidth: dimensions?.width,
+        imageHeight: dimensions?.height,
+        achievementCode: draft.attachment.achievementCode,
+        groupId,
+      };
     case "EXTERNAL_SHARE":
       return {
         type: "EXTERNAL_SHARE",

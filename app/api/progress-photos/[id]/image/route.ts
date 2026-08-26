@@ -21,7 +21,9 @@ export async function GET(_request: Request, context: Params) {
   const result = await streamPrivateImage(photo.imageUrl);
   if (!result) return NextResponse.json({ error: "Imagem não encontrada." }, { status: 404 });
 
+  // A foto nunca muda depois de enviada — seguro cachear de forma agressiva
+  // no navegador do próprio dono (mesmo raciocínio de app/api/community/posts/[id]/image/route.ts).
   return new NextResponse(result.stream, {
-    headers: { "Content-Type": result.contentType, "Cache-Control": "private, max-age=300" },
+    headers: { "Content-Type": result.contentType, "Cache-Control": "private, max-age=31536000, immutable" },
   });
 }

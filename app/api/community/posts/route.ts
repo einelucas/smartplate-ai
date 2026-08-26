@@ -53,9 +53,16 @@ export async function POST(request: Request) {
   if (genericImageUrl && genericImageUrl.split("/")[1] !== userId) {
     return NextResponse.json({ error: "Imagem inválida" }, { status: 403 });
   }
+  // Dimensões só fazem sentido junto de uma imagem — nunca persistidas sozinhas.
+  // Usadas só pelo feed pra reservar o espaço da imagem antes dela carregar
+  // (evita o card "crescer" enquanto a imagem baixa) — nunca por lógica de negócio.
+  const genericImageDimensions =
+    genericImageUrl && parsed.data.imageWidth && parsed.data.imageHeight
+      ? { imageWidth: parsed.data.imageWidth, imageHeight: parsed.data.imageHeight }
+      : {};
 
   if (type === "TEXT") {
-    if (genericImageUrl) metadata = { imageUrl: genericImageUrl };
+    if (genericImageUrl) metadata = { imageUrl: genericImageUrl, ...genericImageDimensions };
   } else if (type === "ACHIEVEMENT") {
     const code = parsed.data.achievementCode as string;
     const unlocked = await prisma.userAchievement.findUnique({
@@ -69,7 +76,7 @@ export async function POST(request: Request) {
       title: def.title,
       description: def.description,
       icon: def.icon,
-      ...(genericImageUrl ? { imageUrl: genericImageUrl } : {}),
+      ...(genericImageUrl ? { imageUrl: genericImageUrl, ...genericImageDimensions } : {}),
     };
   } else if (type === "STREAK") {
     const milestone = parsed.data.streakMilestone as number;
@@ -91,7 +98,7 @@ export async function POST(request: Request) {
       shareToken,
       planName: shared.mealPlan.name ?? null,
       dietType: shared.mealPlan.dietType,
-      ...(genericImageUrl ? { imageUrl: genericImageUrl } : {}),
+      ...(genericImageUrl ? { imageUrl: genericImageUrl, ...genericImageDimensions } : {}),
     };
   } else if (type === "ACTIVITY") {
     const activityLogId = parsed.data.activityLogId as string;
@@ -121,7 +128,7 @@ export async function POST(request: Request) {
       // Imagem é sempre escolhida manualmente pelo usuário no momento do
       // compartilhamento — nunca copiada de dado privado do ActivityLog/API
       // externa (Strava permanece privado; ver provider-policy.ts).
-      ...(genericImageUrl ? { imageUrl: genericImageUrl } : {}),
+      ...(genericImageUrl ? { imageUrl: genericImageUrl, ...genericImageDimensions } : {}),
     };
   } else if (type === "EXTERNAL_SHARE") {
     // Conteúdo é sempre o que o próprio usuário forneceu — nunca buscamos

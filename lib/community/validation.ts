@@ -96,9 +96,17 @@ export const createPostSchema = z
     type: postTypeSchema,
     groupId: z.string().trim().min(1).max(64).optional(),
     text: z.string().trim().max(500).optional(),
-    // Foto genérica (pathname do Blob) — TEXT e ACTIVITY. EXTERNAL_SHARE
-    // continua com seu próprio campo abaixo (fluxo/validação já estabelecidos).
+    // Foto genérica (pathname do Blob) — TEXT, ACTIVITY e ACHIEVEMENT.
+    // EXTERNAL_SHARE continua com seu próprio campo abaixo (fluxo/validação
+    // já estabelecidos). width/height são as dimensões reais do arquivo já
+    // cortado (calculadas no client, nunca confiadas cegamente — validadas
+    // contra o limite de saída do editor de imagem) — usadas só pra reservar
+    // o espaço da imagem no feed antes dela carregar, nunca pra lógica de
+    // negócio. Opcionais: posts antigos (antes desta funcionalidade) e
+    // qualquer post sem essas dimensões continuam funcionando sem elas.
     imageUrl: z.string().trim().min(1).max(300).optional(),
+    imageWidth: z.number().int().positive().max(4096).optional(),
+    imageHeight: z.number().int().positive().max(4096).optional(),
     achievementCode: z.string().trim().max(32).optional(),
     streakMilestone: z.number().int().positive().max(10000).optional(),
     shareToken: z.string().trim().min(1).max(128).optional(),
