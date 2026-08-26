@@ -8,7 +8,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { createPostSchema } from "@/lib/community/validation";
 import { AuthzError, requireGroupMembership } from "@/lib/community/authz";
-import { ACHIEVEMENTS } from "@/lib/community/achievements";
+import { getAchievementDisplay } from "@/lib/community/achievements";
 import { deletePrivateImage } from "@/lib/storage/blob";
 import { exceedsHashtagLimit, syncPostHashtags, MAX_HASHTAGS_PER_POST } from "@/lib/community/hashtags";
 
@@ -62,7 +62,7 @@ export async function POST(request: Request) {
       where: { userId_achievementCode: { userId, achievementCode: code } },
     });
     if (!unlocked) return NextResponse.json({ error: "Conquista não desbloqueada" }, { status: 403 });
-    const def = (ACHIEVEMENTS as Record<string, { title: string; description: string; icon: string }>)[code];
+    const def = getAchievementDisplay(code);
     if (!def) return NextResponse.json({ error: "Conquista inválida" }, { status: 400 });
     metadata = {
       achievementCode: code,

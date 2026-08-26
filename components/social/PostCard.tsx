@@ -65,12 +65,24 @@ type TextMetadata = { imageUrl?: string | null };
 // (ver POST /api/community/posts, ramo EXTERNAL_SHARE).
 type ExternalShareMetadata = { provider?: string; url?: string | null; imageUrl?: string | null };
 
-/** Container de imagem do feed — respeita a proporção do crop do usuário; só limita altura em casos extremos (Livre muito alto), com viewer completo ao tocar. */
+/**
+ * Container de imagem do feed — respeita a proporção original da imagem
+ * (nunca corta); só limita a altura em casos extremos (ex.: 9:16 ou mais
+ * vertical), reduzindo a imagem inteira, nunca cortando. Fundo neutro em
+ * volta pra imagens mais estreitas que o card não ficarem esticadas.
+ * Viewer completo (ImageViewerDialog, já object-contain) ao tocar.
+ *
+ * Correção: antes usava object-cover com h-auto + max-h-[70vh], que corta
+ * qualquer imagem cuja altura natural (na largura do card) excedesse 70vh
+ * — exatamente o problema de "imagem cortada no Desktop" (mais comum em
+ * fotos verticais 3:4/4:5/9:16, que numa largura de card típica ultrapassam
+ * 70vh facilmente).
+ */
 function PostImage({ src, onOpen }: { src: string; onOpen: () => void }) {
   return (
-    <button type="button" onClick={onOpen} className="block w-full">
+    <button type="button" onClick={onOpen} className="block w-full rounded-xl overflow-hidden bg-slate-100">
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={src} alt="" className="w-full h-auto max-h-[70vh] object-cover rounded-xl" />
+      <img src={src} alt="" className="block mx-auto w-auto h-auto max-w-full max-h-[70vh] object-contain" />
     </button>
   );
 }

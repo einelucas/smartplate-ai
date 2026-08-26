@@ -9,13 +9,13 @@ import { X } from "lucide-react";
 import { FireIcon } from "@phosphor-icons/react";
 import { useCreatePost } from "@/hooks/useCommunity";
 import { openPostComposer } from "./PostComposerProvider";
-import { ACHIEVEMENTS, type AchievementCode } from "@/lib/community/achievements";
+import { getAchievementDisplay } from "@/lib/community/achievements";
 import { resolveIcon } from "@/components/icon-registry";
 
 const STREAK_MILESTONES = [3, 7, 14, 30, 60, 100];
 
 function AchievementToastContent({ code, toastId }: { code: string; toastId: string }) {
-  const def = (ACHIEVEMENTS as Record<string, { title: string; description: string; icon: string }>)[code];
+  const def = getAchievementDisplay(code);
 
   if (!def) return null;
 
@@ -32,7 +32,7 @@ function AchievementToastContent({ code, toastId }: { code: string; toastId: str
         onClick={() => {
           toast.dismiss(toastId);
           openPostComposer({
-            attachment: { type: "ACHIEVEMENT", achievementCode: code as AchievementCode, preview: { title: def.title, icon: def.icon } },
+            attachment: { type: "ACHIEVEMENT", achievementCode: code, preview: { title: def.title, icon: def.icon } },
           });
         }}
         className="text-xs font-semibold text-[#007BFF] flex-shrink-0"

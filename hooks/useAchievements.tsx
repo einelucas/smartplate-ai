@@ -3,7 +3,7 @@ import { useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useUser } from "@clerk/nextjs";
 import toast from "react-hot-toast";
-import { ACHIEVEMENT_CATALOG } from "@/lib/community/achievement-catalog";
+import { getAchievementDisplay } from "@/lib/community/achievements";
 import { resolveIcon } from "@/components/icon-registry";
 
 export type AchievementStatus = "UNLOCKED" | "LOCKED" | "COMING_SOON";
@@ -50,7 +50,7 @@ export function useAchievements() {
     for (const code of query.data.newlyUnlocked) {
       if (celebratedCodes.current.has(code)) continue;
       celebratedCodes.current.add(code);
-      const def = ACHIEVEMENT_CATALOG[code];
+      const def = getAchievementDisplay(code);
       if (!def) continue;
       const Icon = resolveIcon(def.icon);
       toast.success(`Nova conquista: ${def.title}!`, {

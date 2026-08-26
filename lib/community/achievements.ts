@@ -3,6 +3,7 @@
 // Nunca criar conquistas baseadas em peso/calorias/emagrecimento.
 // `icon` é uma chave de components/icon-registry.tsx (nunca emoji nem
 // componente direto — precisa ser serializável em JSON/metadata de post).
+import { ACHIEVEMENT_CATALOG } from "./achievement-catalog";
 
 export type AchievementCode =
   | "FIRST_ACTION"
@@ -28,6 +29,36 @@ export const ACHIEVEMENTS: Record<AchievementCode, { title: string; description:
   FIRST_CHALLENGE: { title: "Primeiro desafio", description: "Você completou seu primeiro desafio.", icon: "Trophy" },
   FIRST_GROUP: { title: "Comunidade", description: "Você entrou ou criou seu primeiro grupo.", icon: "UsersThree" },
 };
+
+export interface AchievementDisplay {
+  title: string;
+  description: string;
+  icon: string;
+}
+
+/**
+ * Resolve título/descrição/ícone de uma conquista pra exibição (celebração,
+ * post de compartilhamento) — checa o catálogo antigo primeiro (este
+ * arquivo, com FIRST_ACTION, STREAK_3/7/14/30, XP_100/500/1000,
+ * FIRST_CHALLENGE, FIRST_GROUP, ainda concedidos pelo motor antigo) e cai
+ * pro catálogo novo (achievement-catalog.ts, com 50 e tantas conquistas
+ * reais como MEALS_10, WATER_GOAL_7_DAYS, ACTIVITIES_50, BALANCED_WEEK)
+ * quando o código não existe ali.
+ *
+ * Corrige o bug de "não consigo compartilhar conquistas": antes, tanto
+ * POST /api/community/posts quanto AchievementCelebration.tsx só
+ * enxergavam o catálogo antigo (ACHIEVEMENTS) — qualquer conquista do
+ * catálogo novo (a maioria das que existem hoje) falhava com "Conquista
+ * inválida" (400) ao tentar publicar, e a própria celebração de
+ * desbloqueio não aparecia (retornava null silenciosamente).
+ */
+export function getAchievementDisplay(code: string): AchievementDisplay | null {
+  const legacy = (ACHIEVEMENTS as Record<string, AchievementDisplay | undefined>)[code];
+  if (legacy) return legacy;
+  const modern = ACHIEVEMENT_CATALOG[code];
+  if (modern) return { title: modern.title, description: modern.description, icon: modern.icon };
+  return null;
+}
 
 const STREAK_THRESHOLDS: Array<[number, AchievementCode]> = [
   [3, "STREAK_3"],
