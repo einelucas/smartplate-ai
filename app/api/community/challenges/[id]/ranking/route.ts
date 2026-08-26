@@ -7,6 +7,7 @@ import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { AuthzError, requireGroupMembership } from "@/lib/community/authz";
+import { publicIdentitySelect, resolveAvatarUrl } from "@/lib/community/avatar";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -34,7 +35,7 @@ export async function GET(_request: Request, context: Params) {
   const userIds = participants.map((p) => p.userId);
   const socialProfiles = await prisma.socialProfile.findMany({
     where: { userId: { in: userIds } },
-    select: { userId: true, username: true, displayName: true, avatarUrl: true },
+    select: publicIdentitySelect,
   });
   const byUserId = new Map(socialProfiles.map((p) => [p.userId, p]));
 
@@ -52,7 +53,7 @@ export async function GET(_request: Request, context: Params) {
       userId: participant.userId,
       username: social?.username ?? null,
       displayName: social?.displayName ?? "Usuário SmartPlate",
-      avatarUrl: social?.avatarUrl ?? null,
+      avatarUrl: social ? resolveAvatarUrl(social) : null,
       progress: participant.progress,
       target: challenge.target,
       percentage: Math.round((participant.progress / challenge.target) * 100),

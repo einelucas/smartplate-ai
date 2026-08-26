@@ -5,6 +5,7 @@ import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getBlockedUserIds } from "@/lib/community/authz";
+import { publicIdentitySelect, toPublicIdentity } from "@/lib/community/avatar";
 
 export async function GET(request: Request) {
   const { userId } = await auth();
@@ -22,10 +23,10 @@ export async function GET(request: Request) {
       isDiscoverable: true,
       userId: { not: userId, notIn: Array.from(blockedIds) },
     },
-    select: { userId: true, username: true, displayName: true, avatarUrl: true },
+    select: publicIdentitySelect,
     take: 20,
     orderBy: { username: "asc" },
   });
 
-  return NextResponse.json({ users: results });
+  return NextResponse.json({ users: results.map(toPublicIdentity) });
 }

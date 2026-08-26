@@ -5,6 +5,7 @@ import { useUser } from "@clerk/nextjs";
 import { ShieldCheck, Crown, UserMinus } from "lucide-react";
 import { useChangeGroupMemberRole, useGroupMembers, useRemoveGroupMember } from "@/hooks/useCommunity";
 import type { GroupMemberEntry } from "@/types/community";
+import Avatar from "./Avatar";
 
 const ROLE_LABELS: Record<string, string> = { OWNER: "Dono", ADMIN: "Admin", MEMBER: "Membro" };
 
@@ -33,14 +34,7 @@ export default function GroupMembersPanel({ groupId, myRole }: { groupId: string
         const isSelf = member.userId === user?.id;
         return (
           <div key={member.userId} className="flex items-center gap-3 p-4">
-            <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-sm font-bold text-slate-500 overflow-hidden flex-shrink-0">
-              {member.avatarUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={member.avatarUrl} alt="" className="w-full h-full object-cover" />
-              ) : (
-                (member.displayName || "U").charAt(0).toUpperCase()
-              )}
-            </div>
+            <Avatar avatarUrl={member.avatarUrl} name={member.displayName || "U"} />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-slate-700 truncate">
                 {member.displayName} {isSelf && <span className="text-xs text-slate-400">(você)</span>}

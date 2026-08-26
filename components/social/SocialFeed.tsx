@@ -11,6 +11,7 @@ import FriendsPanel from "./FriendsPanel";
 import PostFeedList from "./PostFeedList";
 import LeaderboardCard from "./LeaderboardCard";
 import ChallengesList from "./ChallengesList";
+import Avatar from "./Avatar";
 
 const tabs = [
   { id: "feed", label: "Feed" },
@@ -72,14 +73,7 @@ export default function SocialFeed() {
                 <div className="space-y-3">
                   {friends.slice(0, 5).map((f: FriendEntry) => (
                     <div key={f.friendshipId} className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-sm font-bold text-slate-500 overflow-hidden flex-shrink-0">
-                        {f.avatarUrl ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={f.avatarUrl} alt="" className="w-full h-full object-cover" />
-                        ) : (
-                          (f.displayName || "U").charAt(0).toUpperCase()
-                        )}
-                      </div>
+                      <Avatar avatarUrl={f.avatarUrl} name={f.displayName || "U"} />
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-slate-700 text-sm truncate">{f.displayName}</p>
                         <p className="text-xs text-slate-400 truncate">@{f.username}</p>

@@ -98,7 +98,9 @@ export default function ProfilePage() {
   }));
 
   const displayName = socialProfile?.displayName || user?.fullName || user?.firstName || "Usuário";
-  const avatarUrl = socialProfile?.avatarUrl || user?.imageUrl;
+  // Sempre o valor já resolvido pelo backend (customAvatarUrl ?? providerAvatarUrl)
+  // — nunca um fallback ad-hoc pra user.imageUrl aqui (ver lib/community/avatar.ts).
+  const avatarUrl = socialProfile?.avatarUrl;
 
 
   const handleSignOut = () => {

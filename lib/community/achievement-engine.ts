@@ -185,7 +185,7 @@ async function getRawStats(userId: string): Promise<RawStats> {
     prisma.userPreferences.findUnique({ where: { userId }, select: { dietGoal: true } }),
     prisma.socialProfile.findUnique({
       where: { userId },
-      select: { displayName: true, username: true, avatarUrl: true, bio: true, timezone: true },
+      select: { displayName: true, username: true, customAvatarUrl: true, providerAvatarUrl: true, bio: true, timezone: true },
     }),
     prisma.weightLog.count({ where: { userId } }),
     prisma.progressPhoto.findMany({ where: { userId }, select: { takenAt: true }, orderBy: { takenAt: "asc" } }),
@@ -218,7 +218,7 @@ async function getRawStats(userId: string): Promise<RawStats> {
   const profileComplete = Boolean(
     socialProfile?.displayName?.trim() &&
       socialProfile?.username?.trim() &&
-      socialProfile?.avatarUrl?.trim() &&
+      (socialProfile?.customAvatarUrl?.trim() || socialProfile?.providerAvatarUrl?.trim()) &&
       socialProfile?.bio?.trim()
   );
 

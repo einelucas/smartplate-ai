@@ -4,14 +4,15 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { normalizeFriendPair, isBlockedEitherWay } from "@/lib/community/authz";
 import { sendFriendRequestSchema } from "@/lib/community/validation";
+import { publicIdentitySelect, toPublicIdentity } from "@/lib/community/avatar";
 
 async function toDisplayMap(userIds: string[]) {
   if (userIds.length === 0) return new Map();
   const profiles = await prisma.socialProfile.findMany({
     where: { userId: { in: userIds } },
-    select: { userId: true, username: true, displayName: true, avatarUrl: true },
+    select: publicIdentitySelect,
   });
-  return new Map(profiles.map((p) => [p.userId, p]));
+  return new Map(profiles.map((p) => [p.userId, toPublicIdentity(p)]));
 }
 
 export async function GET() {

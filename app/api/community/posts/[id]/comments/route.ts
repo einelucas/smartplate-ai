@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { AuthzError, requireGroupMembership } from "@/lib/community/authz";
 import { commentTextSchema, cursorPaginationSchema } from "@/lib/community/validation";
+import { publicIdentitySelect, toPublicIdentity } from "@/lib/community/avatar";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -47,9 +48,9 @@ export async function GET(request: Request, context: Params) {
   const authorIds = Array.from(new Set(page.map((c) => c.authorUserId)));
   const profiles = await prisma.socialProfile.findMany({
     where: { userId: { in: authorIds } },
-    select: { userId: true, username: true, displayName: true, avatarUrl: true },
+    select: publicIdentitySelect,
   });
-  const byId = new Map(profiles.map((p) => [p.userId, p]));
+  const byId = new Map(profiles.map((p) => [p.userId, toPublicIdentity(p)]));
 
   return NextResponse.json({
     items: page.map((c) => ({

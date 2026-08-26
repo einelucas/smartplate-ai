@@ -42,6 +42,8 @@ export interface SocialProfileSummary {
   username: string;
   displayName: string;
   avatarUrl: string | null;
+  /** true = avatarUrl é uma foto personalizada enviada no SmartPlate; false = é o fallback do provedor (Google/Clerk) ou não há foto. */
+  hasCustomAvatar: boolean;
   bio: string | null;
   timezone: string;
   isDiscoverable: boolean;

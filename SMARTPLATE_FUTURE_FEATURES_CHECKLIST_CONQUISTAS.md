@@ -923,6 +923,72 @@ Falta:
 
 ---
 
+# 62. Correção — Foto de perfil Google × personalizada
+
+> **2026-08-25**. Bug reportado: usuários que entram via Google e depois
+> trocam a foto pelo Perfil do SmartPlate veem a foto nova sumir/voltar pra
+> antiga. Investigado e corrigido nesta sessão.
+
+## Comportamento anterior / causa raiz
+
+- [x] **Confirmado por auditoria de código, não suposição**: `SocialProfile.avatarUrl` era um único campo ambíguo. `ensureSocialProfile` (`lib/community/social-profile.ts`) gravava nele, uma única vez, a foto do Clerk no momento da criação do perfil (que na prática é sempre a foto do provedor OAuth, já que é o primeiro acesso).
+- [x] O upload de foto personalizada (`EditProfileModal.tsx`, `OnboardingWizard.tsx`) já funcionava corretamente do lado do Clerk (`user.setProfileImage`) — o arquivo era de fato enviado e hospedado em `img.clerk.com`.
+- [x] **Causa raiz real**: depois do upload, o app chamava `PATCH /api/community/me` com `{ avatarUrl: ... }` pra persistir a nova foto — mas `updateSocialProfileSchema` (`lib/community/validation.ts`) nunca teve nenhum campo de avatar. Zod remove chaves desconhecidas de um `z.object()` por padrão, então o campo era descartado silenciosamente antes de chegar no `prisma.socialProfile.update`. A chamada retornava sucesso (nenhum erro em lugar nenhum), mas o banco nunca era atualizado.
+- [x] Resultado visível: a foto nova aparecia só onde o componente lia `user.imageUrl` do Clerk ao vivo (ex.: dentro do próprio modal, num instante); em todo o resto do app — cabeçalho, feed, comentários, amizades, membros de grupo, ranking — a leitura vinha do banco (`SocialProfile.avatarUrl`), que nunca mudava, então a foto antiga (a do Google, capturada uma vez no cadastro) continuava aparecendo pra sempre.
+- [x] Não era um problema de sincronização ativa "Google sobrescrevendo a personalizada" (não existe nenhum webhook `user.updated` no projeto — confirmado, zero ocorrências) — era simplesmente a foto personalizada nunca chegando a ser persistida.
+- [x] **Evidência direta em produção**: antes da correção, das 7 contas reais existentes, nenhuma tinha um valor persistido que pudesse ter vindo de um upload bem-sucedido (consistente com o bug estar presente desde sempre nesse fluxo).
+
+## Fonte canônica e regra de precedência
+
+- [x] Clerk continua sendo o storage real do arquivo de imagem (upload, hospedagem, CDN) — decisão deliberada de não duplicar isso com um bucket próprio, já que o upload em si já funcionava corretamente.
+- [x] `SocialProfile.avatarUrl` (ambíguo) foi dividido em dois campos explícitos: `customAvatarUrl` (aponta pro storage do Clerk, só setado por upload feito no SmartPlate) e `providerAvatarUrl` (foto do provedor OAuth, capturada de `externalAccounts[].imageUrl` do Clerk — nunca de `user.imageUrl`, que já reflete a foto personalizada depois de um upload).
+- [x] Regra única, centralizada em `lib/community/avatar.ts`: `resolveAvatarUrl = customAvatarUrl ?? providerAvatarUrl ?? null`. Reaproveitada em toda leitura (perfil, cabeçalho, feed, comentários, amizades, grupos, ranking, conquistas) — nenhum componente tem sua própria expressão de precedência.
+- [x] `pickProviderAvatarUrl` nunca é derivado de `user.imageUrl` (que muda pra a foto personalizada depois de um `setProfileImage`) — sempre das contas externas reais, que o Clerk nunca sobrescreve.
+- [x] Upload valida no backend que a URL recebida é realmente do Clerk (`isTrustedClerkImageUrl`, checa o hostname `img.clerk.com`) — nunca aceita uma URL arbitrária enviada pelo cliente.
+- [x] Remover a foto personalizada (`customAvatarUrl: null`) restaura o fallback do provedor imediatamente, sem esperar nenhuma sincronização.
+
+## Arquivos alterados/criados
+
+- **Novo**: `lib/community/avatar.ts` (`resolveAvatarUrl`, `pickProviderAvatarUrl`, `isTrustedClerkImageUrl`, `publicIdentitySelect`/`toPublicIdentity`), `components/social/Avatar.tsx` (avatar de lista compartilhado, com fallback seguro em `onError`).
+- **Schema**: `prisma/schema.prisma` (`SocialProfile.avatarUrl` → `customAvatarUrl` + `providerAvatarUrl`).
+- **Escrita**: `lib/community/social-profile.ts` (criação), `app/api/community/me/route.ts` (PATCH — correção da causa raiz + refresh de `providerAvatarUrl` só quando o avatar é tocado), `lib/community/validation.ts` (campo `customAvatarUrl` validado).
+- **Leitura**: `app/api/community/{users/search,friends,groups/[id]/members,posts/[id]/comments,challenges/[id]/ranking}/route.ts`, `lib/community/{feed-items,gamification,achievement-engine}.ts` — todos migrados do `select` bruto pro `publicIdentitySelect`/`resolveAvatarUrl` centralizado.
+- **Interface**: `EditProfileModal.tsx` (upload usa a URL retornada por `setProfileImage` em vez de `user.imageUrl` pós-`reload()`; botão "Remover" adicionado; preview passa a usar o valor resolvido do banco, não mais `user.imageUrl`), `OnboardingWizard.tsx` (mesma correção de upload; preview continua em `user.imageUrl` só nesse fluxo porque o `SocialProfile` ainda não existe nesse momento), `AppSidebar.tsx`/`app/profile/page.tsx` (removida a expressão ad-hoc `dbValue || user.imageUrl`), `components/social/{FriendsPanel,PostCard,CommentSection,GroupMembersPanel,LeaderboardCard,SocialFeed,ChallengeRankingModal,PostComposer,PostComposerModal}.tsx` (unificados no componente `Avatar` compartilhado).
+- **Config**: `next.config.ts` (adicionado `lh3.googleusercontent.com` aos `remotePatterns`, defensivamente, caso `providerAvatarUrl` não venha proxiada pelo Clerk).
+
+## Migration
+
+- [x] `prisma/migrations/20260825140000_split_avatar_sources/` — aditiva com backfill: adiciona `customAvatarUrl`/`providerAvatarUrl`, copia todo valor existente de `avatarUrl` para `providerAvatarUrl` (seguro porque, pela causa raiz confirmada, nenhum valor existente podia ser uma foto personalizada de verdade), só então remove a coluna antiga. Aplicada com o mesmo workflow seguro de sempre (`db execute` + `migrate resolve`, nunca `db push`). `prisma migrate status` confirma "up to date" (18 migrations).
+- [x] Verificado depois de aplicar: as 7 contas reais existentes têm `providerAvatarUrl` preenchido e `customAvatarUrl` vazio — confirma a causa raiz (nenhuma foto personalizada tinha sobrevivido até então).
+
+## Armazenamento
+
+- [x] Foto personalizada: Clerk (`img.clerk.com`), via `user.setProfileImage`/`user.setProfileImage({file: null})` pra remover. Nenhum bucket próprio introduzido — decisão deliberada dado que o upload do Clerk já era seguro e funcional.
+- [x] Banco (`SocialProfile`) guarda só a URL permanente retornada pelo Clerk, nunca base64, nunca um diretório local.
+
+## Testes executados
+
+- [x] **22 testes novos, automatizados, todos passando** (`tests/avatar/resolve.test.ts`, `tests/avatar/sync.test.ts`): precedência custom > provider > null; remoção restaura o fallback; `isTrustedClerkImageUrl` rejeita domínio arbitrário/similar/esquema não-http; `pickProviderAvatarUrl` prioriza Google e nunca usa `user.imageUrl`; persistência sobrevive a nova leitura (equivalente a reload/novo login); sincronização do provedor nunca sobrescreve a personalizada; segunda foto substitui a primeira; isolamento entre contas (uma nunca afeta a outra); mesma serialização usada por todas as telas.
+- [x] Suíte completa (`npm test`): **89/89 testes passando** (67 de hidratação/Beta desta mesma sessão + 22 novos), banco limpo antes/depois (fixtures sintéticas `test-*`, sempre removidas).
+- [ ] **Não testado automaticamente** (limitação de ambiente, não de escopo): fluxo completo via `ensureSocialProfile`/rota HTTP com sessão Clerk real (a função chama `currentUser()`, que exige uma sessão autenticada de verdade) — coberto indiretamente testando a mesma operação de banco que a rota executa, e verificado ao vivo que a rota responde corretamente (não quebra) sem sessão.
+
+## QA manual
+
+- [ ] **Não executado nesta sessão — bloqueado por ambiente**: não há navegador/ferramenta de automação de UI disponível. O roteiro de 8 passos (conta Google real → trocar foto → navegar → recarregar → logout/login → conferir em posts/comentários → remover → confirmar volta pro Google) fica pendente de validação manual por alguém com acesso a uma conta Google de teste e um navegador. Compensado parcialmente por: build de produção bem-sucedido, servidor de dev respondendo corretamente às rotas afetadas, e os 22 testes automatizados cobrindo a lógica de persistência/precedência que é exatamente a causa raiz do bug original.
+
+## Lint / typecheck / build
+
+- [x] `npx tsc --noEmit`: 0 erros.
+- [x] `next lint`: 0 warnings novos em qualquer arquivo desta correção (avisos remanescentes são todos pré-existentes, em arquivos não tocados).
+- [x] `npm run build`: sucesso, todas as rotas presentes no manifesto.
+
+## Pendências
+
+1. QA manual em navegador com conta Google real (ver acima) — sem isso, o item "validado end-to-end com usuário real" não pode ser marcado como concluído, só "implementado e testado automaticamente".
+2. Não foi criado um webhook `user.updated` do Clerk para manter `providerAvatarUrl` sempre em dia em tempo real — decisão deliberada (nenhum webhook existe hoje no projeto, adicionar um exigiria segredo de verificação e nova rota pública; fora do escopo mínimo necessário para corrigir o bug). `providerAvatarUrl` é atualizado de forma correta e suficiente sempre que o próprio usuário mexe na foto (upload ou remoção); não é atualizado proativamente se só a foto no Google mudar sem nenhuma ação no SmartPlate.
+
+---
+
 # PARTE 3 — ⏸️ Pendente para depois
 
 > Ideias de backlog, evoluções de longo prazo, ou itens que o texto original já descrevia como "futuro"/"não definir ainda" — sem compromisso de data.

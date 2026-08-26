@@ -41,7 +41,9 @@ export default function AppSidebar({ children }: { children: React.ReactNode }) 
   // fallback temporário enquanto a query carrega.
   const sidebarDisplayName = meData?.profile?.displayName || user?.fullName || user?.firstName || "Usuário";
   const sidebarUsername = meData?.profile?.username;
-  const sidebarAvatarUrl = meData?.profile?.avatarUrl || user?.imageUrl;
+  // Sempre o valor já resolvido pelo backend (customAvatarUrl ?? providerAvatarUrl)
+  // — nunca um fallback ad-hoc pra user.imageUrl aqui (ver lib/community/avatar.ts).
+  const sidebarAvatarUrl = meData?.profile?.avatarUrl;
 
   return (
     <div className="h-screen bg-slate-50 flex overflow-hidden">

@@ -241,20 +241,24 @@ export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) 
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !user) return;
-    if (!file.type.startsWith("image/")) {
-      toast.error("Selecione uma imagem válida");
+    if (!file || !user || uploadingPhoto) return;
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      toast.error("Envie uma imagem JPEG, PNG ou WebP");
+      if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
       toast.error("A imagem deve ter no máximo 5MB");
+      if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
     setUploadingPhoto(true);
     try {
-      await user.setProfileImage({ file });
-      await user.reload();
-      updateIdentity.mutate({ avatarUrl: user.imageUrl });
+      // Usa a URL retornada diretamente pelo upload, nunca user.imageUrl após
+      // um reload() — evita depender de timing de propagação do Clerk.
+      const image = await user.setProfileImage({ file });
+      if (!image.publicUrl) throw new Error("Upload sem URL retornada");
+      await updateIdentity.mutateAsync({ customAvatarUrl: image.publicUrl });
       toast.success("Foto atualizada!");
     } catch {
       toast.error("Erro ao enviar foto");
@@ -340,7 +344,7 @@ export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) 
               >
                 {uploadingPhoto ? <Loader2 size={12} className="text-white animate-spin" /> : <Camera size={12} className="text-white" />}
               </button>
-              <input ref={fileInputRef} type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
+              <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={handlePhotoUpload} className="hidden" />
             </div>
             <span className="text-xs text-slate-400">Foto opcional</span>
           </div>

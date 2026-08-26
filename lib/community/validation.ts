@@ -3,6 +3,7 @@
 // apenas em validação de frontend (maxLength, etc.) — tudo aqui é reforçado
 // no backend.
 import { z } from "zod";
+import { isTrustedClerkImageUrl } from "./avatar";
 
 // ─── Perfil social ──────────────────────────────────────────────────────────
 
@@ -35,6 +36,19 @@ export const updateSocialProfileSchema = z.object({
   showXp: z.boolean().optional(),
   showAchievements: z.boolean().optional(),
   acceptTerms: z.literal(true).optional(),
+  // Aponta sempre pro storage do Clerk (onde user.setProfileImage grava o
+  // upload) — nunca uma URL arbitrária enviada pelo cliente. `null` remove a
+  // foto personalizada (volta pro fallback do provedor). Campo ausente =
+  // não mexe no valor atual. Esta era a causa raiz do bug de sincronização:
+  // este schema não tinha nenhum campo de avatar, então o PATCH descartava
+  // silenciosamente a foto enviada (Zod remove chaves desconhecidas por
+  // padrão) — o upload "funcionava" no Clerk, mas nunca chegava no banco.
+  customAvatarUrl: z
+    .string()
+    .trim()
+    .refine((url) => isTrustedClerkImageUrl(url), "URL de imagem inválida")
+    .nullable()
+    .optional(),
 });
 
 // ─── Posts / reações / comentários ─────────────────────────────────────────

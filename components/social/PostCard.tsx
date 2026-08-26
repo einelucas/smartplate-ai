@@ -26,6 +26,7 @@ import type { CommunityPostSummary } from "@/types/community";
 import CommentSection from "./CommentSection";
 import ExternalProviderBadge from "./ExternalProviderBadge";
 import HashtagText from "./HashtagText";
+import Avatar from "./Avatar";
 
 const ReportModal = dynamic(() => import("./ReportModal"), { ssr: false });
 const ImageViewerDialog = dynamic(() => import("./ImageViewerDialog"), { ssr: false });
@@ -102,14 +103,7 @@ export default function PostCard({
       className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100"
     >
       <div className="flex items-center gap-3 mb-3">
-        <div className="w-11 h-11 bg-slate-100 rounded-full flex items-center justify-center text-sm font-bold text-slate-500 flex-shrink-0 overflow-hidden">
-          {post.author.avatarUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={post.author.avatarUrl} alt="" className="w-full h-full object-cover" />
-          ) : (
-            post.author.displayName.charAt(0).toUpperCase()
-          )}
-        </div>
+        <Avatar avatarUrl={post.author.avatarUrl} name={post.author.displayName} sizeClassName="w-11 h-11" />
         <div className="flex-1 min-w-0">
           <p className="font-semibold text-slate-800 text-sm truncate">{post.author.displayName}</p>
           <p className="text-xs text-slate-400">{formatRelativeTime(post.createdAt)}</p>

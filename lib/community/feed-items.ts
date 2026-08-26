@@ -6,6 +6,7 @@
 // resolução de imagem) em cada rota.
 import { prisma } from "@/lib/prisma";
 import { isLocalUploadPath } from "@/lib/storage/blob";
+import { publicIdentitySelect, toPublicIdentity } from "@/lib/community/avatar";
 
 type PostImageMetadata = { imageUrl?: string | null; [key: string]: unknown };
 
@@ -40,9 +41,9 @@ export async function serializeFeedPosts(posts: RawFeedPost[], viewerUserId: str
   const authorIds = Array.from(new Set(posts.map((p) => p.authorUserId)));
   const profiles = await prisma.socialProfile.findMany({
     where: { userId: { in: authorIds } },
-    select: { userId: true, username: true, displayName: true, avatarUrl: true },
+    select: publicIdentitySelect,
   });
-  const byId = new Map(profiles.map((p) => [p.userId, p]));
+  const byId = new Map(profiles.map((p) => [p.userId, toPublicIdentity(p)]));
 
   return posts.map((post) => {
     const reactionCounts: Record<string, number> = {};

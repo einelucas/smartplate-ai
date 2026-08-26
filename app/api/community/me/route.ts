@@ -2,7 +2,7 @@
 // GET: garante e retorna o SocialProfile + resumo de gamificação do usuário
 // autenticado (cria automaticamente no primeiro acesso à Comunidade).
 // PATCH: edita perfil social / privacidade / aceite dos termos.
-import { auth } from "@clerk/nextjs/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
@@ -10,6 +10,7 @@ import { ensureSocialProfile } from "@/lib/community/social-profile";
 import { updateSocialProfileSchema } from "@/lib/community/validation";
 import { getLevelProgress } from "@/lib/community/achievements";
 import { isReservedUsername } from "@/lib/profile/validation";
+import { pickProviderAvatarUrl, resolveAvatarUrl } from "@/lib/community/avatar";
 
 export async function GET() {
   const { userId } = await auth();
@@ -31,7 +32,8 @@ export async function GET() {
       role: profileRole?.role ?? "USER",
       username: socialProfile.username,
       displayName: socialProfile.displayName,
-      avatarUrl: socialProfile.avatarUrl,
+      avatarUrl: resolveAvatarUrl(socialProfile),
+      hasCustomAvatar: Boolean(socialProfile.customAvatarUrl),
       bio: socialProfile.bio,
       timezone: socialProfile.timezone,
       isDiscoverable: socialProfile.isDiscoverable,
@@ -76,17 +78,30 @@ export async function PATCH(request: Request) {
     }
   }
 
+  // Sempre que a foto personalizada é tocada (setada ou removida), reaproveita
+  // esta mesma chamada pra também atualizar o fallback do provedor a partir
+  // das contas externas reais do Clerk — nunca a partir de um valor enviado
+  // pelo cliente. Nunca sobrescreve providerAvatarUrl fora deste caso.
+  const data: Prisma.SocialProfileUpdateInput = {
+    ...rest,
+    ...(username ? { username } : {}),
+    ...(acceptTerms ? { termsAcceptedAt: new Date() } : {}),
+  };
+  if ("customAvatarUrl" in rest) {
+    const clerkUser = await currentUser();
+    data.providerAvatarUrl = pickProviderAvatarUrl(clerkUser?.externalAccounts ?? []);
+  }
+
   try {
-    const updated = await prisma.socialProfile.update({
-      where: { userId },
-      data: {
-        ...rest,
-        ...(username ? { username } : {}),
-        ...(acceptTerms ? { termsAcceptedAt: new Date() } : {}),
+    const updated = await prisma.socialProfile.update({ where: { userId }, data });
+
+    return NextResponse.json({
+      profile: {
+        ...updated,
+        avatarUrl: resolveAvatarUrl(updated),
+        hasCustomAvatar: Boolean(updated.customAvatarUrl),
       },
     });
-
-    return NextResponse.json({ profile: updated });
   } catch (error) {
     // Corrida real: outro request salvou o mesmo username entre a checagem acima e este update.
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {

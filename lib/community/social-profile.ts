@@ -4,6 +4,7 @@
 import { currentUser } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { sanitizeUsername } from "./validation";
+import { pickProviderAvatarUrl } from "./avatar";
 
 async function generateUniqueUsername(base: string, userId: string): Promise<string> {
   const sanitizedBase = sanitizeUsername(base) || "usuario";
@@ -44,7 +45,11 @@ export async function ensureSocialProfile(userId: string) {
         userId,
         username,
         displayName,
-        avatarUrl: clerkUser?.imageUrl ?? null,
+        // customAvatarUrl fica null — perfil recém-criado nunca tem foto
+        // personalizada ainda. providerAvatarUrl vem das contas externas do
+        // Clerk (Google), nunca de user.imageUrl (que pode já refletir uma
+        // customização feita antes do primeiro acesso à Comunidade).
+        providerAvatarUrl: pickProviderAvatarUrl(clerkUser?.externalAccounts ?? []),
       },
     });
   } catch (error) {

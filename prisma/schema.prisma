@@ -453,21 +453,29 @@ enum ReportStatus {
 // Perfil público/social do usuário. Nunca deve expor dados de Profile como
 // peso, altura, objetivo, e-mail ou dados de assinatura.
 model SocialProfile {
-  id               String    @id @default(uuid())
-  userId           String    @unique
-  profile          Profile   @relation(fields: [userId], references: [userId], onDelete: Cascade)
-  username         String    @unique
-  displayName      String
-  avatarUrl        String?
-  bio              String?
-  timezone         String    @default("UTC")
-  isDiscoverable   Boolean   @default(true)
-  showStreak       Boolean   @default(true)
-  showXp           Boolean   @default(true)
-  showAchievements Boolean   @default(true)
-  termsAcceptedAt  DateTime?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  id                String    @id @default(uuid())
+  userId            String    @unique
+  profile           Profile   @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  username          String    @unique
+  displayName       String
+  // Foto enviada pelo usuário no SmartPlate (aponta pro storage do Clerk,
+  // que já hospeda o upload via user.setProfileImage) — nunca sobrescrita
+  // por sincronização automática do provedor OAuth.
+  customAvatarUrl   String?
+  // Foto do provedor OAuth (ex.: Google), capturada de externalAccounts[].
+  // Usada como fallback quando não há foto personalizada, ou quando ela é
+  // removida. Nunca confundir com user.imageUrl do Clerk, que já reflete a
+  // foto personalizada depois de um upload.
+  providerAvatarUrl String?
+  bio               String?
+  timezone          String    @default("UTC")
+  isDiscoverable    Boolean   @default(true)
+  showStreak        Boolean   @default(true)
+  showXp            Boolean   @default(true)
+  showAchievements  Boolean   @default(true)
+  termsAcceptedAt   DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   @@index([username])
 }

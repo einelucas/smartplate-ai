@@ -6,12 +6,14 @@
 "use client";
 
 import { useUser } from "@clerk/nextjs";
-import Image from "next/image";
 import { Image as ImageIcon } from "lucide-react";
+import { useCommunityMe } from "@/hooks/useCommunity";
 import { useOpenPostComposer } from "./PostComposerProvider";
+import Avatar from "./Avatar";
 
 export default function PostComposer({ groupId }: { groupId?: string }) {
   const { user } = useUser();
+  const { data: meData } = useCommunityMe();
   const openComposer = useOpenPostComposer();
 
   return (
@@ -21,13 +23,7 @@ export default function PostComposer({ groupId }: { groupId?: string }) {
         onClick={() => openComposer({ groupId })}
         className="w-full flex items-center gap-3 text-left"
       >
-        {user?.imageUrl ? (
-          <Image src={user.imageUrl} alt="" width={40} height={40} className="w-10 h-10 rounded-full object-cover flex-shrink-0" />
-        ) : (
-          <div className="w-10 h-10 bg-gradient-to-br from-[#007BFF] to-[#28A745] rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
-            {user?.firstName?.charAt(0) || "U"}
-          </div>
-        )}
+        <Avatar avatarUrl={meData?.profile?.avatarUrl} name={user?.firstName || "U"} />
         <span className="flex-1 min-w-0 bg-slate-100 rounded-xl px-4 py-2.5 text-sm text-slate-400 truncate">Compartilhe algo...</span>
         <span className="w-10 h-10 min-w-[40px] flex items-center justify-center text-slate-500 flex-shrink-0">
           <ImageIcon size={20} />

@@ -3,6 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { AuthzError, requireGroupMembership } from "@/lib/community/authz";
+import { publicIdentitySelect, toPublicIdentity } from "@/lib/community/avatar";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -25,9 +26,9 @@ export async function GET(_request: Request, context: Params) {
 
   const profiles = await prisma.socialProfile.findMany({
     where: { userId: { in: members.map((m) => m.userId) } },
-    select: { userId: true, username: true, displayName: true, avatarUrl: true },
+    select: publicIdentitySelect,
   });
-  const byId = new Map(profiles.map((p) => [p.userId, p]));
+  const byId = new Map(profiles.map((p) => [p.userId, toPublicIdentity(p)]));
 
   return NextResponse.json({
     members: members.map((m) => ({

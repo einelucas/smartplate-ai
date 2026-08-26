@@ -7,6 +7,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Trophy, Users2 } from "lucide-react";
 import { useChallengeRanking } from "@/hooks/useCommunity";
+import Avatar from "./Avatar";
 
 export default function ChallengeRankingModal({
   challengeId,
@@ -67,14 +68,7 @@ export default function ChallengeRankingModal({
                     <div className="w-7 h-7 flex items-center justify-center flex-shrink-0">
                       {entry.completedAt ? <Trophy size={16} className="text-amber-500" /> : <span className="text-slate-400 text-sm font-medium">{entry.rank}</span>}
                     </div>
-                    <div className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center text-xs font-bold text-slate-500 flex-shrink-0 overflow-hidden">
-                      {entry.avatarUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={entry.avatarUrl} alt="" className="w-full h-full object-cover" />
-                      ) : (
-                        entry.displayName.charAt(0).toUpperCase()
-                      )}
-                    </div>
+                    <Avatar avatarUrl={entry.avatarUrl} name={entry.displayName} sizeClassName="w-8 h-8" textSizeClassName="text-xs" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-slate-700 truncate">{entry.displayName}</p>
                     </div>

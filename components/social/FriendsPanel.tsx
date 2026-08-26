@@ -14,21 +14,9 @@ import {
   useUnblockUser,
 } from "@/hooks/useCommunity";
 import type { BlockedUserEntry, FriendEntry, SocialUserSummary } from "@/types/community";
+import Avatar from "./Avatar";
 
 type Tab = "friends" | "requests" | "search" | "blocked";
-
-function Avatar({ avatarUrl, name }: { avatarUrl?: string | null; name: string }) {
-  return (
-    <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-sm font-bold text-slate-500 flex-shrink-0 overflow-hidden">
-      {avatarUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
-      ) : (
-        name.charAt(0).toUpperCase()
-      )}
-    </div>
-  );
-}
 
 export default function FriendsPanel({
   onClose,

@@ -95,28 +95,51 @@ export default function EditProfileModal({ isOpen, onClose, physicalData, prefer
     };
   }, [debouncedUsername, socialProfile?.username, isOpen]);
 
+  const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
+
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !user) return;
-    if (!file.type.startsWith("image/")) {
-      toast.error("Por favor, selecione uma imagem válida");
+    if (!file || !user || uploadingImage) return;
+    if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
+      toast.error("Envie uma imagem JPEG, PNG ou WebP");
+      if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
       toast.error("A imagem deve ter no máximo 5MB");
+      if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
     setUploadingImage(true);
     try {
-      await user.setProfileImage({ file });
-      await user.reload();
-      updateIdentity.mutate({ avatarUrl: user.imageUrl });
+      // Usa a URL retornada diretamente pelo upload (nunca user.imageUrl após
+      // um reload() — evita depender de timing de propagação do lado do
+      // Clerk) e só considera concluído depois que o banco confirmar.
+      const image = await user.setProfileImage({ file });
+      if (!image.publicUrl) throw new Error("Upload sem URL retornada");
+      await updateIdentity.mutateAsync({ customAvatarUrl: image.publicUrl });
+      toast.success("Foto atualizada!");
     } catch (error) {
       console.error("Erro no upload:", error);
       toast.error("Erro ao atualizar foto");
     } finally {
       setUploadingImage(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const handleRemovePhoto = async () => {
+    if (!user || uploadingImage) return;
+    setUploadingImage(true);
+    try {
+      await user.setProfileImage({ file: null });
+      await updateIdentity.mutateAsync({ customAvatarUrl: null });
+      toast.success("Foto personalizada removida");
+    } catch (error) {
+      console.error("Erro ao remover foto:", error);
+      toast.error("Erro ao remover foto");
+    } finally {
+      setUploadingImage(false);
     }
   };
 
@@ -219,8 +242,8 @@ export default function EditProfileModal({ isOpen, onClose, physicalData, prefer
                 <div className="space-y-5">
                   <div className="flex items-center gap-4">
                     <div className="relative">
-                      {user?.imageUrl ? (
-                        <Image src={user.imageUrl} alt="Profile" width={80} height={80} className="w-20 h-20 rounded-full object-cover border-4 border-slate-100" />
+                      {socialProfile?.avatarUrl ? (
+                        <Image src={socialProfile.avatarUrl} alt="Foto de perfil" width={80} height={80} className="w-20 h-20 rounded-full object-cover border-4 border-slate-100" />
                       ) : (
                         <div className="w-20 h-20 bg-gradient-to-br from-[#007BFF] to-[#28A745] rounded-full flex items-center justify-center text-3xl text-white">
                           {user?.firstName?.charAt(0) || "👤"}
@@ -233,17 +256,31 @@ export default function EditProfileModal({ isOpen, onClose, physicalData, prefer
                       )}
                     </div>
                     <div className="flex-1">
-                      <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
-                      <button
-                        type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        disabled={uploadingImage}
-                        className="w-full py-2 px-4 border-2 border-dashed border-[#007BFF]/30 rounded-xl text-sm font-medium text-[#007BFF] hover:bg-[#007BFF]/5 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-                      >
-                        <Upload size={16} />
-                        {uploadingImage ? "Enviando..." : "Trocar foto"}
-                      </button>
-                      <p className="text-xs text-slate-400 mt-2">Formatos: JPG, PNG, GIF • Máx 5MB</p>
+                      <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={handleImageUpload} className="hidden" />
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={uploadingImage}
+                          className="flex-1 py-2 px-4 border-2 border-dashed border-[#007BFF]/30 rounded-xl text-sm font-medium text-[#007BFF] hover:bg-[#007BFF]/5 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                        >
+                          <Upload size={16} />
+                          {uploadingImage ? "Enviando..." : "Trocar foto"}
+                        </button>
+                        {socialProfile?.hasCustomAvatar && (
+                          <button
+                            type="button"
+                            onClick={handleRemovePhoto}
+                            disabled={uploadingImage}
+                            title="Remover foto personalizada"
+                            aria-label="Remover foto personalizada"
+                            className="px-3 border-2 border-dashed border-slate-200 rounded-xl text-sm font-medium text-slate-500 hover:bg-slate-50 transition-colors disabled:opacity-50"
+                          >
+                            Remover
+                          </button>
+                        )}
+                      </div>
+                      <p className="text-xs text-slate-400 mt-2">Formatos: JPG, PNG, WebP • Máx 5MB</p>
                     </div>
                   </div>
 

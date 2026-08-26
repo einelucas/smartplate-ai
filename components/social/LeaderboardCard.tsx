@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { Trophy, Medal, Award, BarChart3 } from "lucide-react";
 import { useRanking } from "@/hooks/useCommunity";
 import type { RankingPeriod, RankingScope } from "@/types/community";
+import Avatar from "./Avatar";
 
 const POSITION_ICONS: Record<number, React.ReactNode> = {
   1: <Trophy className="text-amber-500" size={18} />,
@@ -103,14 +104,7 @@ export default function LeaderboardCard({ scope: fixedScope, groupId }: { scope:
                   <div className="w-8 h-8 flex items-center justify-center flex-shrink-0">
                     {POSITION_ICONS[entry.rank] || <span className="text-slate-400 font-medium text-sm">{entry.rank}</span>}
                   </div>
-                  <div className="w-9 h-9 bg-slate-100 rounded-full flex items-center justify-center text-sm font-bold text-slate-500 flex-shrink-0 overflow-hidden">
-                    {entry.avatarUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={entry.avatarUrl} alt="" className="w-full h-full object-cover" />
-                    ) : (
-                      entry.displayName.charAt(0).toUpperCase()
-                    )}
-                  </div>
+                  <Avatar avatarUrl={entry.avatarUrl} name={entry.displayName} sizeClassName="w-9 h-9" />
                   <div className="flex-1 min-w-0">
                     <p className={`font-medium text-sm truncate ${isViewer ? "text-[#007BFF]" : "text-slate-700"}`}>
                       {isViewer ? "Você" : entry.displayName}

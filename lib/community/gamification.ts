@@ -8,6 +8,7 @@ import { Prisma, type ChallengeMetric } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import type { Db } from "./types";
 import { getBlockedUserIds } from "./authz";
+import { publicIdentitySelect, resolveAvatarUrl } from "./avatar";
 import {
   diffInCalendarDays,
   getLocalDateString,
@@ -716,7 +717,7 @@ export async function getRanking(params: {
   const top = grouped.slice(0, limit);
   const socialProfiles = await prisma.socialProfile.findMany({
     where: { userId: { in: top.map((entry) => entry.userId) } },
-    select: { userId: true, username: true, displayName: true, avatarUrl: true },
+    select: publicIdentitySelect,
   });
   const byUserId = new Map(socialProfiles.map((profile) => [profile.userId, profile]));
 
@@ -727,7 +728,7 @@ export async function getRanking(params: {
       userId: entry.userId,
       username: social?.username ?? null,
       displayName: social?.displayName ?? "Usuário SmartPlate",
-      avatarUrl: social?.avatarUrl ?? null,
+      avatarUrl: social ? resolveAvatarUrl(social) : null,
       xp: entry._sum.points ?? 0,
     };
   });

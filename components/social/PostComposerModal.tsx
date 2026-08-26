@@ -8,17 +8,17 @@
 import { useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useUser } from "@clerk/nextjs";
-import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Loader2, ChevronDown, Link2 } from "lucide-react";
 import { PersonSimpleRunIcon, TrophyIcon, ForkKnifeIcon } from "@phosphor-icons/react";
-import { useCreatePost, useHashtagSuggestions, useMyGroups } from "@/hooks/useCommunity";
+import { useCommunityMe, useCreatePost, useHashtagSuggestions, useMyGroups } from "@/hooks/useCommunity";
 import { useCommunityMediaUpload } from "@/hooks/useCommunityMediaUpload";
 import { useCommunityTermsGate } from "./CommunityTermsGate";
 import { resolveIcon } from "@/components/icon-registry";
 import ProviderIcon from "@/components/ProviderIcon";
 import { getProviderDisplay } from "@/lib/integrations/provider-display";
 import PostMediaField from "./PostMediaField";
+import Avatar from "./Avatar";
 import {
   createEmptyDraft,
   draftMediaFolder,
@@ -96,6 +96,7 @@ export default function PostComposerModal({
   onClose: () => void;
 }) {
   const { user } = useUser();
+  const { data: meData } = useCommunityMe();
   const { guard, modal: termsModal } = useCommunityTermsGate();
   const { data: myGroups } = useMyGroups();
   const groups = myGroups?.groups ?? [];
@@ -206,13 +207,7 @@ export default function PostComposerModal({
 
             <div className="p-4 overflow-y-auto flex-1 space-y-4">
               <div className="flex items-center gap-3">
-                {user?.imageUrl ? (
-                  <Image src={user.imageUrl} alt="" width={40} height={40} className="w-10 h-10 rounded-full object-cover flex-shrink-0" />
-                ) : (
-                  <div className="w-10 h-10 bg-gradient-to-br from-[#007BFF] to-[#28A745] rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
-                    {user?.firstName?.charAt(0) || "U"}
-                  </div>
-                )}
+                <Avatar avatarUrl={meData?.profile?.avatarUrl} name={user?.firstName || "U"} />
                 <p className="font-semibold text-slate-800 text-sm">{user?.firstName || "Você"}</p>
               </div>
 
