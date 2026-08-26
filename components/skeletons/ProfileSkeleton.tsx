@@ -26,7 +26,7 @@ export default function ProfileSkeleton() {
 
         {/* Coluna direita */}
         <div className="lg:col-span-8 space-y-6">
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {[0, 1, 2].map((i) => (
               <div key={i} className="h-16 bg-slate-100 rounded-2xl" />
             ))}

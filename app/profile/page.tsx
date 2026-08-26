@@ -304,8 +304,12 @@ export default function ProfilePage() {
 
         {/* Coluna direita */}
         <div className="lg:col-span-8 space-y-6">
-          {/* Gamificação */}
-          <div className="grid grid-cols-3 gap-3">
+          {/* Gamificação — grid-cols-3 sem breakpoint deixava cada card com
+              menos de ~25px pra texto num celular (icone 40px + gap ocupavam
+              a maior parte da largura da célula), cortando "sequência atual"/
+              "XP total"/"maior sequência: N". Empilha em 1 coluna até `sm`
+              (640px), onde já cabe confortavelmente em 3. */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex items-center gap-3">
               <div className="w-10 h-10 bg-orange-50 rounded-xl flex items-center justify-center flex-shrink-0">
                 <Flame size={18} className="text-orange-500" />
