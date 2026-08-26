@@ -5,8 +5,6 @@
 // duplicar esta expressão em componente/rota nenhuma — sempre importar
 // daqui (ver auditoria: 10+ pontos de leitura espalhados usavam o campo
 // bruto `avatarUrl` antes desta correção).
-const CLERK_IMAGE_HOST = "img.clerk.com";
-
 export interface AvatarSource {
   customAvatarUrl: string | null;
   providerAvatarUrl: string | null;
@@ -21,10 +19,20 @@ export function resolveAvatarUrl(source: AvatarSource): string | null {
  * Só aceita URLs realmente hospedadas pelo Clerk (onde o upload via
  * `user.setProfileImage` de fato grava o arquivo) — nunca uma URL arbitrária
  * enviada pelo cliente no corpo da requisição.
+ *
+ * Aceita qualquer subdomínio de clerk.com/clerk.dev (ex.: img.clerk.com,
+ * images.clerk.com) em vez de um hostname único fixo — o subdomínio exato
+ * usado pelo CDN de imagens do Clerk não é uma constante documentada
+ * publicamente e já causou um falso-negativo aqui (rejeitava uploads
+ * legítimos). Ainda assim é seguro: um domínio arbitrário enviado por um
+ * cliente malicioso nunca termina em ".clerk.com"/".clerk.dev", que só o
+ * próprio Clerk controla.
  */
 export function isTrustedClerkImageUrl(url: string): boolean {
   try {
-    return new URL(url).hostname === CLERK_IMAGE_HOST;
+    const { hostname, protocol } = new URL(url);
+    if (protocol !== "https:") return false;
+    return hostname === "clerk.com" || hostname.endsWith(".clerk.com") || hostname === "clerk.dev" || hostname.endsWith(".clerk.dev");
   } catch {
     return false;
   }

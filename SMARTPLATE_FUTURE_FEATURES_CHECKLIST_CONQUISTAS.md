@@ -963,8 +963,10 @@ Falta:
 
 ## Armazenamento
 
-- [x] Foto personalizada: Clerk (`img.clerk.com`), via `user.setProfileImage`/`user.setProfileImage({file: null})` pra remover. Nenhum bucket próprio introduzido — decisão deliberada dado que o upload do Clerk já era seguro e funcional.
+- [x] Foto personalizada: Clerk (subdomínio de `clerk.com`, ex.: `img.clerk.com`/`images.clerk.com`), via `user.setProfileImage`/`user.setProfileImage({file: null})` pra remover. Nenhum bucket próprio introduzido — decisão deliberada dado que o upload do Clerk já era seguro e funcional.
 - [x] Banco (`SocialProfile`) guarda só a URL permanente retornada pelo Clerk, nunca base64, nunca um diretório local.
+- [x] **Confirmado 2026-08-25 (decisão explícita do usuário)**: avaliada a migração da foto de perfil pro Vercel Blob (já usado por Antes&Depois/posts/compartilhamento externo) e **rejeitada deliberadamente**. Motivo: Antes&Depois usa Blob **privado** com proxy autenticado por design (conteúdo é privado por padrão) — esse é o padrão errado pra um avatar, que é público por natureza e precisa renderizar instantaneamente em dezenas de lugares (feed, comentários, amizades, grupos, ranking) sem round-trip de servidor por imagem. Fazer certo pra avatar exigiria um padrão de Blob **público** novo (não reaproveitar o privado existente), mais uma rota de upload própria, validação de conteúdo, e limpeza de blob órfão ao trocar de foto — trabalho novo real sem resolver nenhum problema que o Clerk não resolva hoje. O bug desta sessão (hostname incorreto na validação) era um erro de configuração pontual, já corrigido de forma robusta (aceita qualquer subdomínio `*.clerk.com`/`*.clerk.dev`), não evidência de que a arquitetura Clerk estivesse errada. **Não é um item pendente — decisão fechada.**
+- [x] **Corrigido 2026-08-25**: `isTrustedClerkImageUrl` e `next.config.ts` assumiam o hostname exato `img.clerk.com` (chute a partir de conhecimento geral, não documentação oficial confirmada) — causava rejeição real de uploads legítimos (`erro ao atualizar a foto` / `dados inválidos`) sempre que o Clerk retornava a imagem num subdomínio diferente (ex.: `images.clerk.com`, confirmado via busca na documentação). Ambos agora aceitam qualquer subdomínio de `clerk.com`/`clerk.dev`.
 
 ## Testes executados
 

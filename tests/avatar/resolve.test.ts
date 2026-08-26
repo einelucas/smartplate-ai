@@ -36,12 +36,15 @@ describe("resolveAvatarUrl — precedência custom > provider > null", () => {
 });
 
 describe("isTrustedClerkImageUrl — nunca aceita URL arbitrária enviada pelo cliente", () => {
-  it("aceita uma URL real do storage do Clerk", () => {
+  it("aceita qualquer subdomínio real do Clerk (o CDN de imagens não tem um subdomínio único documentado)", () => {
     assert.equal(isTrustedClerkImageUrl("https://img.clerk.com/abc123.jpg"), true);
+    assert.equal(isTrustedClerkImageUrl("https://images.clerk.com/abc123.jpg"), true);
+    assert.equal(isTrustedClerkImageUrl("https://clerk.com/abc123.jpg"), true);
   });
 
   it("rejeita um domínio arbitrário, mesmo parecido", () => {
-    assert.equal(isTrustedClerkImageUrl("https://img.clerk.com.evil.com/abc.jpg"), false);
+    assert.equal(isTrustedClerkImageUrl("https://evil-clerk.com/abc.jpg"), false);
+    assert.equal(isTrustedClerkImageUrl("https://clerk.com.evil.com/abc.jpg"), false);
     assert.equal(isTrustedClerkImageUrl("https://evil.com/img.clerk.com.jpg"), false);
     assert.equal(isTrustedClerkImageUrl("https://lh3.googleusercontent.com/foto.jpg"), false);
   });
@@ -53,6 +56,10 @@ describe("isTrustedClerkImageUrl — nunca aceita URL arbitrária enviada pelo c
 
   it("rejeita esquemas não-http(s) (ex.: javascript:)", () => {
     assert.equal(isTrustedClerkImageUrl("javascript:alert(1)"), false);
+  });
+
+  it("rejeita http sem TLS", () => {
+    assert.equal(isTrustedClerkImageUrl("http://img.clerk.com/abc.jpg"), false);
   });
 });
 
