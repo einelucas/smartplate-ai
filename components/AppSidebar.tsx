@@ -1,13 +1,13 @@
 // components/AppSidebar.tsx
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useUser, useClerk } from "@clerk/nextjs";
 import { useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { Leaf, Menu, X, Sparkles, LogOut } from "lucide-react";
+import { Leaf, Menu, X, Sparkles, LogOut, User as UserIcon } from "lucide-react";
 import NotificationsBell from "@/components/NotificationsBell";
 import MobileBottomNav from "@/components/MobileBottomNav";
 import { useCommunityMe } from "@/hooks/useCommunity";
@@ -15,12 +15,27 @@ import { NAV_ITEMS, findActiveNavItem } from "@/lib/navigation";
 
 export default function AppSidebar({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
   const { user } = useUser();
   const { signOut } = useClerk();
   const router = useRouter();
   const queryClient = useQueryClient();
   const pathname = usePathname();
   const { data: meData } = useCommunityMe();
+
+  // Fecha o menu ao clicar fora — ele fica no header, visível em toda
+  // navegação (inclusive mobile), então precisa fechar sozinho.
+  useEffect(() => {
+    if (!userMenuOpen) return;
+    function handleClickOutside(event: MouseEvent) {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+        setUserMenuOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [userMenuOpen]);
 
   const currentItem = findActiveNavItem(pathname);
 
@@ -169,16 +184,61 @@ export default function AppSidebar({ children }: { children: React.ReactNode }) 
           </div>
           <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
             <NotificationsBell />
-            <Link href="/profile">
-              <div className="w-9 h-9 sm:w-10 sm:h-10 bg-gradient-to-br from-[#007BFF] to-[#28A745] rounded-full flex items-center justify-center text-lg cursor-pointer overflow-hidden">
+            {/* Menu suspenso no avatar do header — visível em toda tela (mobile
+                inclusive), diferente da sidebar (só lg+). Sem isso, um usuário
+                que ainda não pagou/não usou código Beta ficava sem nenhuma forma
+                de sair no mobile: /profile é redirecionado para /subscribe pelo
+                middleware (checa assinatura ativa) antes da página — com o
+                sign-out — chegar a renderizar. "Sair" aqui chama signOut direto,
+                sem depender de /profile carregar. */}
+            <div className="relative" ref={userMenuRef}>
+              <button
+                type="button"
+                onClick={() => setUserMenuOpen((v) => !v)}
+                aria-haspopup="menu"
+                aria-expanded={userMenuOpen}
+                aria-label="Menu do usuário"
+                className="w-9 h-9 sm:w-10 sm:h-10 bg-gradient-to-br from-[#007BFF] to-[#28A745] rounded-full flex items-center justify-center text-lg cursor-pointer overflow-hidden"
+              >
                 {sidebarAvatarUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={sidebarAvatarUrl} alt="Avatar" className="w-full h-full object-cover" />
                 ) : (
                   <span className="text-white text-sm font-bold">{sidebarDisplayName.charAt(0)}</span>
                 )}
-              </div>
-            </Link>
+              </button>
+
+              {userMenuOpen && (
+                <div
+                  role="menu"
+                  className="absolute right-0 top-11 sm:top-12 bg-white border border-slate-100 shadow-lg rounded-xl py-1.5 w-48 z-30"
+                >
+                  <div className="px-3.5 py-2 border-b border-slate-100 mb-1">
+                    <p className="text-sm font-semibold text-slate-800 truncate">{sidebarDisplayName}</p>
+                    <p className="text-xs text-slate-400 truncate">{sidebarUsername ? `@${sidebarUsername}` : user?.primaryEmailAddress?.emailAddress}</p>
+                  </div>
+                  <Link
+                    href="/profile"
+                    role="menuitem"
+                    onClick={() => setUserMenuOpen(false)}
+                    className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
+                  >
+                    <UserIcon size={16} /> Perfil
+                  </Link>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      setUserMenuOpen(false);
+                      handleSignOut();
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm font-medium text-red-500 hover:bg-red-50"
+                  >
+                    <LogOut size={16} /> Sair
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </header>
 
