@@ -79,8 +79,18 @@ interface RawStats {
   lunchCompleted: number;
   dinnerCompleted: number;
   fullMealDayCount: number;
+  hasFavoritedMeal: boolean; // FIRST_FAVORITE — MealPlan.favorite OU Meal.is_favorite (JSON do DayPlan)
+  hasSwappedMeal: boolean; // FIRST_MEAL_SWAP — meal.swapped (JSON do DayPlan), gravado só pelo fluxo real de troca
   weightLogCount: number;
+  // Dias locais distintos com >=1 registro de peso — nunca a contagem bruta de
+  // linhas: WeightLog não tem trava por dia (@@unique é por timestamp exato,
+  // não por data), então "registrar, apagar, registrar de novo" no mesmo dia
+  // não pode inflar WEIGHT_LOGS_10/25 além de +1 dia real.
+  weightLogDistinctDaysCount: number;
   photoCount: number;
+  // Dias locais distintos com >=1 foto — mesma razão acima: ProgressPhoto não
+  // tem nenhuma trava de unicidade por dia.
+  photoDistinctDaysCount: number;
   photoDaySpan: number; // dias entre a foto mais antiga e a mais recente
   progressWeeksCount: number; // semanas locais distintas com >= 1 foto
   betaRedeemedEver: boolean;
@@ -104,6 +114,11 @@ interface RawStats {
   waterLogDistinctDaysCount: number; // dias locais distintos com >=1 registro de água
   waterGoalCompletedDaysCount: number; // dias em que a meta diária de água foi atingida
   balancedWeekAchieved: boolean; // BALANCED_WEEK — ver hasCompletedBalancedWeek
+  // Sequência — recorde histórico (UserGamification.longestStreak), nunca o
+  // streak atual: uma STREAK_* já desbloqueada não pode ser "perdida" só
+  // porque o usuário quebrou a sequência depois. Ver comentário em
+  // achievement-catalog.ts sobre a migração do motor antigo.
+  longestStreak: number;
   // Desafios
   challengeJoinedCount: number;
   challengeCompletedCount: number;
@@ -115,6 +130,9 @@ interface RawStats {
 
 interface MealSlot {
   completed?: boolean;
+  is_favorite?: boolean;
+  /** Marcado pelo fluxo de troca de refeição do Plano Semanal — ver FIRST_MEAL_SWAP. */
+  swapped?: boolean;
 }
 
 function computeMealStats(
@@ -125,6 +143,8 @@ function computeMealStats(
   let lunch = 0;
   let dinner = 0;
   let fullDays = 0;
+  let hasFavoritedMeal = false;
+  let hasSwappedMeal = false;
 
   for (const day of dayPlans) {
     const b = safeParse<MealSlot>(day.breakfast);
@@ -152,9 +172,11 @@ function computeMealStats(
     if (plannedSlots.length > 0 && plannedSlots.every((s) => s.completed === true)) {
       fullDays += 1;
     }
+    if (plannedSlots.some((s) => s.is_favorite === true)) hasFavoritedMeal = true;
+    if (plannedSlots.some((s) => s.swapped === true)) hasSwappedMeal = true;
   }
 
-  return { total, breakfast, lunch, dinner, fullDays };
+  return { total, breakfast, lunch, dinner, fullDays, hasFavoritedMeal, hasSwappedMeal };
 }
 
 /** Conta quantas chaves de semana (Map<mondayStr, valor>) atingem o limiar informado. */
@@ -171,7 +193,7 @@ async function getRawStats(userId: string): Promise<RawStats> {
     profile,
     preferences,
     socialProfile,
-    weightLogCount,
+    weightLogs,
     photos,
     betaGrantCount,
     postCount,
@@ -180,11 +202,13 @@ async function getRawStats(userId: string): Promise<RawStats> {
     reactionsReceived,
     commentsReceived,
     dayPlans,
+    favoritedPlanCount,
     activityLogs,
     dailyActivities,
     challengeJoinedCount,
     challengeCompletedCount,
     activityGoalMetEventCount,
+    gamification,
     waterLogs,
     waterGoalCompletedDaysCount,
     balancedWeekAchieved,
@@ -195,7 +219,7 @@ async function getRawStats(userId: string): Promise<RawStats> {
       where: { userId },
       select: { displayName: true, username: true, customAvatarUrl: true, providerAvatarUrl: true, bio: true, timezone: true },
     }),
-    prisma.weightLog.count({ where: { userId } }),
+    prisma.weightLog.findMany({ where: { userId }, select: { date: true } }),
     prisma.progressPhoto.findMany({ where: { userId }, select: { takenAt: true }, orderBy: { takenAt: "asc" } }),
     prisma.premiumGrant.count({ where: { userId, source: "BETA_CODE" } }),
     prisma.communityPost.count({ where: { authorUserId: userId, deletedAt: null } }),
@@ -207,6 +231,7 @@ async function getRawStats(userId: string): Promise<RawStats> {
       where: { mealPlan: { userId } },
       select: { breakfast: true, lunch: true, dinner: true, snacks: true },
     }),
+    prisma.mealPlan.count({ where: { userId, favorite: true } }),
     prisma.activityLog.findMany({ where: { userId }, select: { activityType: true, durationMin: true, performedAt: true } }),
     prisma.dailyActivity.findMany({
       where: { userId },
@@ -215,6 +240,7 @@ async function getRawStats(userId: string): Promise<RawStats> {
     prisma.challengeParticipant.count({ where: { userId } }),
     prisma.challengeParticipant.count({ where: { userId, completedAt: { not: null } } }),
     prisma.xpEvent.count({ where: { userId, eventType: "ACTIVITY_GOAL_MET" } }),
+    prisma.userGamification.findUnique({ where: { userId }, select: { longestStreak: true } }),
     prisma.waterLog.findMany({ where: { userId }, select: { loggedAt: true } }),
     prisma.dailyActivity.count({ where: { userId, waterGoalCompleted: true } }),
     hasCompletedBalancedWeek(prisma, userId),
@@ -238,10 +264,15 @@ async function getRawStats(userId: string): Promise<RawStats> {
   }
 
   const progressWeeks = new Set<string>();
+  const photoLocalDays = new Set<string>();
   for (const photo of photos) {
     const localDate = getLocalDateString(photo.takenAt, timezone);
     progressWeeks.add(getLocalWeekRange(localDate).mondayStr);
+    photoLocalDays.add(localDate);
   }
+
+  const weightLogLocalDays = new Set<string>();
+  for (const log of weightLogs) weightLogLocalDays.add(getLocalDateString(log.date, timezone));
 
   // ── Atividade física ──
   const activityDistinctTypes = new Set<string>();
@@ -296,8 +327,12 @@ async function getRawStats(userId: string): Promise<RawStats> {
     lunchCompleted: mealStats.lunch,
     dinnerCompleted: mealStats.dinner,
     fullMealDayCount: mealStats.fullDays,
-    weightLogCount,
+    hasFavoritedMeal: mealStats.hasFavoritedMeal || favoritedPlanCount > 0,
+    hasSwappedMeal: mealStats.hasSwappedMeal,
+    weightLogCount: weightLogs.length,
+    weightLogDistinctDaysCount: weightLogLocalDays.size,
     photoCount: photos.length,
+    photoDistinctDaysCount: photoLocalDays.size,
     photoDaySpan,
     progressWeeksCount: progressWeeks.size,
     betaRedeemedEver: betaGrantCount > 0,
@@ -318,6 +353,7 @@ async function getRawStats(userId: string): Promise<RawStats> {
     waterLogDistinctDaysCount: waterLocalDays.size,
     waterGoalCompletedDaysCount,
     balancedWeekAchieved,
+    longestStreak: gamification?.longestStreak ?? 0,
     challengeJoinedCount,
     challengeCompletedCount,
     personalGoalReached: activityGoalMetEventCount > 0,
@@ -355,13 +391,19 @@ function computeProgress(code: string, target: number, stats: RawStats): { progr
     case "MEALS_50":
     case "MEALS_100":
       return count(stats.totalMealsCompleted);
+    case "FIRST_FAVORITE":
+      return bool(stats.hasFavoritedMeal);
+    case "FIRST_MEAL_SWAP":
+      return bool(stats.hasSwappedMeal);
     case "FIRST_WEIGHT_LOG":
     case "WEIGHT_LOGS_10":
     case "WEIGHT_LOGS_25":
-      return count(stats.weightLogCount);
+      // Dias distintos, não linhas — ver comentário de weightLogDistinctDaysCount.
+      return count(stats.weightLogDistinctDaysCount);
     case "FIRST_PROGRESS_PHOTO":
     case "BEFORE_AFTER_READY":
-      return count(stats.photoCount);
+      // Dias distintos, não linhas — ver comentário de photoDistinctDaysCount.
+      return count(stats.photoDistinctDaysCount);
     case "PROGRESS_30_DAYS":
       return count(stats.photoDaySpan);
     case "PROGRESS_WEEKS_CONSISTENCY":
@@ -391,6 +433,16 @@ function computeProgress(code: string, target: number, stats: RawStats): { progr
       return count(stats.activityWeeksWith2PlusDaysCount);
     case "ACTIVE_30_DAYS_TOTAL":
       return count(stats.activityDistinctDaysTotal);
+    case "STREAK_3":
+    case "STREAK_7":
+    case "STREAK_14":
+    case "STREAK_30":
+    case "STREAK_60":
+    case "STREAK_100":
+    case "STREAK_365":
+      // Recorde histórico (longestStreak), nunca o streak atual — ver
+      // comentário de RawStats.longestStreak.
+      return count(stats.longestStreak);
     case "COMPLETE_ROUTINE":
       return count(stats.completeRoutineDaysCount);
     case "BALANCED_ROUTINE_WEEK":

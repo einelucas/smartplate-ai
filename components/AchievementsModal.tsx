@@ -3,7 +3,7 @@
 // estados bloqueada/desbloqueada/em breve e detalhe ao clicar num card.
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Lock, CheckCircle2, ChevronLeft, Clock } from "lucide-react";
 import { useAchievements, type Achievement, type AchievementStatus } from "@/hooks/useAchievements";
@@ -222,11 +222,20 @@ function AchievementDetail({ achievement, onBack }: { achievement: Achievement; 
   );
 }
 
-export default function AchievementsModal({ onClose }: { onClose: () => void }) {
+export default function AchievementsModal({ onClose, initialCode }: { onClose: () => void; initialCode?: string | null }) {
   const { data, isLoading, isError } = useAchievements();
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("ALL");
   const [detail, setDetail] = useState<Achievement | null>(null);
+
+  // Deep link vindo de "Ver conquista" no modal de desbloqueio (?achievement=CODE)
+  // — abre direto no detalhe da conquista recém-desbloqueada.
+  useEffect(() => {
+    if (!initialCode || detail || !data) return;
+    const match = data.achievements.find((a) => a.code === initialCode);
+    if (match) setDetail(match);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialCode, data]);
 
   const filtered = useMemo(() => {
     let list = data?.achievements ?? [];

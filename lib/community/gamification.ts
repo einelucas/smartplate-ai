@@ -17,12 +17,7 @@ import {
   toUtcDateOnly,
   withTimezoneBuffer,
 } from "./dates";
-import {
-  type AchievementCode,
-  computeLevel,
-  getStreakAchievements,
-  getXpAchievements,
-} from "./achievements";
+import { type AchievementCode, computeLevel, getXpAchievements } from "./achievements";
 import {
   ACTIVITY_MIN_DURATION_FOR_XP,
   ACTIVITY_XP_BASE,
@@ -120,14 +115,15 @@ export async function awardXpEvent(
   return granted;
 }
 
-// ─── Conquistas (motor antigo — FIRST_ACTION/STREAK_*/XP_*/FIRST_CHALLENGE/FIRST_GROUP) ─
+// ─── Conquistas (motor antigo — FIRST_ACTION/XP_*/FIRST_CHALLENGE/FIRST_GROUP) ─
+// STREAK_* saiu daqui — desbloqueado exclusivamente por achievement-engine.ts
+// contra UserGamification.longestStreak (ver comentário em achievements.ts).
 
 export async function checkAndUnlockAchievements(
   db: Db,
   userId: string,
   context: {
     isFirstAction?: boolean;
-    currentStreak?: number;
     totalXp?: number;
     firstChallengeCompleted?: boolean;
     firstGroupJoined?: boolean;
@@ -135,9 +131,6 @@ export async function checkAndUnlockAchievements(
 ): Promise<AchievementCode[]> {
   const candidates = new Set<AchievementCode>();
   if (context.isFirstAction) candidates.add("FIRST_ACTION");
-  if (context.currentStreak !== undefined) {
-    getStreakAchievements(context.currentStreak).forEach((code) => candidates.add(code));
-  }
   if (context.totalXp !== undefined) {
     getXpAchievements(context.totalXp).forEach((code) => candidates.add(code));
   }
@@ -397,7 +390,12 @@ async function qualifyDayForStreak(
   let currentStreak: number | undefined;
 
   if (isNewQualifyingDay) {
-    const gamification = await db.userGamification.findUniqueOrThrow({ where: { userId } });
+    // upsert, não findUniqueOrThrow: creditXp (chamado antes, em
+    // recordMealCompletion/recordActivityLog) só cria UserGamification se
+    // totalAwarded > 0 — uma primeiríssima ação sem XP (ex.: atividade abaixo
+    // de ACTIVITY_MIN_DURATION_FOR_XP) chegava aqui sem a linha existir e
+    // derrubava a request inteira com um erro não tratado.
+    const gamification = await db.userGamification.upsert({ where: { userId }, create: { userId }, update: {} });
     let streak = gamification.currentStreak;
     let longestStreak = gamification.longestStreak;
     let lastQualifiedDate = gamification.lastQualifiedDate;
@@ -481,7 +479,6 @@ export async function recordMealCompletion(
 
   const newlyUnlocked = await checkAndUnlockAchievements(db, userId, {
     isFirstAction: xpEventCountBefore === 0,
-    currentStreak,
     totalXp,
   });
 
@@ -592,7 +589,6 @@ export async function recordActivityLog(
 
   const newlyUnlocked = await checkAndUnlockAchievements(db, userId, {
     isFirstAction: xpEventCountBefore === 0,
-    currentStreak,
     totalXp,
   });
 

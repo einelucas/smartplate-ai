@@ -2,9 +2,7 @@
 import { useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useUser } from "@clerk/nextjs";
-import toast from "react-hot-toast";
-import { getAchievementDisplay } from "@/lib/community/achievements";
-import { resolveIcon } from "@/components/icon-registry";
+import { queueAchievementUnlocks } from "@/components/achievements/AchievementUnlockProvider";
 import type { AchievementRarity } from "@/lib/community/achievement-catalog";
 
 export type AchievementStatus = "UNLOCKED" | "LOCKED" | "COMING_SOON";
@@ -50,17 +48,10 @@ export function useAchievements() {
 
   useEffect(() => {
     if (!query.data?.newlyUnlocked?.length) return;
-    for (const code of query.data.newlyUnlocked) {
-      if (celebratedCodes.current.has(code)) continue;
-      celebratedCodes.current.add(code);
-      const def = getAchievementDisplay(code);
-      if (!def) continue;
-      const Icon = resolveIcon(def.icon);
-      toast.success(`Nova conquista: ${def.title}!`, {
-        duration: 5000,
-        icon: <Icon size={22} weight="duotone" className="text-amber-500" />,
-      });
-    }
+    const fresh = query.data.newlyUnlocked.filter((code) => !celebratedCodes.current.has(code));
+    if (fresh.length === 0) return;
+    fresh.forEach((code) => celebratedCodes.current.add(code));
+    queueAchievementUnlocks(fresh);
   }, [query.data?.newlyUnlocked]);
 
   return query;

@@ -1,29 +1,38 @@
 // lib/community/achievement-catalog.ts
-// Catálogo central das 50 conquistas (fonte: SMARTPLATE_FUTURE_FEATURES_
-// CHECKLIST_CONQUISTAS.md, seções 49-61). Código é o ID estável em banco
+// Catálogo central das 50+ conquistas (fonte: SMARTPLATE_FUTURE_FEATURES_
+// CHECKLIST_CONQUISTAS.md, seções 22-23). Código é o ID estável em banco
 // (UserAchievement.achievementCode); título/descrição podem mudar livremente
 // sem quebrar nada. `availability: "COMING_SOON"` marca conquistas cujo
-// módulo de dados ainda não existe (streak definitivo, favoritos/troca
-// ambíguos) — nunca avaliadas nem desbloqueadas enquanto assim estiverem.
+// módulo de dados ainda não existe — nunca avaliadas nem desbloqueadas
+// enquanto assim estiverem.
 //
 // Este é um catálogo NOVO e complementar ao de lib/community/achievements.ts
-// (motor antigo de FIRST_ACTION/STREAK_*/XP_*/FIRST_CHALLENGE/FIRST_GROUP,
-// usado por checkAndUnlockAchievements em recordMealCompletion/
-// recordChallengeCompletion/groups). Esse motor antigo continua intacto e
-// funcionando exatamente como antes. Este catálogo novo é quem alimenta a
-// tela "Todas as conquistas" — ambos gravam na mesma tabela UserAchievement,
-// mas nenhum código deste catálogo depende do motor antigo, EXCETO
-// FIRST_GROUP, que reaproveita o desbloqueio real já existente em
+// (motor antigo de FIRST_ACTION/XP_*/FIRST_CHALLENGE/FIRST_GROUP, usado por
+// checkAndUnlockAchievements em recordMealCompletion/recordChallengeCompletion/
+// groups). Esse motor antigo continua intacto e funcionando exatamente como
+// antes para esses códigos. Este catálogo novo é quem alimenta a tela "Todas
+// as conquistas" — ambos gravam na mesma tabela UserAchievement, mas nenhum
+// código deste catálogo depende do motor antigo, EXCETO FIRST_GROUP, que
+// reaproveita o desbloqueio real já existente em
 // app/api/community/groups/route.ts (mesmo código, mesma linha do banco).
 //
-// IMPORTANTE — STREAK_*: o motor antigo já concede STREAK_3/7/14/30 a partir
-// do streak provisório (recordMealCompletion). O checklist é explícito:
-// "não desbloquear com o streak antigo se ele ainda estiver baseado em regra
-// provisória" (seção 26) — a regra definitiva de "dia ativo" ainda não foi
-// formalizada (seção 41 do roadmap, todos os itens `[ ]`). Por isso todos os
-// STREAK_* aqui são COMING_SOON, mesmo que uma UserAchievement antiga já
-// exista para eles: o avaliador (achievement-engine.ts) nunca consulta nem
-// exibe status UNLOCKED para um código COMING_SOON, independente do banco.
+// STREAK_* (migração concluída — checklist seção 22): o motor antigo
+// costumava conceder STREAK_3/7/14/30 a partir do streak "ao vivo" no
+// instante de cada refeição/atividade — mesmo streak oficial de sempre
+// (UserGamification.currentStreak, via qualifyDayForStreak em
+// gamification.ts), só que reavaliado em duplicidade e escondido da tela de
+// conquistas. Isso foi removido (ver checkAndUnlockAchievements): STREAK_*
+// agora é AVAILABLE e resolvido *exclusivamente* aqui, em
+// achievement-engine.ts, contra UserGamification.longestStreak — o recorde
+// histórico do usuário, não o streak atual (que pode zerar). Assim, uma
+// sequência quebrada nunca revoga uma STREAK_* já conquistada, e não existe
+// mais um segundo caminho de desbloqueio para esses códigos.
+//
+// FIRST_FAVORITE / FIRST_MEAL_SWAP (migração concluída — checklist seção
+// 23): favoritar (MealPlan.favorite ou Meal.is_favorite dentro do DayPlan) e
+// trocar refeição (fluxo de swap do Plano Semanal) já são funcionalidades
+// reais e persistidas — ver auditoria em achievement-engine.ts. Ambas viraram
+// AVAILABLE.
 
 export type AchievementCategory =
   | "ONBOARDING"
@@ -83,8 +92,6 @@ export interface AchievementDefinition {
 export function getAchievementRarity(definition: Pick<AchievementDefinition, "rarity">): AchievementRarity {
   return definition.rarity ?? "COMMON";
 }
-
-const STREAK_REASON = "Disponível quando a regra definitiva de sequência (dia ativo) for formalizada.";
 
 function def(entry: AchievementDefinition): AchievementDefinition {
   return entry;
@@ -230,23 +237,21 @@ export const ACHIEVEMENT_CATALOG: Record<string, AchievementDefinition> = {
     code: "FIRST_FAVORITE",
     title: "Favorito",
     description: "Salvou seu primeiro favorito.",
-    unlockDescription: "Favorite sua primeira refeição/plano quando o sistema definitivo de favoritos estiver validado.",
+    unlockDescription: "Favorite uma refeição ou um plano no Plano Semanal.",
     category: "FOOD",
     icon: "Star",
     target: 1,
-    availability: "COMING_SOON",
-    comingSoonReason: "Disponível quando o sistema de favoritos (plano x refeição) for definido no Plano Semanal.",
+    availability: "AVAILABLE",
   }),
   FIRST_MEAL_SWAP: def({
     code: "FIRST_MEAL_SWAP",
     title: "Experimentando Algo Novo",
     description: "Personalizou seu plano.",
-    unlockDescription: "Faça sua primeira troca real de refeição.",
+    unlockDescription: "Troque uma refeição sugerida por outra opção no Plano Semanal.",
     category: "FOOD",
     icon: "ArrowsClockwise",
     target: 1,
-    availability: "COMING_SOON",
-    comingSoonReason: "Disponível quando a troca de refeição passar a registrar histórico persistente.",
+    availability: "AVAILABLE",
   }),
 
   // ── Hidratação ─────────────────────────────────────────────────────────
@@ -323,16 +328,18 @@ export const ACHIEVEMENT_CATALOG: Record<string, AchievementDefinition> = {
   }),
 
   // ── Sequência / Streak ─────────────────────────────────────────────────
+  // Alvo é sempre contra UserGamification.longestStreak (recorde histórico,
+  // nunca revogado por uma sequência quebrada depois) — ver
+  // achievement-engine.ts e o comentário no topo deste arquivo.
   STREAK_3: def({
     code: "STREAK_3",
     title: "Começou a Sequência",
     description: "Alcançou uma sequência de 3 dias ativos.",
-    unlockDescription: "Alcance uma sequência de 3 dias ativos.",
+    unlockDescription: "Alcance uma sequência de 3 dias ativos (refeição concluída ou atividade registrada).",
     category: "STREAK",
     icon: "Fire",
     target: 3,
-    availability: "COMING_SOON",
-    comingSoonReason: STREAK_REASON,
+    availability: "AVAILABLE",
   }),
   STREAK_7: def({
     code: "STREAK_7",
@@ -342,8 +349,7 @@ export const ACHIEVEMENT_CATALOG: Record<string, AchievementDefinition> = {
     category: "STREAK",
     icon: "Fire",
     target: 7,
-    availability: "COMING_SOON",
-    comingSoonReason: STREAK_REASON,
+    availability: "AVAILABLE",
   }),
   STREAK_14: def({
     code: "STREAK_14",
@@ -353,8 +359,7 @@ export const ACHIEVEMENT_CATALOG: Record<string, AchievementDefinition> = {
     category: "STREAK",
     icon: "Fire",
     target: 14,
-    availability: "COMING_SOON",
-    comingSoonReason: STREAK_REASON,
+    availability: "AVAILABLE",
   }),
   STREAK_30: def({
     code: "STREAK_30",
@@ -365,8 +370,7 @@ export const ACHIEVEMENT_CATALOG: Record<string, AchievementDefinition> = {
     category: "STREAK",
     icon: "Fire",
     target: 30,
-    availability: "COMING_SOON",
-    comingSoonReason: STREAK_REASON,
+    availability: "AVAILABLE",
   }),
   STREAK_60: def({
     code: "STREAK_60",
@@ -377,8 +381,7 @@ export const ACHIEVEMENT_CATALOG: Record<string, AchievementDefinition> = {
     category: "STREAK",
     icon: "Fire",
     target: 60,
-    availability: "COMING_SOON",
-    comingSoonReason: STREAK_REASON,
+    availability: "AVAILABLE",
   }),
   STREAK_100: def({
     code: "STREAK_100",
@@ -389,8 +392,7 @@ export const ACHIEVEMENT_CATALOG: Record<string, AchievementDefinition> = {
     category: "STREAK",
     icon: "Fire",
     target: 100,
-    availability: "COMING_SOON",
-    comingSoonReason: STREAK_REASON,
+    availability: "AVAILABLE",
   }),
   STREAK_365: def({
     code: "STREAK_365",
@@ -401,8 +403,7 @@ export const ACHIEVEMENT_CATALOG: Record<string, AchievementDefinition> = {
     category: "STREAK",
     icon: "Trophy",
     target: 365,
-    availability: "COMING_SOON",
-    comingSoonReason: STREAK_REASON,
+    availability: "AVAILABLE",
   }),
 
   // ── Progresso ──────────────────────────────────────────────────────────

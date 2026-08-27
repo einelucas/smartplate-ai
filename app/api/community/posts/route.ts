@@ -9,6 +9,7 @@ import { prisma } from "@/lib/prisma";
 import { createPostSchema } from "@/lib/community/validation";
 import { AuthzError, requireGroupMembership } from "@/lib/community/authz";
 import { getAchievementDisplay } from "@/lib/community/achievements";
+import { ACHIEVEMENT_CATALOG, ACHIEVEMENT_RARITY_XP, getAchievementRarity } from "@/lib/community/achievement-catalog";
 import { copyPrivateImage, deletePrivateImage } from "@/lib/storage/blob";
 import { exceedsHashtagLimit, syncPostHashtags, MAX_HASHTAGS_PER_POST } from "@/lib/community/hashtags";
 import { RATE_LIMITS, RateLimitError, checkRateLimit, windowStart } from "@/lib/community/rate-limit";
@@ -82,11 +83,16 @@ export async function POST(request: Request) {
     if (!unlocked) return NextResponse.json({ error: "Conquista não desbloqueada" }, { status: 403 });
     const def = getAchievementDisplay(code);
     if (!def) return NextResponse.json({ error: "Conquista inválida" }, { status: 400 });
+    // Raridade/XP sempre derivados aqui a partir do catálogo — nunca aceitos
+    // do cliente (mesma regra de "achievementCode não confia em metadata").
+    const rarity = getAchievementRarity(ACHIEVEMENT_CATALOG[code] ?? {});
     metadata = {
       achievementCode: code,
       title: def.title,
       description: def.description,
       icon: def.icon,
+      rarity,
+      xp: ACHIEVEMENT_RARITY_XP[rarity],
       ...(genericImageUrl ? { imageUrl: genericImageUrl, ...genericImageDimensions } : {}),
     };
   } else if (type === "STREAK") {

@@ -31,11 +31,12 @@ describe("getAchievementDisplay", () => {
     }
   });
 
-  it("para códigos que existem nos dois catálogos (ex.: STREAK_3), prioriza o antigo — é o que realmente concede a conquista hoje", () => {
+  it("STREAK_* foi migrada: não existe mais no catálogo antigo, resolve só via o catálogo novo (achievement-catalog.ts)", () => {
     const result = getAchievementDisplay("STREAK_3");
     assert.ok(result);
-    // Descrição do catálogo antigo é distinta da do catálogo novo — confirma a precedência.
-    assert.equal(result?.description, "Você manteve uma sequência de 3 dias.");
+    assert.equal(result?.description, ACHIEVEMENT_CATALOG.STREAK_3.description);
+    // Confirma que o catálogo antigo realmente não define mais STREAK_3.
+    assert.equal(getAchievementDisplay("STREAK_3")?.title, ACHIEVEMENT_CATALOG.STREAK_3.title);
   });
 
   it("retorna null para um código que não existe em nenhum catálogo", () => {

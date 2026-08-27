@@ -23,6 +23,7 @@ import { ThumbsUpIcon, FireIcon, HandsClappingIcon, BarbellIcon, TrophyIcon, typ
 import { useBlockUser, useDeletePost, useMarkNotInterested, useMuteUser, useToggleReaction, useUpdatePost } from "@/hooks/useCommunity";
 import { formatRelativeTime } from "@/lib/community/dates";
 import { resolveIcon } from "@/components/icon-registry";
+import type { AchievementRarity } from "@/lib/community/achievement-catalog";
 import { ACTIVITY_TYPE_ICON_KEY, findActivityIntensityLabel, findActivityTypeLabel } from "@/lib/activity/options";
 import type { CommunityPostSummary } from "@/types/community";
 import CommentSection from "./CommentSection";
@@ -40,11 +41,32 @@ const REACTIONS: { type: "LIKE" | "FIRE" | "CLAP" | "STRONG"; icon: Icon }[] = [
   { type: "STRONG", icon: BarbellIcon },
 ];
 
+// Mesmo vocabulário visual de components/AchievementsModal.tsx (RarityBadge) —
+// layout dedicado ao post de conquista, mas sem inventar uma segunda
+// linguagem de raridade só pro feed.
+const RARITY_LABELS: Record<AchievementRarity, string> = {
+  COMMON: "Comum",
+  UNCOMMON: "Incomum",
+  RARE: "Rara",
+  EPIC: "Épica",
+  SPECIAL: "Especial",
+};
+const RARITY_STYLES: Record<AchievementRarity, string> = {
+  COMMON: "text-slate-500 bg-slate-100",
+  UNCOMMON: "text-emerald-600 bg-emerald-50",
+  RARE: "text-[#007BFF] bg-[#007BFF]/10",
+  EPIC: "text-purple-600 bg-purple-50",
+  SPECIAL: "text-amber-600 bg-amber-100",
+};
+
 type Post = CommunityPostSummary;
 
 // `emoji` é lido para compatibilidade com posts antigos (persistidos antes da
 // migração para ícones) — posts novos gravam `icon` (chave de icon-registry).
-type AchievementMetadata = { title?: string; description?: string; icon?: string; emoji?: string };
+// `rarity`/`xp` também são novos (posts antigos não têm — cai no fallback
+// COMMON do RarityBadge abaixo); sempre derivados no servidor a partir do
+// catálogo, nunca aceitos como veio do cliente no momento da criação do post.
+type AchievementMetadata = { title?: string; description?: string; icon?: string; emoji?: string; rarity?: AchievementRarity; xp?: number };
 type StreakMetadata = { milestone?: number };
 type ProgressShareMetadata = { imageUrl?: string | null; takenAt?: string; showWeight?: boolean; weight?: number | null };
 type PlanShareMetadata = {
@@ -314,20 +336,29 @@ function PostBody({
   }
 
   if (post.type === "ACHIEVEMENT") {
-    const { title, description, icon, emoji } = (post.metadata ?? {}) as AchievementMetadata;
+    const { title, description, icon, emoji, rarity, xp } = (post.metadata ?? {}) as AchievementMetadata;
     const AchievementIcon = icon ? resolveIcon(icon) : null;
+    const rarityValue = rarity ?? "COMMON";
     return (
       <div className="bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-100 rounded-xl p-4 flex items-center gap-3">
         {AchievementIcon ? (
-          <AchievementIcon size={30} weight="duotone" className="text-amber-500 flex-shrink-0" />
+          <AchievementIcon size={32} weight="duotone" className="text-amber-500 flex-shrink-0" />
         ) : emoji ? (
           <span className="text-3xl flex-shrink-0">{emoji}</span>
         ) : (
-          <TrophyIcon size={30} weight="duotone" className="text-amber-500 flex-shrink-0" />
+          <TrophyIcon size={32} weight="duotone" className="text-amber-500 flex-shrink-0" />
         )}
-        <div>
+        <div className="min-w-0 flex-1">
           <p className="font-bold text-slate-800 text-sm">{title ?? "Nova conquista"}</p>
           <p className="text-xs text-slate-500">{description}</p>
+          <div className="mt-1.5 flex items-center gap-1.5">
+            <span className={`inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full ${RARITY_STYLES[rarityValue]}`}>
+              {RARITY_LABELS[rarityValue]}
+            </span>
+            {typeof xp === "number" && (
+              <span className="inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full text-[#28A745] bg-[#28A745]/10">+{xp} XP</span>
+            )}
+          </div>
         </div>
       </div>
     );

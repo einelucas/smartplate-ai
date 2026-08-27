@@ -8,6 +8,8 @@ import { ReactQueryClientProvider } from "../components/react-query-client-provi
 import CreateProfileOnSignIn from "@/components/create-profile";
 import PendingInviteRedirect from "@/components/PendingInviteRedirect";
 import { PostComposerProvider } from "@/components/social/PostComposerProvider";
+import { AchievementUnlockProvider } from "@/components/achievements/AchievementUnlockProvider";
+import AchievementUnlockWatcher from "@/components/achievements/AchievementUnlockWatcher";
 import { Toaster } from "react-hot-toast"; // 🔥 1. IMPORTE AQUI
 
 export const metadata: Metadata = {
@@ -55,9 +57,12 @@ export default function RootLayout({
               </main>
             </SignedOut>
             <SignedIn>
-              <PostComposerProvider>
-                <AppSidebar>{children}</AppSidebar>
-              </PostComposerProvider>
+              <AchievementUnlockProvider>
+                <AchievementUnlockWatcher />
+                <PostComposerProvider>
+                  <AppSidebar>{children}</AppSidebar>
+                </PostComposerProvider>
+              </AchievementUnlockProvider>
             </SignedIn>
           </ClerkProvider>
         </ReactQueryClientProvider>

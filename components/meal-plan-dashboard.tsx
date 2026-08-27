@@ -21,7 +21,8 @@ import {
   Share2,
 } from "lucide-react";
 import Link from "next/link";
-import { celebrateAchievements, celebrateStreakIfMilestone } from "@/components/social/AchievementCelebration";
+import { celebrateStreakIfMilestone } from "@/components/social/AchievementCelebration";
+import { queueAchievementUnlocks } from "@/components/achievements/AchievementUnlockProvider";
 import MealTypeIcon, { type MealType } from "./MealTypeIcon";
 import type { GeneratePlanFormData } from "./GeneratePlanModal";
 
@@ -372,7 +373,13 @@ export default function MealPlanDashboard() {
       if (!res.ok) throw new Error("Erro ao favoritar");
       return res.json();
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["meal-plans"] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["meal-plans"] });
+      // FIRST_FAVORITE é resolvida por reconcileAchievements no próximo
+      // GET /api/achievements (AchievementUnlockWatcher fica sempre montado
+      // e observando essa query) — não precisa de um endpoint dedicado.
+      queryClient.invalidateQueries({ queryKey: ["achievements"] });
+    },
   });
 
   const updateMealMutation = useMutation({
@@ -393,7 +400,7 @@ export default function MealPlanDashboard() {
       queryClient.invalidateQueries({ queryKey: ["achievements"] });
       queryClient.invalidateQueries({ queryKey: ["community", "challenges"] });
       queryClient.invalidateQueries({ queryKey: ["notifications"] });
-      celebrateAchievements(data?.gamification?.newlyUnlocked);
+      queueAchievementUnlocks(data?.gamification?.newlyUnlocked);
       celebrateStreakIfMilestone(data?.gamification?.currentStreak);
     },
     onError: (error: Error) => toast.error(error.message),
@@ -448,7 +455,12 @@ export default function MealPlanDashboard() {
           day: weekDays[selectedDay].english,
           mealType: swapTarget.mealType,
           snackIndex: swapTarget.snackIndex,
-          patch: { ...option, completed: false, is_favorite: false, rating: 0 },
+          // swapped: true é o único sinal persistido de "isto veio do fluxo
+          // real de troca" — achievement-engine.ts lê esse campo (dentro do
+          // JSON do DayPlan, junto de completed/is_favorite/rating) pra
+          // resolver FIRST_MEAL_SWAP. Nunca reavaliado como "quantidade de
+          // trocas": uma vez marcado, a conquista é bool (primeira troca real).
+          patch: { ...option, completed: false, is_favorite: false, rating: 0, swapped: true },
         }),
       });
       if (!res.ok) throw new Error("Erro ao trocar refeição");
@@ -456,6 +468,7 @@ export default function MealPlanDashboard() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["meal-plans"] });
+      queryClient.invalidateQueries({ queryKey: ["achievements"] });
       toast.success("Refeição trocada com sucesso!");
       setShowSwapModal(false);
     },

@@ -3,7 +3,8 @@
 // (ver AchievementsModal para a lista completa via "Ver todas as conquistas").
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter, usePathname } from "next/navigation";
 import dynamic from "next/dynamic";
 import { motion } from "framer-motion";
 import { Lock } from "lucide-react";
@@ -34,6 +35,27 @@ function pickPreview(achievements: Achievement[]): Achievement[] {
 export default function AchievementsSummaryCard() {
   const { data, isLoading, isError } = useAchievements();
   const [showAll, setShowAll] = useState(false);
+  const [initialCode, setInitialCode] = useState<string | null>(null);
+  const router = useRouter();
+  const pathname = usePathname();
+
+  // Deep link do modal de desbloqueio ("Ver conquista"/"Ver conquistas"):
+  // ?achievement=CODE abre direto no detalhe; ?achievements=1 só abre a lista.
+  // Lido via window.location (não useSearchParams()) de propósito: esta
+  // página é inteiramente "use client" sem <Suspense>, e useSearchParams()
+  // exigiria um boundary só pra isto — window.location.search já é
+  // suficiente porque só precisamos do valor uma vez, no mount.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const achievementParam = params.get("achievement");
+    const achievementsParam = params.get("achievements");
+    if (!achievementParam && !achievementsParam) return;
+    setInitialCode(achievementParam);
+    setShowAll(true);
+    // Limpa a query string pra não reabrir o modal numa navegação futura.
+    router.replace(pathname, { scroll: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const unlocked = data?.summary.unlocked ?? 0;
   const total = data?.summary.total ?? 0;
@@ -114,7 +136,15 @@ export default function AchievementsSummaryCard() {
         </>
       )}
 
-      {showAll && <AchievementsModal onClose={() => setShowAll(false)} />}
+      {showAll && (
+        <AchievementsModal
+          initialCode={initialCode}
+          onClose={() => {
+            setShowAll(false);
+            setInitialCode(null);
+          }}
+        />
+      )}
     </div>
   );
 }
