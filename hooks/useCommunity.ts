@@ -47,9 +47,13 @@ const keys = {
   search: (q: string) => ["community", "search", q] as const,
   friends: ["community", "friends"] as const,
   blocks: ["community", "blocks"] as const,
+  feedMutes: ["community", "feed-mutes"] as const,
+  contentMutes: ["community", "content-mutes"] as const,
+  groupInvites: ["community", "group-invites"] as const,
   groups: ["community", "groups"] as const,
   group: (groupId: string) => ["community", "group", groupId] as const,
   groupMembers: (groupId: string) => ["community", "group-members", groupId] as const,
+  groupStats: (groupId: string) => ["community", "group-stats", groupId] as const,
   invitePreview: (code: string) => ["community", "invite-preview", code] as const,
   challenges: (scope: "global" | "group", groupId?: string) => ["community", "challenges", scope, groupId ?? null] as const,
   ranking: (period: RankingPeriod, scope: RankingScope, groupId?: string) =>
@@ -118,12 +122,14 @@ export function useCreatePost(groupId?: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: {
-      type: "TEXT" | "ACHIEVEMENT" | "STREAK" | "CHALLENGE" | "PLAN_SHARE" | "ACTIVITY" | "EXTERNAL_SHARE";
+      type: "TEXT" | "ACHIEVEMENT" | "STREAK" | "CHALLENGE" | "PLAN_SHARE" | "ACTIVITY" | "EXTERNAL_SHARE" | "PROGRESS_SHARE";
       text?: string;
       imageUrl?: string;
       achievementCode?: string;
       streakMilestone?: number;
       shareToken?: string;
+      progressPhotoId?: string;
+      showWeight?: boolean;
       activityLogId?: string;
       externalShareProvider?: string;
       externalShareUrl?: string;
@@ -379,6 +385,65 @@ export function useUnblockUser() {
   });
 }
 
+// ─── Mutes de feed (silenciar sem bloquear) ────────────────────────────────
+
+export function useFeedMutes() {
+  return useQuery({ queryKey: keys.feedMutes, queryFn: () => apiFetch("/api/community/feed-mutes") });
+}
+
+export function useMuteUser() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (targetUserId: string) => apiFetch("/api/community/feed-mutes", { method: "POST", body: JSON.stringify({ targetUserId }) }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: keys.feedMutes });
+      queryClient.invalidateQueries({ queryKey: ["community", "feed"] });
+      toast.success("Publicações deste usuário ocultadas do seu feed");
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+}
+
+export function useUnmuteUser() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (targetUserId: string) => apiFetch(`/api/community/feed-mutes/${targetUserId}`, { method: "DELETE" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: keys.feedMutes });
+      queryClient.invalidateQueries({ queryKey: ["community", "feed"] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+}
+
+export function useContentMutes() {
+  return useQuery({ queryKey: keys.contentMutes, queryFn: () => apiFetch<{ mutedTypes: string[] }>("/api/community/content-mutes") });
+}
+
+export function useMutePostType() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (postType: string) => apiFetch("/api/community/content-mutes", { method: "POST", body: JSON.stringify({ postType }) }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: keys.contentMutes });
+      queryClient.invalidateQueries({ queryKey: ["community", "feed"] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+}
+
+export function useUnmutePostType() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (postType: string) => apiFetch(`/api/community/content-mutes/${postType}`, { method: "DELETE" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: keys.contentMutes });
+      queryClient.invalidateQueries({ queryKey: ["community", "feed"] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+}
+
 // ─── Grupos ─────────────────────────────────────────────────────────────────
 
 export function useMyGroups() {
@@ -442,12 +507,57 @@ export function useGroupMembers(groupId: string | null) {
   });
 }
 
+export function useGroupStats(groupId?: string) {
+  return useQuery({
+    queryKey: keys.groupStats(groupId ?? "none"),
+    queryFn: () =>
+      apiFetch<{
+        memberCount: number;
+        weekStart: string;
+        weekEnd: string;
+        activeMemberCount: number;
+        activityCount: number;
+        mealsCompletedCount: number;
+      }>(`/api/community/groups/${groupId}/stats`),
+    enabled: !!groupId,
+  });
+}
+
 export function useChangeGroupMemberRole(groupId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ userId, role }: { userId: string; role: "ADMIN" | "MEMBER" }) =>
       apiFetch(`/api/community/groups/${groupId}/members/${userId}`, { method: "PATCH", body: JSON.stringify({ role }) }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: keys.groupMembers(groupId) }),
+    onError: (error: Error) => toast.error(error.message),
+  });
+}
+
+export function useInviteUserToGroup(groupId: string) {
+  return useMutation({
+    mutationFn: (targetUserId: string) =>
+      apiFetch(`/api/community/groups/${groupId}/invite-user`, { method: "POST", body: JSON.stringify({ targetUserId }) }),
+    onSuccess: () => toast.success("Convite enviado"),
+    onError: (error: Error) => toast.error(error.message),
+  });
+}
+
+export function useGroupInvites() {
+  return useQuery({
+    queryKey: keys.groupInvites,
+    queryFn: () => apiFetch<{ invites: { id: string; groupId: string; groupName: string; createdAt: string }[] }>("/api/community/group-invites"),
+  });
+}
+
+export function useRespondGroupInvite() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ inviteId, action }: { inviteId: string; action: "accept" | "decline" }) =>
+      apiFetch(`/api/community/group-invites/${inviteId}`, { method: "PATCH", body: JSON.stringify({ action }) }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: keys.groupInvites });
+      queryClient.invalidateQueries({ queryKey: keys.groups });
+    },
     onError: (error: Error) => toast.error(error.message),
   });
 }
@@ -539,6 +649,7 @@ export function useCreateChallenge() {
       description?: string;
       metric: "ACTIVE_DAYS" | "MEAL_COMPLETIONS" | "STREAK_DAYS";
       target: number;
+      collectiveTarget?: number;
       rewardXp: number;
       startsAt: string;
       endsAt: string;

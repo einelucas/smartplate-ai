@@ -20,6 +20,7 @@ import { useHydrationSummary } from "@/hooks/useHydration";
 import { ACTIVITY_TYPE_ICON_KEY, ACTIVITY_GOAL_METRIC_LABELS } from "@/lib/activity/options";
 import { resolveIcon } from "@/components/icon-registry";
 import HydrationCard from "@/components/HydrationCard";
+import XpTodayCard from "@/components/XpTodayCard";
 
 // recharts é pesado e a atividade só abre sob clique — ambos tirados do
 // bundle inicial da Home, a rota mais visitada do app.
@@ -307,6 +308,9 @@ export default function HomeDashboard() {
 
           {/* Hidratação */}
           <HydrationCard />
+
+          {/* XP de hoje */}
+          <XpTodayCard />
 
           {/* Atividade física */}
           <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">

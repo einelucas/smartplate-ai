@@ -9,8 +9,9 @@ import { prisma } from "@/lib/prisma";
 import { createPostSchema } from "@/lib/community/validation";
 import { AuthzError, requireGroupMembership } from "@/lib/community/authz";
 import { getAchievementDisplay } from "@/lib/community/achievements";
-import { deletePrivateImage } from "@/lib/storage/blob";
+import { copyPrivateImage, deletePrivateImage } from "@/lib/storage/blob";
 import { exceedsHashtagLimit, syncPostHashtags, MAX_HASHTAGS_PER_POST } from "@/lib/community/hashtags";
+import { RATE_LIMITS, RateLimitError, checkRateLimit, windowStart } from "@/lib/community/rate-limit";
 
 export async function POST(request: Request) {
   const { userId } = await auth();
@@ -20,6 +21,16 @@ export async function POST(request: Request) {
   if (!socialProfile) return NextResponse.json({ error: "Visite a Comunidade antes de publicar" }, { status: 400 });
   if (!socialProfile.termsAcceptedAt) {
     return NextResponse.json({ error: "É necessário aceitar as Regras da Comunidade antes de publicar" }, { status: 403 });
+  }
+
+  try {
+    await checkRateLimit(
+      () => prisma.communityPost.count({ where: { authorUserId: userId, createdAt: { gte: windowStart(RATE_LIMITS.createPost.windowMinutes) } } }),
+      RATE_LIMITS.createPost
+    );
+  } catch (error) {
+    if (error instanceof RateLimitError) return NextResponse.json({ error: error.message }, { status: error.status });
+    throw error;
   }
 
   const body = await request.json().catch(() => null);
@@ -85,6 +96,24 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Marco de streak ainda não alcançado" }, { status: 403 });
     }
     metadata = { milestone };
+  } else if (type === "PLAN_SHARE" && parsed.data.mealName) {
+    // Snapshot de uma refeição específica — nunca uma referência viva (ver
+    // lib/community/post-draft.ts). Macros só entram no metadata quando o
+    // próprio usuário escolheu mostrá-los (showMacros); a Zod já garante que
+    // valores fora de faixa nunca chegam aqui.
+    metadata = {
+      mealName: parsed.data.mealName,
+      showMacros: !!parsed.data.showMacros,
+      ...(parsed.data.showMacros
+        ? {
+            mealCalories: parsed.data.mealCalories ?? null,
+            mealProtein: parsed.data.mealProtein ?? null,
+            mealCarbs: parsed.data.mealCarbs ?? null,
+            mealFat: parsed.data.mealFat ?? null,
+          }
+        : {}),
+      ...(genericImageUrl ? { imageUrl: genericImageUrl, ...genericImageDimensions } : {}),
+    };
   } else if (type === "PLAN_SHARE") {
     const shareToken = parsed.data.shareToken as string;
     const shared = await prisma.sharedPlan.findUnique({ where: { shareToken }, include: { mealPlan: true } });
@@ -144,6 +173,27 @@ export async function POST(request: Request) {
       provider: parsed.data.externalShareProvider,
       url: parsed.data.externalShareUrl ?? null,
       imageUrl: imageUrl ?? null,
+    };
+  } else if (type === "PROGRESS_SHARE") {
+    const progressPhotoId = parsed.data.progressPhotoId as string;
+    const photo = await prisma.progressPhoto.findUnique({ where: { id: progressPhotoId } });
+    if (!photo || photo.userId !== userId) {
+      return NextResponse.json({ error: "Foto de progresso não encontrada" }, { status: 403 });
+    }
+
+    // Cópia deliberada — ProgressPhoto continua privado por padrão; o post
+    // recebe seu próprio blob, nunca um link ao registro original.
+    const copied = await copyPrivateImage(photo.imageUrl, { folder: "community", userId });
+    if (!copied) {
+      return NextResponse.json({ error: "Não foi possível compartilhar esta foto" }, { status: 500 });
+    }
+
+    const showWeight = !!parsed.data.showWeight;
+    metadata = {
+      imageUrl: copied.pathname,
+      takenAt: photo.takenAt,
+      showWeight,
+      ...(showWeight ? { weight: photo.weight } : {}),
     };
   }
 

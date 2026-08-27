@@ -13,8 +13,9 @@
 //     por cursor de banco (a ordem não é cronológica pura).
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
+import type { PostType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { AuthzError, getBlockedUserIds, requireGroupMembership } from "@/lib/community/authz";
+import { AuthzError, getBlockedUserIds, getMutedPostTypes, getMutedUserIds, requireGroupMembership } from "@/lib/community/authz";
 import { cursorPaginationSchema } from "@/lib/community/validation";
 import { serializeFeedPosts } from "@/lib/community/feed-items";
 import { calculateFeedScore, rankCandidates, FOR_YOU_CANDIDATE_WINDOW, FOR_YOU_DEFAULT_PAGE_SIZE } from "@/lib/community/feed-ranking";
@@ -55,19 +56,26 @@ export async function GET(request: Request) {
     }
   }
 
-  const blockedIds = await getBlockedUserIds(prisma, userId);
+  const [blockedIds, mutedUserIds, mutedPostTypes] = await Promise.all([
+    getBlockedUserIds(prisma, userId),
+    getMutedUserIds(prisma, userId),
+    getMutedPostTypes(prisma, userId),
+  ]);
+  // Excluídos do feed: bloqueados (nos dois sentidos) + silenciados (só quem
+  // eu silenciei — nunca some do feed de quem me silenciou).
+  const excludedAuthorIds = new Set<string>([...blockedIds, ...mutedUserIds]);
 
   if (tab === "for-you") {
-    return NextResponse.json(await buildForYouPage(userId, blockedIds, cursor, limit));
+    return NextResponse.json(await buildForYouPage(userId, excludedAuthorIds, mutedPostTypes, cursor, limit));
   }
 
   let authorFilter: { notIn: string[] } | { in: string[] };
   if (tab === "friends") {
     const friendIds = await getFriendUserIds(userId);
-    const allowed = Array.from(friendIds).concat(userId).filter((id) => !blockedIds.has(id));
+    const allowed = Array.from(friendIds).concat(userId).filter((id) => !excludedAuthorIds.has(id));
     authorFilter = { in: allowed };
   } else {
-    authorFilter = { notIn: Array.from(blockedIds) };
+    authorFilter = { notIn: Array.from(excludedAuthorIds) };
   }
 
   const posts = await prisma.communityPost.findMany({
@@ -76,6 +84,7 @@ export async function GET(request: Request) {
       deletedAt: null,
       hiddenAt: null,
       authorUserId: authorFilter,
+      ...(mutedPostTypes.size > 0 ? { type: { notIn: Array.from(mutedPostTypes) } } : {}),
     },
     include: POST_INCLUDE,
     orderBy: { createdAt: "desc" },
@@ -98,7 +107,13 @@ export async function GET(request: Request) {
  * "cursor" aqui é um offset textual dentro da janela ranqueada, não um
  * cursor de banco — documentado no comentário do arquivo.
  */
-async function buildForYouPage(userId: string, blockedIds: Set<string>, cursor: string | undefined, limit: number) {
+async function buildForYouPage(
+  userId: string,
+  excludedAuthorIds: Set<string>,
+  mutedPostTypes: Set<PostType>,
+  cursor: string | undefined,
+  limit: number
+) {
   const offset = cursor ? Number.parseInt(cursor, 10) || 0 : 0;
 
   const [myGroupIds, friendIds, followedHashtagIds, notInterestedPostIds] = await Promise.all([
@@ -118,8 +133,9 @@ async function buildForYouPage(userId: string, blockedIds: Set<string>, cursor: 
       OR: [{ groupId: null }, { groupId: { in: myGroupIds } }],
       deletedAt: null,
       hiddenAt: null,
-      authorUserId: { notIn: Array.from(blockedIds) },
+      authorUserId: { notIn: Array.from(excludedAuthorIds) },
       id: { notIn: Array.from(notInterestedPostIds) },
+      ...(mutedPostTypes.size > 0 ? { type: { notIn: Array.from(mutedPostTypes) } } : {}),
     },
     include: {
       ...POST_INCLUDE,

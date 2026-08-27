@@ -11,6 +11,7 @@ import type { ActivityGoalMetric } from "@prisma/client";
 import type { Db } from "@/lib/community/types";
 import { getLocalDateString } from "@/lib/community/dates";
 import { awardXpEvent } from "@/lib/community/gamification";
+import { notifyIfEnabled } from "@/lib/community/notify";
 import { getEligibleActivityLogs, getWeeklyActivityStats, bucketByLocalWeek, listRecentMondayStrings, type PeriodStats } from "./stats";
 
 export const ACTIVITY_GOAL_TARGET_RANGES: Record<ActivityGoalMetric, [number, number]> = {
@@ -77,7 +78,7 @@ export async function checkActivityGoalCompletions(db: Db, userId: string, timez
 
   for (const goal of activeGoals) {
     if (currentValueForMetric(goal.metric, weekStats) < goal.target) continue;
-    await awardXpEvent(db, {
+    const granted = await awardXpEvent(db, {
       userId,
       eventType: "ACTIVITY_GOAL_MET",
       points: 0,
@@ -85,6 +86,17 @@ export async function checkActivityGoalCompletions(db: Db, userId: string, timez
       referenceType: "ActivityGoal",
       referenceId: goal.id,
     });
+    // Só notifica na primeira vez que a meta é batida nesta semana — granted
+    // é false em qualquer nova checagem depois da primeira (idempotência de
+    // awardXpEvent), nunca reenvia a mesma notificação.
+    if (granted) {
+      await notifyIfEnabled(userId, "notifyActivities", {
+        type: "ACTIVITY_GOAL_MET",
+        title: "🎯 Meta semanal atingida!",
+        body: "Você bateu uma das suas metas de atividade física desta semana.",
+        data: { goalId: goal.id, metric: goal.metric },
+      });
+    }
   }
 }
 

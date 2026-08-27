@@ -10,6 +10,7 @@ import PostFeedList from "@/components/social/PostFeedList";
 import LeaderboardCard from "@/components/social/LeaderboardCard";
 import ChallengesList from "@/components/social/ChallengesList";
 import GroupMembersPanel from "@/components/social/GroupMembersPanel";
+import GroupStatsPanel from "@/components/social/GroupStatsPanel";
 
 const GroupInviteModal = dynamic(() => import("@/components/social/GroupInviteModal"), { ssr: false });
 const GroupSettingsMenu = dynamic(() => import("@/components/social/GroupSettingsMenu"), { ssr: false });
@@ -19,6 +20,7 @@ const tabs = [
   { id: "ranking", label: "Ranking" },
   { id: "desafios", label: "Desafios" },
   { id: "membros", label: "Membros" },
+  { id: "estatisticas", label: "Estatísticas" },
 ];
 
 export default function GroupDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -112,6 +114,7 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
           <GroupMembersPanel groupId={groupId} myRole={group.myRole} />
         </div>
       )}
+      {activeTab === "estatisticas" && <GroupStatsPanel groupId={groupId} />}
 
       {showInvite && (
         <GroupInviteModal

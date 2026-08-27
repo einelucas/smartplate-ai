@@ -15,6 +15,7 @@ import {
   getUtcMonthWindow,
   getUtcWeekWindow,
   toUtcDateOnly,
+  withTimezoneBuffer,
 } from "./dates";
 import {
   type AchievementCode,
@@ -749,7 +750,23 @@ const EVENT_TYPE_TO_XP_SOURCE: Record<string, "FOOD" | "ACTIVITY" | "STREAK" | "
   STREAK_MILESTONE: "STREAK",
   ACHIEVEMENT_UNLOCKED: "ACHIEVEMENT",
   CHALLENGE_COMPLETED: "CHALLENGE",
+  // Hidratação/metas de atividade não tinham entrada própria — caíam no
+  // fallback "ACTIVITY" mesmo quando a meta era de água (categorização
+  // errada, ainda que hoje sem efeito no valor por WATER_GOAL_COMPLETED
+  // sempre conceder 0 XP — ver lib/hydration/gamification.ts).
+  WATER_GOAL_COMPLETED: "FOOD",
+  ACTIVITY_GOAL_MET: "ACTIVITY",
 };
+
+/**
+ * Meta coletiva exibida no ranking de um desafio de grupo — prevalece a meta
+ * "editorial" definida pelo criador (Challenge.collectiveTarget) quando
+ * presente; senão, deriva automaticamente (target individual * nº de
+ * participantes, nunca zero mesmo sem nenhum participante ainda).
+ */
+export function deriveCollectiveTarget(challenge: { collectiveTarget: number | null; target: number }, participantCount: number): number {
+  return challenge.collectiveTarget ?? challenge.target * Math.max(participantCount, 1);
+}
 
 export async function getXpBreakdown(userId: string): Promise<Record<"FOOD" | "ACTIVITY" | "STREAK" | "ACHIEVEMENT" | "CHALLENGE", number>> {
   const grouped = await prisma.xpEvent.groupBy({ by: ["eventType"], where: { userId }, _sum: { points: true } });
@@ -759,4 +776,51 @@ export async function getXpBreakdown(userId: string): Promise<Record<"FOOD" | "A
     bySource[source] += entry._sum.points ?? 0;
   }
   return bySource;
+}
+
+const XP_EVENT_LABELS: Record<string, string> = {
+  MEAL_COMPLETED: "Refeição concluída",
+  ACTIVITY_BASE: "Atividade registrada",
+  ACTIVITY_DURATION_BONUS: "Bônus de duração",
+  ACTIVITY_FIRST_OF_DAY: "Primeira atividade do dia",
+  STREAK_MILESTONE: "Marco de sequência",
+  ACHIEVEMENT_UNLOCKED: "Conquista desbloqueada",
+  CHALLENGE_COMPLETED: "Desafio concluído",
+  WATER_GOAL_COMPLETED: "Meta de água batida",
+  ACTIVITY_GOAL_MET: "Meta semanal de atividade",
+};
+
+export interface XpEventTodayEntry {
+  eventType: string;
+  label: string;
+  points: number;
+  count: number;
+}
+
+/**
+ * Card "XP de hoje" — breakdown por ação, não por categoria ampla (diferente
+ * de getXpBreakdown, que é vitalício). Mesmo padrão de lib/hydration/stats.ts
+ * (busca com margem de ±2 dias via withTimezoneBuffer, filtra com precisão
+ * no dia local em memória) — nunca calcula o instante UTC exato da meia-noite
+ * local, que exigiria lidar com offset/DST sem biblioteca de timezone.
+ */
+export async function getXpEventsToday(userId: string, timezone?: string | null): Promise<XpEventTodayEntry[]> {
+  const todayStr = getLocalDateString(new Date(), timezone);
+  const events = await prisma.xpEvent.findMany({
+    where: { userId, createdAt: withTimezoneBuffer(todayStr, todayStr) },
+    select: { eventType: true, points: true, createdAt: true },
+  });
+  const todayEvents = events.filter((event) => getLocalDateString(event.createdAt, timezone) === todayStr);
+
+  const grouped = new Map<string, { points: number; count: number }>();
+  for (const event of todayEvents) {
+    const entry = grouped.get(event.eventType) ?? { points: 0, count: 0 };
+    entry.points += event.points;
+    entry.count += 1;
+    grouped.set(event.eventType, entry);
+  }
+
+  return Array.from(grouped.entries())
+    .map(([eventType, { points, count }]) => ({ eventType, label: XP_EVENT_LABELS[eventType] ?? eventType, points, count }))
+    .sort((a, b) => b.points - a.points);
 }

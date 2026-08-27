@@ -5,6 +5,7 @@ import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { friendActionSchema } from "@/lib/community/validation";
+import { notifyIfEnabled } from "@/lib/community/notify";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -30,6 +31,12 @@ export async function PATCH(request: Request, context: Params) {
 
   if (parsed.data.action === "accept") {
     const updated = await prisma.friendship.update({ where: { id: params.id }, data: { status: "ACCEPTED" } });
+    await notifyIfEnabled(friendship.requesterId, "notifySocial", {
+      type: "FRIEND_REQUEST_ACCEPTED",
+      title: "🎉 Solicitação aceita",
+      body: "Sua solicitação de amizade foi aceita.",
+      data: { friendshipId: updated.id },
+    });
     return NextResponse.json({ friendship: updated });
   }
 

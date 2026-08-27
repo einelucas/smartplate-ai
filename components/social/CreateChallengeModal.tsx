@@ -29,6 +29,7 @@ export default function CreateChallengeModal({
   const [description, setDescription] = useState("");
   const [metric, setMetric] = useState("ACTIVE_DAYS");
   const [target, setTarget] = useState(7);
+  const [collectiveTarget, setCollectiveTarget] = useState("");
   const [rewardXp, setRewardXp] = useState(100);
   const [endsAt, setEndsAt] = useState(() => {
     const d = new Date();
@@ -48,6 +49,7 @@ export default function CreateChallengeModal({
         description: description.trim() || undefined,
         metric: metric as "ACTIVE_DAYS" | "MEAL_COMPLETIONS" | "STREAK_DAYS",
         target,
+        collectiveTarget: scope === "GROUP" && collectiveTarget.trim() ? Number(collectiveTarget) : undefined,
         rewardXp,
         startsAt: new Date().toISOString(),
         endsAt: new Date(`${endsAt}T23:59:59`).toISOString(),
@@ -120,6 +122,20 @@ export default function CreateChallengeModal({
                 />
               </div>
             </div>
+            {scope === "GROUP" && (
+              <div>
+                <label className="text-xs text-slate-500">Meta coletiva do grupo (opcional)</label>
+                <input
+                  type="number"
+                  min={1}
+                  max={100000}
+                  value={collectiveTarget}
+                  onChange={(e) => setCollectiveTarget(e.target.value)}
+                  placeholder="Deixe em branco para somar automaticamente"
+                  className="w-full border border-slate-200 rounded-xl p-2.5 text-sm mt-1"
+                />
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs text-slate-500">Recompensa (XP)</label>

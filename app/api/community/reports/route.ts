@@ -3,6 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { createReportSchema } from "@/lib/community/validation";
+import { RATE_LIMITS, RateLimitError, checkRateLimit, windowStart } from "@/lib/community/rate-limit";
 
 export async function POST(request: Request) {
   const { userId } = await auth();
@@ -11,6 +12,16 @@ export async function POST(request: Request) {
   const socialProfile = await prisma.socialProfile.findUnique({ where: { userId } });
   if (!socialProfile?.termsAcceptedAt) {
     return NextResponse.json({ error: "É necessário aceitar as Regras da Comunidade" }, { status: 403 });
+  }
+
+  try {
+    await checkRateLimit(
+      () => prisma.contentReport.count({ where: { reporterUserId: userId, createdAt: { gte: windowStart(RATE_LIMITS.createReport.windowMinutes) } } }),
+      RATE_LIMITS.createReport
+    );
+  } catch (error) {
+    if (error instanceof RateLimitError) return NextResponse.json({ error: error.message }, { status: error.status });
+    throw error;
   }
 
   const body = await request.json().catch(() => null);

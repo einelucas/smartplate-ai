@@ -16,9 +16,11 @@ import {
   Target,
   UtensilsCrossed,
   EyeOff,
+  VolumeX,
+  Scale,
 } from "lucide-react";
 import { ThumbsUpIcon, FireIcon, HandsClappingIcon, BarbellIcon, TrophyIcon, type Icon } from "@phosphor-icons/react";
-import { useBlockUser, useDeletePost, useMarkNotInterested, useToggleReaction, useUpdatePost } from "@/hooks/useCommunity";
+import { useBlockUser, useDeletePost, useMarkNotInterested, useMuteUser, useToggleReaction, useUpdatePost } from "@/hooks/useCommunity";
 import { formatRelativeTime } from "@/lib/community/dates";
 import { resolveIcon } from "@/components/icon-registry";
 import { ACTIVITY_TYPE_ICON_KEY, findActivityIntensityLabel, findActivityTypeLabel } from "@/lib/activity/options";
@@ -44,7 +46,18 @@ type Post = CommunityPostSummary;
 // migração para ícones) — posts novos gravam `icon` (chave de icon-registry).
 type AchievementMetadata = { title?: string; description?: string; icon?: string; emoji?: string };
 type StreakMetadata = { milestone?: number };
-type PlanShareMetadata = { shareToken?: string; planName?: string; dietType?: string };
+type ProgressShareMetadata = { imageUrl?: string | null; takenAt?: string; showWeight?: boolean; weight?: number | null };
+type PlanShareMetadata = {
+  shareToken?: string;
+  planName?: string;
+  dietType?: string;
+  mealName?: string;
+  showMacros?: boolean;
+  mealCalories?: number | null;
+  mealProtein?: number | null;
+  mealCarbs?: number | null;
+  mealFat?: number | null;
+};
 // Snapshot seguro no momento do compartilhamento — nunca dados privados de
 // Profile (peso, altura, objetivo). Ver POST /api/community/posts. `imageUrl`
 // é sempre uma foto escolhida manualmente pelo usuário ao compartilhar —
@@ -129,6 +142,7 @@ export default function PostCard({
   const deletePost = useDeletePost(groupId);
   const updatePost = useUpdatePost(groupId);
   const blockUser = useBlockUser();
+  const muteUser = useMuteUser();
   const markNotInterested = useMarkNotInterested(groupId);
 
   return (
@@ -192,6 +206,15 @@ export default function PostCard({
                     className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50"
                   >
                     <Flag size={14} /> Denunciar
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowMenu(false);
+                      if (post.author.userId) muteUser.mutate(post.author.userId);
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50"
+                  >
+                    <VolumeX size={14} /> Ocultar publicações deste usuário
                   </button>
                   <button
                     onClick={() => {
@@ -337,7 +360,45 @@ function PostBody({
   }
 
   if (post.type === "PLAN_SHARE") {
-    const { shareToken, planName, dietType } = (post.metadata ?? {}) as PlanShareMetadata;
+    const meta = (post.metadata ?? {}) as PlanShareMetadata;
+
+    // Snapshot de refeição específica (nunca tem shareToken) — layout
+    // diferente do card de plano inteiro abaixo.
+    if (meta.mealName && !meta.shareToken) {
+      return (
+        <div>
+          {post.text && (
+            <p className="text-slate-600 text-sm mb-3">
+              <HashtagText text={post.text} />
+            </p>
+          )}
+          <div className="flex items-center gap-3 bg-slate-50 border border-slate-100 rounded-xl p-4">
+            <div className="w-10 h-10 bg-[#28A745]/10 rounded-xl flex items-center justify-center flex-shrink-0">
+              <UtensilsCrossed size={18} className="text-[#28A745]" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="font-semibold text-slate-800 text-sm truncate">{meta.mealName}</p>
+              {meta.showMacros ? (
+                <p className="text-xs text-slate-400">
+                  {[
+                    meta.mealCalories != null ? `${meta.mealCalories} kcal` : null,
+                    meta.mealProtein != null ? `${meta.mealProtein}g proteína` : null,
+                    meta.mealCarbs != null ? `${meta.mealCarbs}g carbo` : null,
+                    meta.mealFat != null ? `${meta.mealFat}g gordura` : null,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </p>
+              ) : (
+                <p className="text-xs text-slate-400">Refeição compartilhada</p>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    const { shareToken, planName, dietType } = meta;
     return (
       <div>
         {post.text && (
@@ -431,6 +492,26 @@ function PostBody({
             </a>
           )}
         </div>
+        {viewerSrc && <ImageViewerDialog src={viewerSrc} onClose={() => setViewerSrc(null)} />}
+      </div>
+    );
+  }
+
+  if (post.type === "PROGRESS_SHARE") {
+    const meta = (post.metadata ?? {}) as ProgressShareMetadata;
+    return (
+      <div>
+        {post.text && (
+          <p className="text-slate-700 text-sm whitespace-pre-wrap break-words mb-3">
+            <HashtagText text={post.text} />
+          </p>
+        )}
+        {meta.imageUrl && <PostImage src={meta.imageUrl} onOpen={() => setViewerSrc(meta.imageUrl!)} />}
+        {meta.showWeight && meta.weight != null && (
+          <p className="text-xs text-slate-500 mt-2 flex items-center gap-1">
+            <Scale size={12} className="text-[#28A745]" /> {meta.weight} kg
+          </p>
+        )}
         {viewerSrc && <ImageViewerDialog src={viewerSrc} onClose={() => setViewerSrc(null)} />}
       </div>
     );

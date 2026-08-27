@@ -6,9 +6,17 @@
 
 export type PostAttachment =
   | { type: "MEAL"; shareToken: string; planName?: string | null; dietType?: string | null }
+  // Snapshot de uma refeição específica no momento do compartilhamento —
+  // nunca uma referência viva a um Meal/DayPlan (o dashboard de plano
+  // alimentar hoje identifica refeições por dia+tipo+índice, não por id
+  // estável; um post da Comunidade precisa de conteúdo que não muda depois).
+  | { type: "MEAL_ITEM"; mealName: string; calories?: number; protein?: number; carbs?: number; fat?: number; showMacros: boolean }
   | { type: "ACTIVITY"; activityId: string; preview?: { label: string; durationMin: number } }
   | { type: "ACHIEVEMENT"; achievementCode: string; preview?: { title: string; icon: string } }
-  | { type: "EXTERNAL_SHARE"; provider: string; url?: string };
+  | { type: "EXTERNAL_SHARE"; provider: string; url?: string }
+  // Antes & Depois (seção 22) — a cópia do blob acontece no servidor a
+  // partir de progressPhotoId; nunca envia bytes de imagem pelo cliente aqui.
+  | { type: "PROGRESS_SHARE"; progressPhotoId: string; takenAt: string; showWeight: boolean };
 
 export type PostDestination = { type: "GLOBAL" } | { type: "GROUP"; groupId: string; groupName?: string };
 
@@ -38,13 +46,21 @@ export function draftToCreatePostInput(
   draft: PostDraft,
   uploadedImageUrl: string | undefined
 ): {
-  type: "TEXT" | "ACHIEVEMENT" | "PLAN_SHARE" | "ACTIVITY" | "EXTERNAL_SHARE";
+  type: "TEXT" | "ACHIEVEMENT" | "PLAN_SHARE" | "ACTIVITY" | "EXTERNAL_SHARE" | "PROGRESS_SHARE";
   text?: string;
   imageUrl?: string;
   imageWidth?: number;
   imageHeight?: number;
   achievementCode?: string;
   shareToken?: string;
+  mealName?: string;
+  mealCalories?: number;
+  mealProtein?: number;
+  mealCarbs?: number;
+  mealFat?: number;
+  showMacros?: boolean;
+  progressPhotoId?: string;
+  showWeight?: boolean;
   activityLogId?: string;
   externalShareProvider?: string;
   externalShareUrl?: string;
@@ -70,6 +86,25 @@ export function draftToCreatePostInput(
         imageWidth: dimensions?.width,
         imageHeight: dimensions?.height,
         shareToken: draft.attachment.shareToken,
+        groupId,
+      };
+    case "MEAL_ITEM":
+      return {
+        type: "PLAN_SHARE",
+        text,
+        imageUrl: uploadedImageUrl,
+        imageWidth: dimensions?.width,
+        imageHeight: dimensions?.height,
+        mealName: draft.attachment.mealName,
+        ...(draft.attachment.showMacros
+          ? {
+              mealCalories: draft.attachment.calories,
+              mealProtein: draft.attachment.protein,
+              mealCarbs: draft.attachment.carbs,
+              mealFat: draft.attachment.fat,
+            }
+          : {}),
+        showMacros: draft.attachment.showMacros,
         groupId,
       };
     case "ACTIVITY":
@@ -99,6 +134,14 @@ export function draftToCreatePostInput(
         externalShareProvider: draft.attachment.provider,
         externalShareUrl: draft.attachment.url,
         externalShareImageUrl: uploadedImageUrl,
+        groupId,
+      };
+    case "PROGRESS_SHARE":
+      return {
+        type: "PROGRESS_SHARE",
+        text,
+        progressPhotoId: draft.attachment.progressPhotoId,
+        showWeight: draft.attachment.showWeight,
         groupId,
       };
   }

@@ -18,6 +18,7 @@ import {
   ShoppingCart,
   Loader2,
   ChevronDown,
+  Share2,
 } from "lucide-react";
 import Link from "next/link";
 import { celebrateAchievements, celebrateStreakIfMilestone } from "@/components/social/AchievementCelebration";
@@ -27,6 +28,7 @@ import type { GeneratePlanFormData } from "./GeneratePlanModal";
 // Formulário de geração (IA) só abre sob clique — não precisa entrar no
 // bundle inicial de /mealplan.
 const GeneratePlanModal = dynamic(() => import("./GeneratePlanModal"), { ssr: false });
+const ShareMealModal = dynamic(() => import("@/components/social/ShareMealModal"), { ssr: false });
 
 // ─── Tipos locais ─────────────────────────────────────────────────────────────
 
@@ -112,7 +114,7 @@ const calculateDailySummary = (dayPlan: DailyMealPlan) => {
 
 // ─── MealCard ─────────────────────────────────────────────────────────────────
 
-function MealCard({ meal, type, onSwap, onFavorite, isFavorite, onComplete, isComplete, onRate }: any) {
+function MealCard({ meal, type, onSwap, onFavorite, isFavorite, onComplete, isComplete, onRate, onShare }: any) {
   const [rating, setRating] = useState(meal?.rating || 0);
 
   const handleRate = (newRating: number) => {
@@ -134,6 +136,9 @@ function MealCard({ meal, type, onSwap, onFavorite, isFavorite, onComplete, isCo
           </motion.button>
           <motion.button whileTap={{ scale: 0.9 }} onClick={onFavorite} className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-md">
             <Heart size={18} className={isFavorite ? "fill-red-500 text-red-500" : "text-slate-400"} />
+          </motion.button>
+          <motion.button whileTap={{ scale: 0.9 }} onClick={onShare} title="Compartilhar refeição" className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-md">
+            <Share2 size={18} className="text-[#28A745]" />
           </motion.button>
         </div>
         <div className="absolute bottom-4 left-4 bg-white rounded-full px-3 py-1 flex items-center gap-1 shadow-md">
@@ -293,6 +298,7 @@ export default function MealPlanDashboard() {
   const [showSavedPlans, setShowSavedPlans] = useState(false);
   const [showGenerateModal, setShowGenerateModal] = useState(false);
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
+  const [shareMealTarget, setShareMealTarget] = useState<DailyMeal | null>(null);
 
   const { data: plansData } = useQuery({
     queryKey: ["meal-plans"],
@@ -636,6 +642,7 @@ export default function MealPlanDashboard() {
                       handleRate(rating);
                       toast.success(`Avaliação ${rating}⭐ registrada!`);
                     }}
+                    onShare={() => setShareMealTarget(currentMeal)}
                   />
                 ) : (
                   <div className="bg-white rounded-3xl p-12 text-center border border-slate-100">
@@ -694,6 +701,17 @@ export default function MealPlanDashboard() {
         onSubmit={(formData) => generateMutation.mutate(formData)}
         isPending={generateMutation.isPending}
       />
+
+      {shareMealTarget && (
+        <ShareMealModal
+          mealName={shareMealTarget.name}
+          calories={shareMealTarget.calories}
+          protein={shareMealTarget.proteina}
+          carbs={shareMealTarget.carboidratos}
+          fat={shareMealTarget.gordura}
+          onClose={() => setShareMealTarget(null)}
+        />
+      )}
     </div>
   );
 }

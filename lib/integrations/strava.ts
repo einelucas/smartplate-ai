@@ -6,6 +6,7 @@
 // imediato no servidor — nunca retornar token bruto para uma rota que possa
 // serializá-lo na resposta HTTP.
 import { encryptToken, decryptToken } from "./token-crypto";
+import { EXTERNAL_ACTIVITY_CACHE_MAX_DAYS } from "./provider-policy";
 
 const STRAVA_AUTHORIZE_URL = "https://www.strava.com/oauth/authorize";
 const STRAVA_TOKEN_URL = "https://www.strava.com/oauth/token";
@@ -175,6 +176,21 @@ export async function fetchStravaActivityById(accessTokenPlain: string, activity
     throw new Error(`Falha ao buscar atividade ${activityId} no Strava: ${res.status} ${detail}`);
   }
   return res.json();
+}
+
+/**
+ * Janela incremental de sincronização (epoch em segundos, formato exigido
+ * pelo parâmetro `after` da API do Strava) — extraída de app/api/integrations/
+ * strava/sync/route.ts pra ser testável sem precisar de uma chamada de rede
+ * real. Com sincronização anterior: `lastSyncedAt - 1 dia` (folga pra cobrir
+ * atividades registradas com atraso no Strava). Sem sincronização anterior:
+ * limita à janela de retenção do cache — nunca baixa todo o histórico de uma vez.
+ */
+export function computeStravaSyncAfterEpoch(lastSyncedAt: Date | null, now: Date = new Date()): number {
+  if (lastSyncedAt) {
+    return Math.floor(lastSyncedAt.getTime() / 1000) - 24 * 60 * 60;
+  }
+  return Math.floor((now.getTime() - EXTERNAL_ACTIVITY_CACHE_MAX_DAYS * 24 * 60 * 60 * 1000) / 1000);
 }
 
 /** GET /athlete/activities — paginado; nunca busca "tudo" de uma vez (checklist item 83). */

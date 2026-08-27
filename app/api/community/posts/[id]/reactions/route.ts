@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { AuthzError, requireGroupMembership } from "@/lib/community/authz";
 import { reactionTypeSchema } from "@/lib/community/validation";
+import { notifyIfEnabled } from "@/lib/community/notify";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -19,7 +20,7 @@ export async function POST(request: Request, context: Params) {
   const params = await context.params;
   const post = await prisma.communityPost.findUnique({
     where: { id: params.id },
-    select: { id: true, deletedAt: true, hiddenAt: true, groupId: true },
+    select: { id: true, deletedAt: true, hiddenAt: true, groupId: true, authorUserId: true },
   });
   if (!post || post.deletedAt || post.hiddenAt) {
     return NextResponse.json({ error: "Post não encontrado" }, { status: 404 });
@@ -45,5 +46,15 @@ export async function POST(request: Request, context: Params) {
   }
 
   await prisma.communityReaction.create({ data: { postId: params.id, userId, type } });
+
+  if (post.authorUserId !== userId) {
+    await notifyIfEnabled(post.authorUserId, "notifySocial", {
+      type: "REACTION_RECEIVED",
+      title: "❤️ Nova reação",
+      body: "Alguém reagiu à sua publicação.",
+      data: { postId: post.id },
+    });
+  }
+
   return NextResponse.json({ reacted: true });
 }

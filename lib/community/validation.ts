@@ -35,6 +35,13 @@ export const updateSocialProfileSchema = z.object({
   showStreak: z.boolean().optional(),
   showXp: z.boolean().optional(),
   showAchievements: z.boolean().optional(),
+  notifySocial: z.boolean().optional(),
+  notifyMeals: z.boolean().optional(),
+  notifyActivities: z.boolean().optional(),
+  notifyChallenges: z.boolean().optional(),
+  notifyStreak: z.boolean().optional(),
+  notifyProgress: z.boolean().optional(),
+  notifyReminders: z.boolean().optional(),
   acceptTerms: z.literal(true).optional(),
   // Aponta sempre pro storage do Clerk (onde user.setProfileImage grava o
   // upload) — nunca uma URL arbitrária enviada pelo cliente. `null` remove a
@@ -53,7 +60,7 @@ export const updateSocialProfileSchema = z.object({
 
 // ─── Posts / reações / comentários ─────────────────────────────────────────
 
-export const postTypeSchema = z.enum(["TEXT", "ACHIEVEMENT", "STREAK", "CHALLENGE", "PLAN_SHARE", "ACTIVITY", "EXTERNAL_SHARE"]);
+export const postTypeSchema = z.enum(["TEXT", "ACHIEVEMENT", "STREAK", "CHALLENGE", "PLAN_SHARE", "ACTIVITY", "EXTERNAL_SHARE", "PROGRESS_SHARE"]);
 export const postTextSchema = z.string().trim().min(1, "Texto vazio").max(500, "Texto muito longo");
 
 // ─── Compartilhamento externo genérico (conteúdo fornecido pelo usuário —
@@ -110,6 +117,20 @@ export const createPostSchema = z
     achievementCode: z.string().trim().max(32).optional(),
     streakMilestone: z.number().int().positive().max(10000).optional(),
     shareToken: z.string().trim().min(1).max(128).optional(),
+    // Snapshot de refeição específica (seção 23 do checklist) — nunca uma
+    // referência viva, só o que o usuário está escolhendo mostrar agora.
+    mealName: z.string().trim().min(1).max(120).optional(),
+    mealCalories: z.number().int().min(0).max(20000).optional(),
+    mealProtein: z.number().min(0).max(2000).optional(),
+    mealCarbs: z.number().min(0).max(2000).optional(),
+    mealFat: z.number().min(0).max(2000).optional(),
+    showMacros: z.boolean().optional(),
+    // Compartilhar Antes & Depois (seção 22) — ProgressPhoto continua
+    // sempre privado por padrão; o post é uma CÓPIA explícita e deliberada
+    // do blob (ver copyPrivateImage), nunca um link direto ao registro
+    // privado. Peso só entra no metadata quando showWeight é true.
+    progressPhotoId: z.string().trim().min(1).max(64).optional(),
+    showWeight: z.boolean().optional(),
     activityLogId: z.string().trim().min(1).max(64).optional(),
     externalShareProvider: externalShareProviderSchema.optional(),
     externalShareUrl: externalShareUrlSchema.optional(),
@@ -127,13 +148,17 @@ export const createPostSchema = z
     message: "streakMilestone é obrigatório para posts do tipo STREAK",
     path: ["streakMilestone"],
   })
-  .refine((data) => data.type !== "PLAN_SHARE" || !!data.shareToken, {
-    message: "shareToken é obrigatório para posts do tipo PLAN_SHARE",
+  .refine((data) => data.type !== "PLAN_SHARE" || !!data.shareToken || !!data.mealName, {
+    message: "shareToken ou mealName é obrigatório para posts do tipo PLAN_SHARE",
     path: ["shareToken"],
   })
   .refine((data) => data.type !== "ACTIVITY" || !!data.activityLogId, {
     message: "activityLogId é obrigatório para posts do tipo ACTIVITY",
     path: ["activityLogId"],
+  })
+  .refine((data) => data.type !== "PROGRESS_SHARE" || !!data.progressPhotoId, {
+    message: "progressPhotoId é obrigatório para posts do tipo PROGRESS_SHARE",
+    path: ["progressPhotoId"],
   })
   .refine((data) => data.type !== "EXTERNAL_SHARE" || !!data.externalShareProvider, {
     message: "Selecione o app de origem",
@@ -182,6 +207,14 @@ export const changeMemberRoleSchema = z.object({
   role: z.enum(["ADMIN", "MEMBER"]), // OWNER só via transferência dedicada
 });
 
+export const inviteUserToGroupSchema = z.object({
+  targetUserId: z.string().trim().min(1).max(128),
+});
+
+export const respondGroupInviteSchema = z.object({
+  action: z.enum(["accept", "decline"]),
+});
+
 // ─── Busca / amigos ─────────────────────────────────────────────────────────
 
 export const searchQuerySchema = z.string().trim().min(2).max(30);
@@ -196,6 +229,16 @@ export const friendActionSchema = z.object({
 
 export const blockUserSchema = z.object({
   targetUserId: z.string().trim().min(1).max(128),
+});
+
+export const muteUserSchema = z.object({
+  targetUserId: z.string().trim().min(1).max(128),
+});
+
+// Mesmos valores de PostType — validado aqui mesmo a coluna sendo String
+// (nunca aceitar um tipo arbitrário só porque o banco não tem enum).
+export const mutePostTypeSchema = z.object({
+  postType: z.enum(["TEXT", "ACHIEVEMENT", "STREAK", "CHALLENGE", "PLAN_SHARE", "ACTIVITY", "EXTERNAL_SHARE"]),
 });
 
 // ─── Desafios ───────────────────────────────────────────────────────────────
@@ -219,6 +262,10 @@ export const createChallengeSchema = z
       "BALANCED_DAYS",
     ]),
     target: z.number().int().min(1).max(1000),
+    // Meta "editorial" opcional do grupo (só GROUP) — quando ausente, o
+    // ranking continua derivando o coletivo automaticamente (target * nº de
+    // participantes), comportamento inalterado.
+    collectiveTarget: z.number().int().min(1).max(100000).optional(),
     rewardXp: z.number().int().min(0).max(5000).default(0),
     startsAt: z.coerce.date(),
     endsAt: z.coerce.date(),
@@ -230,6 +277,10 @@ export const createChallengeSchema = z
   .refine((data) => data.scope !== "GROUP" || !!data.groupId, {
     message: "groupId é obrigatório para desafios de grupo",
     path: ["groupId"],
+  })
+  .refine((data) => data.scope !== "GLOBAL" || data.collectiveTarget === undefined, {
+    message: "collectiveTarget só se aplica a desafios de grupo",
+    path: ["collectiveTarget"],
   });
 
 // ─── Denúncias ──────────────────────────────────────────────────────────────

@@ -9,7 +9,7 @@ import { useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useUser } from "@clerk/nextjs";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Loader2, ChevronDown, Link2 } from "lucide-react";
+import { X, Loader2, ChevronDown, Link2, Camera } from "lucide-react";
 import { PersonSimpleRunIcon, TrophyIcon, ForkKnifeIcon } from "@phosphor-icons/react";
 import { useCommunityMe, useCreatePost, useHashtagSuggestions, useMyGroups } from "@/hooks/useCommunity";
 import { useCommunityMediaUpload } from "@/hooks/useCommunityMediaUpload";
@@ -38,9 +38,11 @@ const COUNTER_THRESHOLD = 400;
 
 const ATTACHMENT_LABELS: Record<PostAttachment["type"], string> = {
   MEAL: "Refeição",
+  MEAL_ITEM: "Refeição",
   ACTIVITY: "Atividade",
   ACHIEVEMENT: "Conquista",
   EXTERNAL_SHARE: "Compartilhamento externo",
+  PROGRESS_SHARE: "Foto de progresso",
 };
 
 function AttachmentCard({ attachment, onRemove }: { attachment: PostAttachment; onRemove: () => void }) {
@@ -51,6 +53,9 @@ function AttachmentCard({ attachment, onRemove }: { attachment: PostAttachment; 
   if (attachment.type === "MEAL") {
     title = attachment.planName || "Plano alimentar";
     subtitle = attachment.dietType || "Refeição anexada";
+  } else if (attachment.type === "MEAL_ITEM") {
+    title = attachment.mealName;
+    subtitle = attachment.showMacros ? "Refeição anexada, com macros" : "Refeição anexada";
   } else if (attachment.type === "ACTIVITY") {
     icon = <PersonSimpleRunIcon size={20} weight="duotone" className="text-[#007BFF]" />;
     title = attachment.preview?.label ?? "Atividade";
@@ -65,6 +70,10 @@ function AttachmentCard({ attachment, onRemove }: { attachment: PostAttachment; 
     icon = <ProviderIcon provider={attachment.provider} size={20} className={display.accentClassName} />;
     title = display.label;
     subtitle = attachment.url || "Compartilhamento anexado";
+  } else if (attachment.type === "PROGRESS_SHARE") {
+    icon = <Camera size={20} className="text-[#28A745]" />;
+    title = "Foto de progresso";
+    subtitle = attachment.showWeight ? "Antes & Depois, com peso" : "Antes & Depois";
   }
 
   return (

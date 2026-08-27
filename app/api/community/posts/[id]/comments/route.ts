@@ -5,6 +5,8 @@ import { prisma } from "@/lib/prisma";
 import { AuthzError, requireGroupMembership } from "@/lib/community/authz";
 import { commentTextSchema, cursorPaginationSchema } from "@/lib/community/validation";
 import { publicIdentitySelect, toPublicIdentity } from "@/lib/community/avatar";
+import { RATE_LIMITS, RateLimitError, checkRateLimit, windowStart } from "@/lib/community/rate-limit";
+import { notifyIfEnabled } from "@/lib/community/notify";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -73,9 +75,20 @@ export async function POST(request: Request, context: Params) {
     return NextResponse.json({ error: "É necessário aceitar as Regras da Comunidade antes de comentar" }, { status: 403 });
   }
 
-  const params = await context.params;
   try {
-    await assertPostVisible(params.id, userId);
+    await checkRateLimit(
+      () => prisma.communityComment.count({ where: { authorUserId: userId, createdAt: { gte: windowStart(RATE_LIMITS.createComment.windowMinutes) } } }),
+      RATE_LIMITS.createComment
+    );
+  } catch (error) {
+    if (error instanceof RateLimitError) return NextResponse.json({ error: error.message }, { status: error.status });
+    throw error;
+  }
+
+  const params = await context.params;
+  let post;
+  try {
+    post = await assertPostVisible(params.id, userId);
   } catch (error) {
     if (error instanceof AuthzError) return NextResponse.json({ error: error.message }, { status: error.status });
     throw error;
@@ -88,6 +101,15 @@ export async function POST(request: Request, context: Params) {
   const comment = await prisma.communityComment.create({
     data: { postId: params.id, authorUserId: userId, text: parsed.data.text },
   });
+
+  if (post.authorUserId !== userId) {
+    await notifyIfEnabled(post.authorUserId, "notifySocial", {
+      type: "COMMENT_RECEIVED",
+      title: "💬 Novo comentário",
+      body: "Alguém comentou na sua publicação.",
+      data: { postId: post.id, commentId: comment.id },
+    });
+  }
 
   return NextResponse.json({ comment }, { status: 201 });
 }

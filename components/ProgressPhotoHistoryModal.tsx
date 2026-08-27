@@ -2,9 +2,12 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Trash2, Pencil, Check, ImageOff } from "lucide-react";
+import { X, Trash2, Pencil, Check, ImageOff, Share2 } from "lucide-react";
 import { useProgressPhotos, type ProgressPhoto } from "@/hooks/useProgressPhotos";
+
+const ShareProgressPhotoModal = dynamic(() => import("@/components/social/ShareProgressPhotoModal"), { ssr: false });
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" });
@@ -13,6 +16,7 @@ function formatDate(iso: string): string {
 function PhotoRow({ photo }: { photo: ProgressPhoto }) {
   const { updatePhoto, deletePhoto } = useProgressPhotos();
   const [editing, setEditing] = useState(false);
+  const [sharing, setSharing] = useState(false);
   const [weight, setWeight] = useState(photo.weight != null ? String(photo.weight) : "");
   const [notes, setNotes] = useState(photo.notes ?? "");
 
@@ -73,14 +77,29 @@ function PhotoRow({ photo }: { photo: ProgressPhoto }) {
             <Check size={14} />
           </button>
         ) : (
-          <button onClick={() => setEditing(true)} title="Editar" aria-label="Editar foto" className="p-2 text-slate-400 hover:bg-slate-100 rounded-lg">
-            <Pencil size={14} />
-          </button>
+          <>
+            <button onClick={() => setEditing(true)} title="Editar" aria-label="Editar foto" className="p-2 text-slate-400 hover:bg-slate-100 rounded-lg">
+              <Pencil size={14} />
+            </button>
+            <button onClick={() => setSharing(true)} title="Compartilhar" aria-label="Compartilhar foto" className="p-2 text-slate-400 hover:text-[#28A745] hover:bg-[#28A745]/10 rounded-lg">
+              <Share2 size={14} />
+            </button>
+          </>
         )}
         <button onClick={handleDelete} title="Excluir" aria-label="Excluir foto" className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg">
           <Trash2 size={14} />
         </button>
       </div>
+
+      {sharing && (
+        <ShareProgressPhotoModal
+          progressPhotoId={photo.id}
+          imageUrl={photo.imageUrl}
+          takenAt={photo.takenAt}
+          hasWeight={photo.weight != null}
+          onClose={() => setSharing(false)}
+        />
+      )}
     </div>
   );
 }

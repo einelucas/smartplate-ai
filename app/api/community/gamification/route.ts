@@ -3,16 +3,19 @@ import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { ACHIEVEMENTS, getLevelProgress } from "@/lib/community/achievements";
-import { getXpBreakdown } from "@/lib/community/gamification";
+import { getXpBreakdown, getXpEventsToday } from "@/lib/community/gamification";
 
 export async function GET() {
   const { userId } = await auth();
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const [gamification, unlockedAchievements, xpBreakdown] = await Promise.all([
+  const socialProfile = await prisma.socialProfile.findUnique({ where: { userId }, select: { timezone: true } });
+
+  const [gamification, unlockedAchievements, xpBreakdown, xpToday] = await Promise.all([
     prisma.userGamification.findUnique({ where: { userId } }),
     prisma.userAchievement.findMany({ where: { userId }, orderBy: { unlockedAt: "desc" } }),
     getXpBreakdown(userId),
+    getXpEventsToday(userId, socialProfile?.timezone),
   ]);
 
   const totalXp = gamification?.totalXp ?? 0;
@@ -26,6 +29,7 @@ export async function GET() {
     currentLevelXp,
     nextLevelXp,
     xpBreakdown,
+    xpToday,
     achievements: unlockedAchievements.map((a) => ({
       code: a.achievementCode,
       unlockedAt: a.unlockedAt,

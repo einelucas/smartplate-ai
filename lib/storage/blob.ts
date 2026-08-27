@@ -55,3 +55,29 @@ export async function streamPrivateImage(pathname: string): Promise<{ stream: Re
   if (!result) return null;
   return { stream: result.stream, contentType: result.blob.contentType || "application/octet-stream" };
 }
+
+const EXTENSION_BY_CONTENT_TYPE: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+};
+
+/**
+ * Cópia servidor-a-servidor de uma imagem privada para outro folder/dono —
+ * nunca passa pelo cliente. Usado por compartilhamento deliberado (ex.:
+ * Antes & Depois na Comunidade), onde o registro de origem (ProgressPhoto)
+ * continua privado por padrão e o post recebe seu PRÓPRIO blob, nunca uma
+ * referência viva ao arquivo original.
+ */
+export async function copyPrivateImage(
+  sourcePathname: string,
+  params: { folder: BlobImageFolder; userId: string }
+): Promise<{ pathname: string } | null> {
+  const source = await streamPrivateImage(sourcePathname);
+  if (!source) return null;
+
+  const extension = EXTENSION_BY_CONTENT_TYPE[source.contentType] ?? "jpg";
+  const pathname = `${params.folder}/${params.userId}/${crypto.randomUUID()}.${extension}`;
+  const blob = await put(pathname, source.stream, { access: "private", contentType: source.contentType });
+  return { pathname: blob.pathname };
+}

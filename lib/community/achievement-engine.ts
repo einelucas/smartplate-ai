@@ -17,6 +17,7 @@ import type { Db } from "./types";
 import { awardXpEvent } from "./gamification";
 import { hasCompletedBalancedWeek } from "@/lib/hydration/gamification";
 import { ACHIEVEMENT_CATALOG, ACHIEVEMENT_RARITY_XP, getAchievementRarity, type AchievementDefinition } from "./achievement-catalog";
+import { notifyIfEnabled } from "./notify";
 
 export type AchievementStatus = "UNLOCKED" | "LOCKED" | "COMING_SOON";
 
@@ -54,6 +55,13 @@ export async function unlockAchievement(db: Db, userId: string, code: string) {
     idempotencyKey: `achievement:${userId}:${code}`,
     referenceType: "Achievement",
     referenceId: code,
+  });
+
+  await notifyIfEnabled(userId, "notifyProgress", {
+    type: "ACHIEVEMENT_UNLOCKED",
+    title: "🏅 Nova conquista!",
+    body: definition ? `Você desbloqueou "${definition.title}".` : "Você desbloqueou uma nova conquista.",
+    data: { achievementCode: code },
   });
 
   return created;

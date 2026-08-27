@@ -525,10 +525,10 @@ Origens: Strava, Garmin, Apple Fitness, Samsung Health, Nike Run Club, Adidas Ru
 - [x] Convites
 - [x] Código/link de convite
 - [x] Permissões `OWNER` / `ADMIN` / `MEMBER`
-- [ ] Metas coletivas — só existem metas individuais (`ActivityGoal`), não metas de grupo
-- [ ] Conquistas do grupo — só existem conquistas individuais
-- [ ] Estatísticas do grupo — só contagem de membros; sem painel de estatísticas dedicado
-- [ ] Moderação específica de grupo — moderação hoje é central (Comunidade geral), sem ferramentas extras por grupo
+- [ ] Metas coletivas — só existem metas individuais (`ActivityGoal`), não metas de grupo. **Deliberadamente adiado em 2026-08-27**: abrir um domínio novo de gamificação por grupo (quem define a meta, quem é recompensado) merece decisão de produto própria — ver "Estatísticas do grupo" abaixo, que cobre a parte de leitura sem esse risco.
+- [ ] Conquistas do grupo — só existem conquistas individuais. Mesmo motivo do item acima, adiado deliberadamente.
+- [x] Estatísticas do grupo — **Implementado em 2026-08-27**: aba "Estatísticas" em `/community/groups/[id]` (`components/social/GroupStatsPanel.tsx`, `GET /api/community/groups/[id]/stats`) — membros ativos, atividades e refeições concluídas na semana atual (janela UTC uniforme, mesmo padrão do ranking geral). Leitura pura, nenhum model novo de escrita.
+- [ ] Moderação específica de grupo — moderação continua central (Comunidade geral), sem ferramentas extras por grupo (decisão de escopo já registrada, não revisitada nesta rodada)
 
 ---
 
@@ -539,7 +539,7 @@ Origens: Strava, Garmin, Apple Fitness, Samsung Health, Nike Run Club, Adidas Ru
 - [x] Barra de progresso do grupo (`collective`: soma do progresso de cada participante)
 - [x] Recompensa para todos os participantes (cada um recebe XP ao completar, via `recordChallengeCompletion`)
 - [x] Celebração automática quando concluído (`Notification` real)
-- [ ] Meta coletiva "editorial" (ex.: uma meta única definida como soma-do-grupo desde a criação, distinta de "cada um bate sua própria meta") — hoje o `collective` é sempre a soma dos progressos individuais, não um modo de meta diferente
+- [x] Meta coletiva "editorial" — **Implementado em 2026-08-27** (versão mínima): novo campo opcional `Challenge.collectiveTarget`. Quem cria um desafio de grupo pode definir uma meta coletiva explícita em `CreateChallengeModal.tsx`; quando ausente, o ranking continua derivando automaticamente (`target * participantes`, via `lib/community/gamification.ts::deriveCollectiveTarget`, testado). Não muda a recompensa individual.
 
 ---
 
@@ -554,8 +554,8 @@ Origens: Strava, Garmin, Apple Fitness, Samsung Health, Nike Run Club, Adidas Ru
 - [x] Moderação administrativa (`/community/moderation`, `Profile.role` MODERATOR/ADMIN)
 - [x] Remover conteúdo (ocultar post / excluir comentário)
 - [x] Histórico de denúncias
-- [ ] Rate limiting — não implementado
-- [ ] Proteção contra spam — não implementado
+- [x] Rate limiting — **Implementado em 2026-08-27**: `lib/community/rate-limit.ts`, contagem via Postgres (sem Redis/Upstash — nenhum serviço de cache configurado no projeto ainda). Limites: criar post 10/hora, criar comentário 30/hora, denunciar 20/hora. Retorna 429 com mensagem clara ao exceder.
+- [ ] Proteção contra spam — além do rate limiting acima, nenhuma heurística adicional (detecção de conteúdo repetido, etc.) foi implementada.
 
 ---
 
@@ -880,9 +880,10 @@ model WaterLog {
 
 # 11 (continuação) — Strava, fluxos ainda não exercitados ao vivo
 
+- [x] Cobertura de teste da janela incremental de sincronização — **Implementado em 2026-08-27**: `computeStravaSyncAfterEpoch` extraída de `app/api/integrations/strava/sync/route.ts` para `lib/integrations/strava.ts` (mesmo comportamento, sem mudança funcional) e testada em `tests/integrations/strava.test.ts`. Antes não havia nenhum teste automatizado nesta lógica.
 - [ ] Observar uma renovação automática de token acontecendo de verdade (token atual não expirou durante os testes)
 - [ ] Exercitar desconectar Strava com uma conta de teste (revogação + limpeza local)
-- [ ] Rodar uma segunda sincronização real pra confirmar que o filtro incremental (`after`/`lastSyncedAt`) evita rebuscar tudo de novo
+- [ ] Rodar uma segunda sincronização real pra confirmar que o filtro incremental (`after`/`lastSyncedAt`) evita rebuscar tudo de novo — a lógica em si já está testada (item acima); falta só a execução ao vivo.
 - [ ] Registrar e testar webhooks reais do Strava (`npm run strava:webhook -- create <callbackUrl>`) quando houver domínio de produção
 
 ---
@@ -899,27 +900,29 @@ model WaterLog {
 O núcleo (Para Você / Amigos, feed heurístico) já está pronto (Parte 1, seção
 19 do checklist de hashtags/feed). Falta:
 
-- [ ] Filtros de tipo adicionais no feed: Alimentação (`PLAN_SHARE`), Desafios/Progresso — hoje só Tudo/Atividades/Conquistas/Compartilhados
-- [ ] Silenciar tipos de conteúdo (preferência persistente, não só "não tenho interesse" por post)
-- [ ] Ocultar atividade de um usuário específico sem bloqueá-lo (hoje só existe bloqueio completo)
+- [x] Filtro "Alimentação" (`PLAN_SHARE`) no feed — **Implementado em 2026-08-27**: aba adicionada em `components/social/PostFeedList.tsx` (`FEED_FILTERS`), puramente front-end (o dado/backend já existia).
+- [ ] Filtro "Desafios/Progresso" no feed — não implementado; hoje não há posts reais do tipo `CHALLENGE` sendo gerados (renderização existe, criação não), então um filtro para esse tipo ainda não teria conteúdo.
+- [x] Silenciar tipos de conteúdo — **Implementado em 2026-08-27**: novo model `UserContentMute` (`userId + postType`), `GET/POST /api/community/content-mutes`, `DELETE /api/community/content-mutes/[postType]`, aplicado na exclusão do feed (`app/api/community/feed/route.ts`). Preferência persistente de verdade, não só "não tenho interesse" por post individual. UI em `/community/privacy`.
+- [x] Ocultar atividade de um usuário específico sem bloquear — **Implementado em 2026-08-27**: novo model `UserFeedMute` (unidirecional, diferente de `CommunityBlock`), `GET/POST /api/community/feed-mutes`, `DELETE /api/community/feed-mutes/[userId]`, botão "Ocultar publicações deste usuário" no menu de cada post (`PostCard.tsx`), lista de silenciados com opção de reativar em `/community/privacy`.
 
 ---
 
 # 29 (parcial) — Privacidade, tela central
 
-As regras já são aplicadas em todo o app (XP/streak/conquistas
-mostrar/ocultar via `SocialProfile`; atividade/progresso privados por
-padrão; apps conectados com desconexão e última sincronização visíveis).
-Falta:
+**Implementado em 2026-08-27.** As regras já eram aplicadas em todo o app
+(XP/streak/conquistas mostrar/ocultar via `SocialProfile`; atividade/
+progresso privados por padrão; apps conectados com desconexão e última
+sincronização visíveis) — mas nenhuma UI permitia mudar os 4 toggles de
+privacidade, que ficavam sempre no default (`true`). Agora existe:
 
-- [ ] Uma tela única "Privacidade" que reúna esses controles hoje espalhados (edição de perfil, `/profile/connected-apps`) num só lugar
+- [x] Uma tela única "Privacidade" (`app/community/privacy/page.tsx`, linkada em Perfil → Configurações) reunindo os 4 toggles de privacidade social, as 7 preferências de notificação (seção 31) e o gerenciamento de mutes (seção 28 acima). Backend reaproveitado 100% (`PATCH /api/community/me` já aceitava esses campos, só não tinha UI). Persistência verificada ao vivo (reload real após alternar um toggle).
 
 ---
 
 # 32 (parcial) — Moderação, proteção restante
 
-- [ ] Rate limiting em denúncias/posts/comentários
-- [ ] Proteção contra spam
+- [x] Rate limiting em denúncias/posts/comentários — ver seção 32 principal acima (`lib/community/rate-limit.ts`), implementado em 2026-08-27.
+- [ ] Proteção contra spam (além do rate limiting) — não implementado.
 
 ---
 
@@ -1077,49 +1080,57 @@ Garmin → Strava → SmartPlate
 
 # 22. Antes & Depois / progresso social
 
-A seção de Antes & Depois deve permanecer privada por padrão.
+A seção de Antes & Depois permanece privada por padrão — `ProgressPhoto`
+nunca é exposto diretamente à Comunidade.
 
-- [ ] Botão explícito `Compartilhar progresso`
-- [ ] Escolher foto(s) e quais informações mostrar
-- [ ] Ocultar peso por padrão
-- [ ] Permitir legenda
-- [ ] Compartilhar na comunidade geral ou em grupo
-- [ ] Nunca publicar automaticamente
+- [x] Botão explícito `Compartilhar progresso` — **Implementado em 2026-08-27**, em `ProgressPhotoHistoryModal.tsx`.
+- [x] Escolher quais informações mostrar — checkbox "mostrar peso" em `ShareProgressPhotoModal.tsx` (a foto em si já está escolhida ao clicar "Compartilhar" naquela linha do histórico).
+- [x] Ocultar peso por padrão — checkbox começa desmarcado.
+- [x] Permitir legenda — campo de texto padrão do Composer.
+- [x] Compartilhar na comunidade geral ou em grupo — reaproveita o seletor de destino já existente no Composer.
+- [x] Nunca publicar automaticamente — sempre passa pelo Composer, com aviso explícito no picker.
+- **Arquitetura**: novo `PostType.PROGRESS_SHARE` + `lib/storage/blob.ts::copyPrivateImage` — o post recebe uma CÓPIA do blob privado (novo pathname, mesmo dono), nunca uma referência viva ao `ProgressPhoto` original; `ProgressPhoto` continua podendo ser editado/excluído sem afetar o post já publicado. **Não testado ao vivo** neste ambiente (sem `BLOB_READ_WRITE_TOKEN` local — mesma limitação já documentada para outras rotas de imagem) — validado até a criação do attachment; a cópia do blob em si depende de verificação em produção/preview.
 
 ---
 
 # 23. Compartilhamento de refeições (refinamento)
 
 `PostType.PLAN_SHARE` já permite compartilhar um **plano** inteiro (Parte 1,
-seção 12 do checklist de hashtags/feed). O que falta é mais granular:
+seção 12 do checklist de hashtags/feed).
 
-- [ ] Compartilhar uma refeição concluída específica (não o plano inteiro)
-- [ ] Compartilhar receita isoladamente
-- [ ] Compartilhar refeição favorita
-- [ ] Mostrar nome e macros apenas se o usuário quiser (hoje o card mostra nome do plano/dieta, não macros)
+- [x] Compartilhar uma refeição específica (não o plano inteiro) — **Implementado em 2026-08-27**, com uma ressalva de arquitetura: o dashboard do Plano Semanal identifica refeições por `(dia, tipo, índice do lanche)`, não por um `Meal.id` estável navegável pelo cliente — então o compartilhamento é um **snapshot** (nome + macros no momento do clique), não uma referência viva a um registro. Botão "Compartilhar" em cada refeição (`meal-plan-dashboard.tsx`) → `ShareMealModal.tsx` → reaproveita `PostType.PLAN_SHARE` com metadata estendida (`mealName`, macros opcionais). Verificado ao vivo, publicação real renderizada corretamente no feed.
+- [ ] Compartilhar receita isoladamente (ingredientes) — não implementado; o snapshot atual leva nome + macros, não a lista de ingredientes.
+- [x] Compartilhar refeição favorita — coberto pelo mesmo botão acima (funciona para qualquer refeição, favoritada ou não).
+- [x] Mostrar nome e macros apenas se o usuário quiser — checkbox "Mostrar calorias e macros na publicação", desmarcado por padrão.
 
 ---
 
 # 30. Notificações sociais (restante)
 
-Já existe notificação real de desafio concluído (`Notification` model). Falta:
+Já existia notificação real de desafio concluído (`Notification` model).
+**Em 2026-08-27**, `lib/community/notify.ts::notifyIfEnabled` passou a ser o
+ponto único de criação (respeita a preferência de categoria — seção 31) e
+os seguintes gatilhos reais foram adicionados:
 
-- [ ] Nova solicitação de amizade
-- [ ] Amizade aceita
-- [ ] Comentário / reação recebidos
-- [ ] Convite para grupo
-- [ ] Desafio iniciado
-- [ ] Conquista desbloqueada
-- [ ] Streak em risco
-- [ ] Meta semanal atingida
+- [x] Nova solicitação de amizade — `app/api/community/friends/route.ts`
+- [x] Amizade aceita — `app/api/community/friends/[id]/route.ts`
+- [x] Comentário / reação recebidos — `app/api/community/posts/[id]/comments/route.ts` e `.../reactions/route.ts` (nunca notifica o próprio autor)
+- [x] Convite para grupo — precisou de uma feature de suporte nova (convite direcionado a um usuário específico, model `GroupInvite`, distinto do código compartilhável de `CommunityGroup.inviteCode`): `POST /api/community/groups/[id]/invite-user` (só OWNER/ADMIN), `GET /api/community/group-invites`, `PATCH /api/community/group-invites/[id]` (aceitar/recusar), botão "Convidar membro" em `GroupMembersPanel.tsx`, aceitar/recusar inline no sino de notificações (mesmo padrão já usado para solicitação de amizade)
+- [x] Desafio iniciado — só para desafios de **grupo** (notifica os demais membros na criação); desafios `GLOBAL` ficam de fora deliberadamente (seria um broadcast para toda a base, escopo maior que uma notificação social)
+- [x] Conquista desbloqueada — `lib/community/achievement-engine.ts::unlockAchievement`
+- [ ] Streak em risco — **deliberadamente não implementado**: só teria valor real como notificação proativa (cron/push), infraestrutura inexistente hoje (sem Vercel Cron configurado, sem Web Push). Decisão de produto pendente, documentada, não uma omissão.
+- [x] Meta semanal atingida — `lib/activity/goals.ts::checkActivityGoalCompletions`, só na primeira vez que a meta é batida na semana (idempotente)
 
 ---
 
 # 31. Configuração de notificações
 
-Não adicionar toggles falsos antes de existir persistência real.
+**Implementado em 2026-08-27.** Não foram adicionados toggles falsos: as 7
+colunas booleanas (`SocialProfile.notify*`) são reais e persistidas, e a UI
+em `/community/privacy` já funciona de ponta a ponta (verificado ao vivo,
+com reload real confirmando persistência).
 
-- [ ] Social, Refeições, Atividades, Desafios, Streak, Progresso, Lembretes — cada categoria configurável e persistida
+- [x] Social, Refeições, Atividades, Desafios, Sequência, Progresso, Lembretes — cada categoria configurável e persistida. **Importante**: só Social, Atividades (meta semanal) e Progresso (conquista) têm um gatilho real hoje (seção 30) — Refeições, Desafios, Sequência e Lembretes já têm o toggle funcional, mas nenhuma notificação real associada ainda. Isso é intencional (preparado para gatilhos futuros), não uma promessa de algo já funcionando — ver seção 30 para o que de fato dispara notificação hoje.
 
 ---
 
@@ -1249,10 +1260,22 @@ Princípios que continuam valendo pra qualquer trabalho futuro:
 
 > Não é necessário para testar agora, mas será útil antes de ampliar o Beta.
 
-- [ ] Área administrativa protegida com totais de códigos (criados/disponíveis/usados/desativados), data de resgate, usuário associado
-- [ ] Permitir desativar código não utilizado, criar novo lote, escolher duração/`redeemUntil`
-- [ ] Nunca exibir código puro depois da geração
-- [ ] Permitir revogar `PremiumGrant` administrativamente, com auditoria
+- [x] Área administrativa protegida com totais de códigos (criados/disponíveis/usados/desativados/expirados), data de resgate, usuário associado
+- [x] Permitir desativar código não utilizado, criar novo lote, escolher duração/`redeemUntil`
+- [x] Nunca exibir código puro depois da geração
+- [x] Permitir revogar `PremiumGrant` administrativamente, com auditoria
+
+**Implementado em 2026-08-26** (`/admin`, `/admin/beta`, `/admin/premium`):
+
+- Autorização server-side centralizada em `lib/admin/authz.ts::requireAdmin()` — reaproveita `ProfileRole.ADMIN`/`getProfileRole` já existentes em `lib/community/authz.ts` (mesmo papel usado pela moderação), sem criar um segundo sistema de roles. Guarda dupla: `app/admin/layout.tsx` (Server Component, redireciona quem não é ADMIN) + toda rota `app/api/admin/**` chama `requireAdmin` de novo — nunca confia só na UI.
+- Status do `BetaCode` (`AVAILABLE`/`REDEEMED`/`DISABLED`/`EXPIRED`) é 100% derivado por `lib/beta/status.ts::getBetaCodeStatus()` — nenhum enum novo no banco.
+- Migration aditiva `20260826120000_add_admin_panel_beta_premium_audit`: `BetaCode` ganhou `batchId`/`createdByUserId`/`disabledAt`/`disabledByUserId`; `PremiumGrant` ganhou `revokedByUserId`/`revokedReason` (o campo `revokedAt` já existia mas nunca era escrito); nenhuma coluna existente foi alterada/removida.
+- Novo model `AuditLog` — mesmo schema já especificado em `SMARTPLATE_PARCEIROS_ACADEMIAS_IMPLEMENTACAO.md` (seção 76), reaproveitado em vez de criar um `AdminAuditLog` paralelo. Ações registradas hoje: `BETA_BATCH_CREATED`, `BETA_CODE_DISABLED`, `PREMIUM_GRANT_REVOKED` (nunca guarda código Beta em texto puro no metadata).
+- Criação de lote reaproveita `lib/beta/codes.ts` (mesma geração/hash usada por `scripts/generate-beta-codes.cjs`) — os códigos em texto puro só existem na resposta HTTP da criação; fechar a tela de resultado os torna irrecuperáveis (não existe rota/query administrativa que os devolva depois).
+- Revogar um `PremiumGrant` de origem Beta nunca mexe em `Profile.subscriptionActive`/Stripe — `resolvePremiumAccess` (`lib/premium/access.ts`) já ignora grants com `revokedAt` preenchido; verificado por teste automatizado (não só por inspeção).
+- Cobertura de teste nova: `tests/admin/{authz,beta-status,beta-admin,premium-admin}.test.ts` (27 testes) — inclui concorrência (duas desativações simultâneas do mesmo código só uma vence) e o caso “revogar Beta não cancela Stripe”. Suite completa do projeto: 127/127 passando.
+- Verificado ao vivo via Playwright contra o banco real (dashboard, criação de lote, desativação, listagem de Premium Grants reais) — não apenas testes automatizados.
+- **Não implementado nesta rodada** (ver seção 46): geração de `PremiumGrant` administrativo manual (`source: "ADMIN"`, enum já existe mas nada ainda o usa), filtros avançados de busca por usuário na tela de Beta, RBAC granular (continua só `ProfileRole.ADMIN`, ver seção 12 do `SMARTPLATE_DECISOES_POS_ARQUITETURA_ACADEMIAS.md`).
 
 ---
 
@@ -1308,18 +1331,19 @@ de valores continua uma decisão de produto em aberto:
 
 # 58. Raridade — exibição na UI
 
-A raridade já existe no código (`AchievementRarity`, usada pro cálculo de
-XP). Não é obrigatório mostrá-la visualmente na tela de conquistas ainda:
+A raridade já existia no código (`AchievementRarity`, usada pro cálculo de
+XP) — **Implementado em 2026-08-27**: exposta na UI.
 
-- [ ] Mostrar selo/cor de raridade nos cards de conquista
+- [x] Mostrar selo/cor de raridade nos cards de conquista — `AchievementsModal.tsx` (grade e detalhe), badge com texto (Comum/Incomum/Rara/Épica/Especial) + cor, nunca só cor. `rarity` já vinha de graça na resposta de `GET /api/achievements` (herdado de `AchievementDefinition`) — não precisou mudar o backend. Verificado ao vivo. **Não** adicionado ao card compacto de `AchievementsSummaryCard.tsx` (grade muito pequena para o badge) nem ao card de conquista compartilhada no feed (`PostCard.tsx` ACHIEVEMENT) — ver seção 56.
 
 ---
 
 # XP de hoje — breakdown diário no Dashboard
 
-`getXpBreakdown()` já existe e expõe a soma de XP por fonte (vitalícia, não
-diária) via `GET /api/community/gamification`. O que a seção original 40.5
-descrevia — um card "Hoje +30 XP" com a lista de ações específicas do dia
-("+5 Café concluído", "+10 Meta de água", etc.) — não existe ainda:
+**Implementado em 2026-08-27.** `getXpBreakdown()` já existia (soma
+vitalícia por fonte ampla). Nova função `getXpEventsToday()` (mesmo
+arquivo) agrupa por `eventType` (ação específica, não fonte ampla) filtrado
+ao dia local do usuário — mesmo padrão de precisão de dia local já usado em
+`lib/hydration/stats.ts`.
 
-- [ ] Card "XP de hoje" no Início, com breakdown por ação do dia
+- [x] Card "XP de hoje" no Início, com breakdown por ação do dia — `components/XpTodayCard.tsx`, alimentado por `xpToday` (novo campo em `GET /api/community/gamification`). Mostra rótulo amigável por tipo (ex.: "Refeição concluída", "Meta de água batida") com contagem quando repete no mesmo dia. De quebra, corrigido `WATER_GOAL_COMPLETED`/`ACTIVITY_GOAL_MET`, que não tinham entrada no mapa de categorização de `getXpBreakdown` (vitalício) e caíam incorretamente em "ACTIVITY" — sem efeito prático até agora porque `WATER_GOAL_COMPLETED` sempre concede 0 XP, mas o breakdown vitalício agora reflete a fonte certa. Verificado ao vivo (estado vazio correto: "Nenhum XP ganho ainda hoje").

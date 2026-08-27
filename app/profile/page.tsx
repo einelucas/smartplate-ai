@@ -8,7 +8,7 @@ import dynamic from "next/dynamic";
 import { Toaster } from "react-hot-toast";
 import { useRouter } from "next/navigation";
 import { Spinner } from "@/components/spinner";
-import { Camera, Scale, Ruler, Target, LogOut, Edit, Flame, Star, Trophy, Plug, Sparkles } from "lucide-react";
+import { Camera, Scale, Ruler, Target, LogOut, Edit, Flame, Star, Trophy, Plug, Sparkles, Lock } from "lucide-react";
 import AdherenceRing from "@/components/AdherenceRing";
 import ChartSkeleton from "@/components/skeletons/ChartSkeleton";
 import ProfileSkeleton from "@/components/skeletons/ProfileSkeleton";
@@ -285,6 +285,12 @@ export default function ProfilePage() {
                   <Plug size={16} className="text-[#007BFF]" />
                 </div>
                 <span className="text-sm font-medium text-slate-700 flex-1 text-left">Apps conectados</span>
+              </Link>
+              <Link href="/community/privacy" className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 transition-colors min-h-[44px]">
+                <div className="w-9 h-9 bg-slate-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <Lock size={16} className="text-slate-600" />
+                </div>
+                <span className="text-sm font-medium text-slate-700 flex-1 text-left">Privacidade e notificações</span>
               </Link>
               <Link href="/subscribe" className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 transition-colors min-h-[44px]">
                 <div className="w-9 h-9 bg-amber-100 rounded-lg flex items-center justify-center flex-shrink-0">

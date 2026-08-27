@@ -5,6 +5,7 @@ import { useUser } from "@clerk/nextjs";
 import toast from "react-hot-toast";
 import { getAchievementDisplay } from "@/lib/community/achievements";
 import { resolveIcon } from "@/components/icon-registry";
+import type { AchievementRarity } from "@/lib/community/achievement-catalog";
 
 export type AchievementStatus = "UNLOCKED" | "LOCKED" | "COMING_SOON";
 
@@ -18,6 +19,8 @@ export interface Achievement {
   target: number;
   availability: "AVAILABLE" | "COMING_SOON";
   comingSoonReason?: string;
+  /** Ausente = COMMON (ver lib/community/achievement-catalog.ts). */
+  rarity?: AchievementRarity;
   status: AchievementStatus;
   progress: number | null;
   unlockedAt: string | null;

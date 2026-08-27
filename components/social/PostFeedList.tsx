@@ -13,12 +13,13 @@ import PostComposer from "./PostComposer";
 import PostCard from "./PostCard";
 import type { CommunityPostType, FeedTab } from "@/types/community";
 
-type FeedFilter = "ALL" | "ACTIVITY" | "ACHIEVEMENT" | "EXTERNAL_SHARE";
+type FeedFilter = "ALL" | "ACTIVITY" | "ACHIEVEMENT" | "PLAN_SHARE" | "EXTERNAL_SHARE";
 
 const FEED_FILTERS: { key: FeedFilter; label: string }[] = [
   { key: "ALL", label: "Tudo" },
   { key: "ACTIVITY", label: "Atividades" },
   { key: "ACHIEVEMENT", label: "Conquistas" },
+  { key: "PLAN_SHARE", label: "Alimentação" },
   { key: "EXTERNAL_SHARE", label: "Compartilhados" },
 ];
 

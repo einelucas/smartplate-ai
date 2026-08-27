@@ -10,8 +10,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { Bell, Check, X, Users, Trophy } from "lucide-react";
-import { useFriends, useRespondFriendRequest } from "@/hooks/useCommunity";
+import { Bell, Check, X, Users, Trophy, UsersRound } from "lucide-react";
+import { useFriends, useGroupInvites, useRespondFriendRequest, useRespondGroupInvite } from "@/hooks/useCommunity";
 import { useNotifications, useMarkAllNotificationsRead } from "@/hooks/useNotifications";
 import type { FriendEntry } from "@/types/community";
 
@@ -35,11 +35,14 @@ export default function NotificationsBell() {
   const respondRequest = useRespondFriendRequest();
   const { data: notificationsData } = useNotifications();
   const markAllRead = useMarkAllNotificationsRead();
+  const { data: groupInvitesData } = useGroupInvites();
+  const respondGroupInvite = useRespondGroupInvite();
 
   const incoming = data?.incomingPending ?? [];
   const notifications = notificationsData?.notifications ?? [];
   const unreadNotificationCount = notificationsData?.unreadCount ?? 0;
-  const count = incoming.length + unreadNotificationCount;
+  const groupInvites = groupInvitesData?.invites ?? [];
+  const count = incoming.length + unreadNotificationCount + groupInvites.length;
 
   return (
     <div className="relative">
@@ -75,7 +78,7 @@ export default function NotificationsBell() {
                 <h3 className="font-semibold text-slate-800 text-sm">Notificações</h3>
               </div>
 
-              {incoming.length === 0 && notifications.length === 0 ? (
+              {incoming.length === 0 && notifications.length === 0 && groupInvites.length === 0 ? (
                 <div className="p-6 text-center">
                   <Bell className="mx-auto text-slate-300 mb-2" size={24} />
                   <p className="text-sm text-slate-400">Nenhuma notificação nova.</p>
@@ -111,6 +114,34 @@ export default function NotificationsBell() {
                           <button
                             onClick={() => respondRequest.mutate({ friendshipId: f.friendshipId, action: "decline" })}
                             disabled={respondRequest.isPending}
+                            className="flex items-center gap-1 text-xs font-medium border border-slate-200 text-slate-500 hover:bg-slate-100 rounded-lg px-2.5 py-1.5 disabled:opacity-50"
+                          >
+                            <X size={12} /> Recusar
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  {groupInvites.map((invite) => (
+                    <div key={invite.id} className="flex items-start gap-3 p-2.5 rounded-xl hover:bg-slate-50">
+                      <div className="w-9 h-9 flex-shrink-0 bg-[#007BFF]/10 rounded-full flex items-center justify-center">
+                        <UsersRound size={16} className="text-[#007BFF]" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-slate-700">
+                          Convite para o grupo <span className="font-semibold">{invite.groupName}</span>
+                        </p>
+                        <div className="flex items-center gap-2 mt-2">
+                          <button
+                            onClick={() => respondGroupInvite.mutate({ inviteId: invite.id, action: "accept" })}
+                            disabled={respondGroupInvite.isPending}
+                            className="flex items-center gap-1 text-xs font-medium bg-[#28A745] hover:bg-[#219a3a] text-white rounded-lg px-2.5 py-1.5 disabled:opacity-50"
+                          >
+                            <Check size={12} /> Aceitar
+                          </button>
+                          <button
+                            onClick={() => respondGroupInvite.mutate({ inviteId: invite.id, action: "decline" })}
+                            disabled={respondGroupInvite.isPending}
                             className="flex items-center gap-1 text-xs font-medium border border-slate-200 text-slate-500 hover:bg-slate-100 rounded-lg px-2.5 py-1.5 disabled:opacity-50"
                           >
                             <X size={12} /> Recusar

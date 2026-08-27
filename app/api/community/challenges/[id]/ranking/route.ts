@@ -8,6 +8,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { AuthzError, requireGroupMembership } from "@/lib/community/authz";
 import { publicIdentitySelect, resolveAvatarUrl } from "@/lib/community/avatar";
+import { deriveCollectiveTarget } from "@/lib/community/gamification";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -64,12 +65,15 @@ export async function GET(_request: Request, context: Params) {
   // Progresso coletivo (só faz sentido para desafios de grupo) — soma do
   // progresso individual de cada participante, sem recontar o mesmo evento
   // (cada ChallengeParticipant.progress já é calculado isoladamente a partir
-  // dos próprios dados do usuário, então somar não duplica nada).
+  // dos próprios dados do usuário, então somar não duplica nada). Se o
+  // criador definiu uma meta coletiva editorial (collectiveTarget), ela
+  // prevalece sobre o valor derivado automaticamente (target * participantes).
   const collective =
     challenge.scope === "GROUP"
       ? {
           progress: participants.reduce((sum, p) => sum + p.progress, 0),
-          target: challenge.target * Math.max(participants.length, 1),
+          target: deriveCollectiveTarget(challenge, participants.length),
+          isEditorialTarget: challenge.collectiveTarget !== null,
           participantCount: participants.length,
         }
       : null;

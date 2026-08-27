@@ -40,6 +40,13 @@ export async function GET() {
       showStreak: socialProfile.showStreak,
       showXp: socialProfile.showXp,
       showAchievements: socialProfile.showAchievements,
+      notifySocial: socialProfile.notifySocial,
+      notifyMeals: socialProfile.notifyMeals,
+      notifyActivities: socialProfile.notifyActivities,
+      notifyChallenges: socialProfile.notifyChallenges,
+      notifyStreak: socialProfile.notifyStreak,
+      notifyProgress: socialProfile.notifyProgress,
+      notifyReminders: socialProfile.notifyReminders,
       termsAcceptedAt: socialProfile.termsAcceptedAt,
     },
     gamification: {

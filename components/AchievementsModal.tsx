@@ -7,8 +7,29 @@ import { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Lock, CheckCircle2, ChevronLeft, Clock } from "lucide-react";
 import { useAchievements, type Achievement, type AchievementStatus } from "@/hooks/useAchievements";
-import { ACHIEVEMENT_CATEGORY_LABELS, type AchievementCategory } from "@/lib/community/achievement-catalog";
+import { ACHIEVEMENT_CATEGORY_LABELS, type AchievementCategory, type AchievementRarity } from "@/lib/community/achievement-catalog";
 import { resolveIcon } from "@/components/icon-registry";
+
+const RARITY_LABELS: Record<AchievementRarity, string> = {
+  COMMON: "Comum",
+  UNCOMMON: "Incomum",
+  RARE: "Rara",
+  EPIC: "Épica",
+  SPECIAL: "Especial",
+};
+
+const RARITY_STYLES: Record<AchievementRarity, string> = {
+  COMMON: "text-slate-500 bg-slate-100",
+  UNCOMMON: "text-emerald-600 bg-emerald-50",
+  RARE: "text-[#007BFF] bg-[#007BFF]/10",
+  EPIC: "text-purple-600 bg-purple-50",
+  SPECIAL: "text-amber-600 bg-amber-100",
+};
+
+function RarityBadge({ rarity }: { rarity?: AchievementRarity }) {
+  const value = rarity ?? "COMMON";
+  return <span className={`inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full ${RARITY_STYLES[value]}`}>{RARITY_LABELS[value]}</span>;
+}
 
 type StatusFilter = "ALL" | "UNLOCKED" | "LOCKED";
 type CategoryFilter = "ALL" | AchievementCategory;
@@ -105,7 +126,10 @@ function AchievementCard({ achievement, onClick }: { achievement: Achievement; o
         ) : (
           <Lock size={22} className="text-slate-400" aria-hidden="true" />
         )}
-        <StatusBadge status={achievement.status} />
+        <div className="flex flex-col items-end gap-1">
+          <StatusBadge status={achievement.status} />
+          <RarityBadge rarity={achievement.rarity} />
+        </div>
       </div>
       <h4 className="font-semibold text-slate-800 text-sm leading-tight">{achievement.title}</h4>
       <p className="text-xs text-slate-500 leading-snug line-clamp-2">{achievement.description}</p>
@@ -153,7 +177,10 @@ function AchievementDetail({ achievement, onBack }: { achievement: Achievement; 
         )}
         <h3 className="text-xl font-bold text-slate-800">{achievement.title}</h3>
         <p className="text-sm text-slate-500 max-w-sm">{achievement.description}</p>
-        <StatusBadge status={achievement.status} />
+        <div className="flex items-center gap-2">
+          <StatusBadge status={achievement.status} />
+          <RarityBadge rarity={achievement.rarity} />
+        </div>
       </div>
 
       <div className="mt-6 space-y-4">

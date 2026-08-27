@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { normalizeFriendPair, isBlockedEitherWay } from "@/lib/community/authz";
 import { sendFriendRequestSchema } from "@/lib/community/validation";
 import { publicIdentitySelect, toPublicIdentity } from "@/lib/community/avatar";
+import { notifyIfEnabled } from "@/lib/community/notify";
 
 async function toDisplayMap(userIds: string[]) {
   if (userIds.length === 0) return new Map();
@@ -76,6 +77,13 @@ export async function POST(request: Request) {
 
   const friendship = await prisma.friendship.create({
     data: { ...pair, requesterId: userId, status: "PENDING" },
+  });
+
+  await notifyIfEnabled(targetUserId, "notifySocial", {
+    type: "FRIEND_REQUEST_RECEIVED",
+    title: "👋 Nova solicitação de amizade",
+    body: "Alguém quer ser seu amigo na Comunidade.",
+    data: { friendshipId: friendship.id },
   });
 
   return NextResponse.json({ friendship }, { status: 201 });

@@ -7,6 +7,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { AuthzError, requireGroupMembership, requireModerator } from "@/lib/community/authz";
 import { createChallengeSchema } from "@/lib/community/validation";
+import { notifyIfEnabled } from "@/lib/community/notify";
 
 export async function GET(request: Request) {
   const { userId } = await auth();
@@ -88,11 +89,32 @@ export async function POST(request: Request) {
       description: data.description ?? null,
       metric: data.metric,
       target: data.target,
+      collectiveTarget: data.scope === "GROUP" ? (data.collectiveTarget ?? null) : null,
       rewardXp: data.rewardXp,
       startsAt: data.startsAt,
       endsAt: data.endsAt,
     },
   });
+
+  // Notifica os demais membros do grupo (nunca quem criou) — desafios GLOBAL
+  // ficam de fora: seria um broadcast pra toda a base, escopo maior do que
+  // uma notificação social simples.
+  if (data.scope === "GROUP") {
+    const members = await prisma.groupMember.findMany({
+      where: { groupId: data.groupId as string, userId: { not: userId } },
+      select: { userId: true },
+    });
+    await Promise.all(
+      members.map((member) =>
+        notifyIfEnabled(member.userId, "notifyChallenges", {
+          type: "GROUP_CHALLENGE_STARTED",
+          title: "🏁 Novo desafio no grupo",
+          body: `Um novo desafio "${challenge.title}" começou no seu grupo.`,
+          data: { challengeId: challenge.id, groupId: data.groupId },
+        })
+      )
+    );
+  }
 
   return NextResponse.json({ challenge }, { status: 201 });
 }

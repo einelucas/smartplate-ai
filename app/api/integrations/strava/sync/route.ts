@@ -9,7 +9,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { EXTERNAL_ACTIVITY_CACHE_MAX_DAYS } from "@/lib/integrations/provider-policy";
 import { purgeExpiredExternalActivityCache } from "@/lib/integrations/external-activity-cache";
-import { ensureFreshStravaAccessToken, fetchStravaActivities, normalizeStravaActivity } from "@/lib/integrations/strava";
+import { computeStravaSyncAfterEpoch, ensureFreshStravaAccessToken, fetchStravaActivities, normalizeStravaActivity } from "@/lib/integrations/strava";
 
 export async function POST() {
   const { userId } = await auth();
@@ -27,14 +27,7 @@ export async function POST() {
   try {
     const { accessToken, refreshed } = await ensureFreshStravaAccessToken(connectedApp);
 
-    // Incremental: só busca desde a última sincronização (com folga de 1
-    // dia para cobrir atividades registradas com atraso no Strava). Sem
-    // sincronização anterior, limita à janela de retenção do cache (nunca
-    // baixa "todo o histórico" de uma vez — item 78/83).
-    const afterEpoch = connectedApp.lastSyncedAt
-      ? Math.floor(connectedApp.lastSyncedAt.getTime() / 1000) - 24 * 60 * 60
-      : Math.floor((Date.now() - EXTERNAL_ACTIVITY_CACHE_MAX_DAYS * 24 * 60 * 60 * 1000) / 1000);
-
+    const afterEpoch = computeStravaSyncAfterEpoch(connectedApp.lastSyncedAt);
     const activities = await fetchStravaActivities(accessToken, { after: afterEpoch, page: 1, perPage: 50 });
 
     const now = new Date();

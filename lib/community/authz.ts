@@ -2,6 +2,7 @@
 // Regras de autorização server-side da Comunidade. Nunca confiar em `role`,
 // `groupId` ou dono informado pelo cliente — sempre reconsultar o banco.
 import { prisma } from "@/lib/prisma";
+import type { PostType } from "@prisma/client";
 import type { Db } from "./types";
 
 export class AuthzError extends Error {
@@ -29,6 +30,23 @@ export async function isBlockedEitherWay(db: Db, userId: string, otherUserId: st
     select: { id: true },
   });
   return !!block;
+}
+
+/** IDs de usuários cujas publicações o usuário informado silenciou no próprio feed (nunca bidirecional — só afeta quem silenciou). */
+export async function getMutedUserIds(db: Db, userId: string): Promise<Set<string>> {
+  const mutes = await db.userFeedMute.findMany({ where: { muterUserId: userId }, select: { mutedUserId: true } });
+  return new Set(mutes.map((m) => m.mutedUserId));
+}
+
+/**
+ * Tipos de post (PostType) que o usuário informado silenciou no próprio
+ * feed. postType é String na tabela (mesmo motivo de XpEvent.eventType), mas
+ * o valor gravado sempre veio validado contra o enum real em
+ * mutePostTypeSchema — o cast aqui reflete essa garantia, não a contorna.
+ */
+export async function getMutedPostTypes(db: Db, userId: string): Promise<Set<PostType>> {
+  const mutes = await db.userContentMute.findMany({ where: { userId }, select: { postType: true } });
+  return new Set(mutes.map((m) => m.postType as PostType));
 }
 
 /** IDs de todo usuário bloqueado ou que bloqueou o usuário informado (para filtrar feed/busca/sugestões). */

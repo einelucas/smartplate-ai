@@ -312,6 +312,11 @@ model PremiumGrant {
   expiresAt DateTime
   revokedAt DateTime?
 
+  // Auditoria de revogação administrativa (ver lib/admin/premium.ts). Nunca
+  // preenchidos fora do fluxo de revogação do painel admin.
+  revokedByUserId String?
+  revokedReason   String?
+
   // Referência à origem (ex.: BetaCode.id). Único para garantir que uma
   // mesma origem (um código Beta) nunca gere mais de um grant.
   sourceRefId String? @unique
@@ -319,6 +324,7 @@ model PremiumGrant {
   createdAt DateTime @default(now())
 
   @@index([userId, expiresAt])
+  @@index([revokedAt])
 }
 
 // Código Beta de uso único. Nunca armazena o código em texto puro — apenas
@@ -339,9 +345,54 @@ model BetaCode {
   redeemedByUserId String?   @unique
   redeemedAt       DateTime?
 
+  // Agrupamento do lote gerado no painel admin (ver lib/admin/beta.ts) e
+  // quem o gerou. Nulos para códigos criados antes do painel admin existir.
+  batchId         String?
+  createdByUserId String?
+
+  // Desativação administrativa (ver lib/admin/beta.ts). isActive continua
+  // sendo o campo consultado no resgate (lib/beta/redeem.ts) — estes dois
+  // campos só adicionam "quem" e "quando" para auditoria/exibição no admin.
+  disabledAt       DateTime?
+  disabledByUserId String?
+
   createdAt DateTime @default(now())
 
   @@index([isActive])
+  @@index([batchId])
+}
+
+// Ledger administrativo genérico — mesmo model já especificado em
+// SMARTPLATE_PARCEIROS_ACADEMIAS_IMPLEMENTACAO.md (seção 76) para que ações
+// futuras de academias/parceiros usem esta MESMA tabela (tenantType/tenantId),
+// em vez de uma segunda fonte de verdade de auditoria. Ações do admin global
+// desta implementação deixam tenantType/tenantId nulos. action e targetType
+// são strings livres (documentadas em código, não em enum) para não travar
+// a evolução de novas ações administrativas. Nunca guardar código Beta
+// completo, token, senha ou outro segredo em metadata.
+model AuditLog {
+  id String @id @default(uuid())
+
+  actorUserId String?
+
+  tenantType String?
+  tenantId   String?
+
+  action String
+
+  targetType String
+  targetId   String?
+
+  metadata Json?
+
+  ipHash    String?
+  userAgent String?
+
+  createdAt DateTime @default(now())
+
+  @@index([tenantType, tenantId, createdAt])
+  @@index([actorUserId, createdAt])
+  @@index([targetType, targetId])
 }
 
 model UserPreferences {
@@ -425,6 +476,10 @@ enum PostType {
   // legenda fornecidos por ele) — nunca dado obtido via API de integração.
   // Ver seção "Compartilhamento externo genérico" do README.
   EXTERNAL_SHARE
+  // Antes & Depois compartilhado deliberadamente (seção 22) — a imagem é
+  // sempre uma CÓPIA do blob privado de ProgressPhoto, nunca uma referência
+  // viva (ver lib/storage/blob.ts::copyPrivateImage).
+  PROGRESS_SHARE
 }
 
 enum ReactionType {
@@ -460,10 +515,10 @@ enum ReportStatus {
 // Perfil público/social do usuário. Nunca deve expor dados de Profile como
 // peso, altura, objetivo, e-mail ou dados de assinatura.
 model SocialProfile {
-  id                String    @id @default(uuid())
-  userId            String    @unique
-  profile           Profile   @relation(fields: [userId], references: [userId], onDelete: Cascade)
-  username          String    @unique
+  id                String  @id @default(uuid())
+  userId            String  @unique
+  profile           Profile @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  username          String  @unique
   displayName       String
   // Foto enviada pelo usuário no SmartPlate (aponta pro storage do Clerk,
   // que já hospeda o upload via user.setProfileImage) — nunca sobrescrita
@@ -475,14 +530,27 @@ model SocialProfile {
   // foto personalizada depois de um upload.
   providerAvatarUrl String?
   bio               String?
-  timezone          String    @default("UTC")
-  isDiscoverable    Boolean   @default(true)
-  showStreak        Boolean   @default(true)
-  showXp            Boolean   @default(true)
-  showAchievements  Boolean   @default(true)
-  termsAcceptedAt   DateTime?
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  timezone          String  @default("UTC")
+  isDiscoverable    Boolean @default(true)
+  showStreak        Boolean @default(true)
+  showXp            Boolean @default(true)
+  showAchievements  Boolean @default(true)
+
+  // Preferências de notificação por categoria (ver lib/community/notify.ts).
+  // Só as categorias com gatilho real hoje (notifySocial, notifyActivities)
+  // filtram alguma coisa de fato — as demais existem para a tela de
+  // configuração já ficar completa, preparadas para gatilhos futuros.
+  notifySocial     Boolean @default(true)
+  notifyMeals      Boolean @default(true)
+  notifyActivities Boolean @default(true)
+  notifyChallenges Boolean @default(true)
+  notifyStreak     Boolean @default(true)
+  notifyProgress   Boolean @default(true)
+  notifyReminders  Boolean @default(true)
+
+  termsAcceptedAt DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   @@index([username])
 }
@@ -590,6 +658,35 @@ model CommunityBlock {
   @@index([blockedUserId])
 }
 
+// Silenciar um tipo de post no feed (ex.: nunca mostrar ACHIEVEMENT) — mais
+// leve que bloqueio, não afeta amizade/visibilidade de perfil. postType é
+// String (não FK pro enum PostType) pelo mesmo motivo de XpEvent.eventType:
+// nunca travar numa migration só para permitir silenciar um tipo novo.
+model UserContentMute {
+  id        String   @id @default(uuid())
+  userId    String
+  postType  String
+  createdAt DateTime @default(now())
+
+  @@unique([userId, postType])
+  @@index([userId])
+}
+
+// Ocultar as publicações de um usuário específico do próprio feed, sem
+// bloquear (amizade/comentários/reações continuam funcionando normalmente
+// nos dois sentidos — só o feed deixa de mostrar). String pura (sem relation
+// nomeada), mesmo padrão de CommunityBlock acima.
+model UserFeedMute {
+  id          String   @id @default(uuid())
+  muterUserId String
+  mutedUserId String
+  createdAt   DateTime @default(now())
+
+  @@unique([muterUserId, mutedUserId])
+  @@index([muterUserId])
+  @@index([mutedUserId])
+}
+
 model CommunityGroup {
   id          String   @id @default(uuid())
   name        String
@@ -603,6 +700,7 @@ model CommunityGroup {
   members    GroupMember[]
   posts      CommunityPost[]
   challenges Challenge[]
+  invites    GroupInvite[]
 
   @@index([ownerUserId])
 }
@@ -620,21 +718,52 @@ model GroupMember {
   @@index([userId])
 }
 
+enum GroupInviteStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+}
+
+// Convite direcionado a um usuário específico (diferente do inviteCode
+// compartilhável de CommunityGroup, que qualquer um com o link pode usar).
+// invitedUserId/invitedByUserId ficam String puros (sem relation nomeada),
+// mesmo padrão de Friendship/CommunityBlock — dois FKs pro mesmo Profile só
+// pra navegação de objeto não valem a duplicação de relations nomeadas.
+model GroupInvite {
+  id              String            @id @default(uuid())
+  groupId         String
+  group           CommunityGroup    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  invitedUserId   String
+  invitedByUserId String
+  status          GroupInviteStatus @default(PENDING)
+  createdAt       DateTime          @default(now())
+  respondedAt     DateTime?
+
+  @@unique([groupId, invitedUserId, status])
+  @@index([invitedUserId])
+}
+
 model Challenge {
-  id            String          @id @default(uuid())
-  creatorUserId String?
-  creator       Profile?        @relation(fields: [creatorUserId], references: [userId], onDelete: SetNull)
-  groupId       String?
-  group         CommunityGroup? @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  scope         ChallengeScope
-  title         String
-  description   String?
-  metric        ChallengeMetric
-  target        Int
-  rewardXp      Int             @default(0)
-  startsAt      DateTime
-  endsAt        DateTime
-  createdAt     DateTime        @default(now())
+  id               String          @id @default(uuid())
+  creatorUserId    String?
+  creator          Profile?        @relation(fields: [creatorUserId], references: [userId], onDelete: SetNull)
+  groupId          String?
+  group            CommunityGroup? @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  scope            ChallengeScope
+  title            String
+  description      String?
+  metric           ChallengeMetric
+  target           Int
+  // Meta "editorial" opcional do grupo — quando definida pelo criador (só
+  // faz sentido para scope GROUP), o ranking usa este valor como o objetivo
+  // coletivo em vez do derivado automaticamente (target * nº de
+  // participantes). Nunca afeta a recompensa individual, que continua por
+  // ChallengeParticipant.progress/target normalmente.
+  collectiveTarget Int?
+  rewardXp         Int             @default(0)
+  startsAt         DateTime
+  endsAt           DateTime
+  createdAt        DateTime        @default(now())
 
   participants ChallengeParticipant[]
 

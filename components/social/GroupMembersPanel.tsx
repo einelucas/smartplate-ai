@@ -1,11 +1,13 @@
 // components/social/GroupMembersPanel.tsx
 "use client";
 
+import { useState } from "react";
 import { useUser } from "@clerk/nextjs";
-import { ShieldCheck, Crown, UserMinus } from "lucide-react";
+import { ShieldCheck, Crown, UserMinus, UserPlus } from "lucide-react";
 import { useChangeGroupMemberRole, useGroupMembers, useRemoveGroupMember } from "@/hooks/useCommunity";
 import type { GroupMemberEntry } from "@/types/community";
 import Avatar from "./Avatar";
+import InviteUserToGroupModal from "./InviteUserToGroupModal";
 
 const ROLE_LABELS: Record<string, string> = { OWNER: "Dono", ADMIN: "Admin", MEMBER: "Membro" };
 
@@ -14,6 +16,7 @@ export default function GroupMembersPanel({ groupId, myRole }: { groupId: string
   const { data, isLoading } = useGroupMembers(groupId);
   const changeRole = useChangeGroupMemberRole(groupId);
   const removeMember = useRemoveGroupMember(groupId);
+  const [showInviteModal, setShowInviteModal] = useState(false);
 
   const members = data?.members ?? [];
   const canManage = myRole === "OWNER" || myRole === "ADMIN";
@@ -29,7 +32,16 @@ export default function GroupMembersPanel({ groupId, myRole }: { groupId: string
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-100 divide-y divide-slate-100">
+    <div className="space-y-3">
+      {canManage && (
+        <button
+          onClick={() => setShowInviteModal(true)}
+          className="flex items-center gap-1.5 text-sm font-medium text-[#007BFF] hover:text-[#0056b3]"
+        >
+          <UserPlus size={16} /> Convidar membro
+        </button>
+      )}
+      <div className="bg-white rounded-2xl border border-slate-100 divide-y divide-slate-100">
       {members.map((member: GroupMemberEntry) => {
         const isSelf = member.userId === user?.id;
         return (
@@ -76,6 +88,9 @@ export default function GroupMembersPanel({ groupId, myRole }: { groupId: string
           </div>
         );
       })}
+      </div>
+
+      {showInviteModal && <InviteUserToGroupModal groupId={groupId} onClose={() => setShowInviteModal(false)} />}
     </div>
   );
 }
