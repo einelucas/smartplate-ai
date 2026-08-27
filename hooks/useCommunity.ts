@@ -639,6 +639,26 @@ export function useChallenges(scope: "global" | "group", groupId?: string) {
   });
 }
 
+export interface CompletedChallengeEntry {
+  challengeId: string;
+  title: string;
+  description: string | null;
+  metric: string;
+  target: number;
+  scope: "GLOBAL" | "GROUP";
+  groupId: string | null;
+  progress: number;
+  completedAt: string;
+}
+
+/** Desafios já concluídos pelo usuário — alimenta o ChallengePickerModal do Composer. */
+export function useCompletedChallenges() {
+  return useQuery({
+    queryKey: ["community", "challenges", "completed"],
+    queryFn: () => apiFetch<{ challenges: CompletedChallengeEntry[] }>("/api/community/challenges/completed"),
+  });
+}
+
 export function useCreateChallenge() {
   const queryClient = useQueryClient();
   return useMutation({

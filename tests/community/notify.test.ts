@@ -63,4 +63,20 @@ describe("notifyIfEnabled", () => {
     const notifications = await prisma.notification.findMany({ where: { userId, type: "TEST_NO_SOCIAL_PROFILE" } });
     assert.equal(notifications.length, 1);
   });
+
+  it("persiste o link informado (rota relativa pra navegação ao clicar — checklist seção 26/57)", async () => {
+    const user = await makeUser();
+    await notifyIfEnabled(user.userId, "notifySocial", { type: "TEST_LINK", title: "t", body: "b", link: "/community/groups/abc123" });
+
+    const [notification] = await prisma.notification.findMany({ where: { userId: user.userId, type: "TEST_LINK" } });
+    assert.equal(notification?.link, "/community/groups/abc123");
+  });
+
+  it("link fica null quando não informado (nunca quebra notificações sem destino específico)", async () => {
+    const user = await makeUser();
+    await notifyIfEnabled(user.userId, "notifySocial", { type: "TEST_NO_LINK", title: "t", body: "b" });
+
+    const [notification] = await prisma.notification.findMany({ where: { userId: user.userId, type: "TEST_NO_LINK" } });
+    assert.equal(notification?.link, null);
+  });
 });

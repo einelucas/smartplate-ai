@@ -47,7 +47,7 @@ export async function POST(_request: Request, context: Params) {
       },
     });
     if (alreadyMeetsTarget) {
-      await recordChallengeCompletion(tx, userId, params.id, challenge.rewardXp, challenge.title);
+      await recordChallengeCompletion(tx, userId, params.id, challenge.rewardXp, challenge.title, challenge.groupId);
     }
     return created;
   });

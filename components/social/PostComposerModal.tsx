@@ -9,7 +9,7 @@ import { useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useUser } from "@clerk/nextjs";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Loader2, ChevronDown, Link2, Camera } from "lucide-react";
+import { X, Loader2, ChevronDown, Link2, Camera, Flame, Target } from "lucide-react";
 import { PersonSimpleRunIcon, TrophyIcon, ForkKnifeIcon } from "@phosphor-icons/react";
 import { useCommunityMe, useCreatePost, useHashtagSuggestions, useMyGroups } from "@/hooks/useCommunity";
 import { useCommunityMediaUpload } from "@/hooks/useCommunityMediaUpload";
@@ -31,6 +31,7 @@ import {
 const SharePlanModal = dynamic(() => import("./SharePlanModal"), { ssr: false });
 const ActivityPickerModal = dynamic(() => import("./ActivityPickerModal"), { ssr: false });
 const AchievementPickerModal = dynamic(() => import("./AchievementPickerModal"), { ssr: false });
+const ChallengePickerModal = dynamic(() => import("./ChallengePickerModal"), { ssr: false });
 const ExternalShareModal = dynamic(() => import("./ExternalShareModal"), { ssr: false });
 
 const MAX_TEXT_LENGTH = 500;
@@ -41,6 +42,8 @@ const ATTACHMENT_LABELS: Record<PostAttachment["type"], string> = {
   MEAL_ITEM: "Refeição",
   ACTIVITY: "Atividade",
   ACHIEVEMENT: "Conquista",
+  STREAK: "Sequência",
+  CHALLENGE: "Desafio",
   EXTERNAL_SHARE: "Compartilhamento externo",
   PROGRESS_SHARE: "Foto de progresso",
 };
@@ -74,6 +77,14 @@ function AttachmentCard({ attachment, onRemove }: { attachment: PostAttachment; 
     icon = <Camera size={20} className="text-[#28A745]" />;
     title = "Foto de progresso";
     subtitle = attachment.showWeight ? "Antes & Depois, com peso" : "Antes & Depois";
+  } else if (attachment.type === "STREAK") {
+    icon = <Flame size={20} className="text-orange-500" />;
+    title = `${attachment.milestone} dias de consistência`;
+    subtitle = "Marco de sequência anexado";
+  } else if (attachment.type === "CHALLENGE") {
+    icon = <Target size={20} className="text-[#007BFF]" />;
+    title = attachment.preview?.title ?? "Desafio";
+    subtitle = "Desafio concluído anexado";
   }
 
   return (
@@ -123,6 +134,7 @@ export default function PostComposerModal({
   const [showDestinationMenu, setShowDestinationMenu] = useState(false);
   const [showActivityPicker, setShowActivityPicker] = useState(false);
   const [showAchievementPicker, setShowAchievementPicker] = useState(false);
+  const [showChallengePicker, setShowChallengePicker] = useState(false);
   const [showMealPicker, setShowMealPicker] = useState(false);
   const [showExternalPicker, setShowExternalPicker] = useState(false);
   // Token de hashtag parcial sendo digitado (ex.: "#cor" antes de completar) —
@@ -305,6 +317,16 @@ export default function PostComposerModal({
                 </button>
                 <button
                   type="button"
+                  onClick={() => openPicker(() => setShowChallengePicker(true))}
+                  title="Desafio"
+                  aria-label="Anexar desafio concluído"
+                  className="flex flex-col items-center gap-0.5 w-14 min-w-[56px] py-1.5 text-slate-500 hover:text-[#007BFF] hover:bg-slate-100 rounded-xl flex-shrink-0"
+                >
+                  <Target size={20} />
+                  <span className="text-[10px] font-medium">Desafio</span>
+                </button>
+                <button
+                  type="button"
                   onClick={() => openPicker(() => setShowExternalPicker(true))}
                   title="Outro app"
                   aria-label="Anexar compartilhamento de outro app"
@@ -393,6 +415,15 @@ export default function PostComposerModal({
           onSelect={(attachment) => {
             setAttachment(attachment);
             setShowAchievementPicker(false);
+          }}
+        />
+      )}
+      {showChallengePicker && (
+        <ChallengePickerModal
+          onClose={() => setShowChallengePicker(false)}
+          onSelect={(attachment) => {
+            setAttachment(attachment);
+            setShowChallengePicker(false);
           }}
         />
       )}

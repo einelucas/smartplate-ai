@@ -537,9 +537,12 @@ model SocialProfile {
   showAchievements  Boolean @default(true)
 
   // Preferências de notificação por categoria (ver lib/community/notify.ts).
-  // Só as categorias com gatilho real hoje (notifySocial, notifyActivities)
-  // filtram alguma coisa de fato — as demais existem para a tela de
-  // configuração já ficar completa, preparadas para gatilhos futuros.
+  // Gatilho real hoje: notifySocial, notifyActivities, notifyChallenges,
+  // notifyStreak, notifyProgress (checklist seção 26). notifyMeals e
+  // notifyReminders continuam sem nenhum gatilho — não há conceito
+  // confiável de horário de refeição nem infraestrutura de agendamento
+  // (cron/scheduler) no projeto ainda; existem só pra tela de configuração
+  // já ficar completa, preparadas para quando essa infra existir.
   notifySocial     Boolean @default(true)
   notifyMeals      Boolean @default(true)
   notifyActivities Boolean @default(true)
@@ -1008,6 +1011,11 @@ model Notification {
   title String
   body  String
   data  Json?
+
+  // Rota relativa pra navegar ao clicar (ex.: "/community/groups/abc123"),
+  // nunca URL absoluta (checklist seção 26/57). Nullable: notificações
+  // antigas e tipos sem destino específico caem no fallback genérico da UI.
+  link String?
 
   readAt    DateTime?
   createdAt DateTime  @default(now())

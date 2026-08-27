@@ -53,6 +53,7 @@ export async function POST(request: Request, context: Params) {
       title: "❤️ Nova reação",
       body: "Alguém reagiu à sua publicação.",
       data: { postId: post.id },
+      link: "/community",
     });
   }
 

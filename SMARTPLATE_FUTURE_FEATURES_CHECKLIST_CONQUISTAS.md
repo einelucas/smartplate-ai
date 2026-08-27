@@ -665,19 +665,31 @@
 
 ## 24. Comunidade e compartilhamentos
 
-- [ ] Migrar compartilhamento de streak para o Composer unificado.
-- [ ] Criar posts reais de desafio/progresso antes de liberar filtro `Desafios/Progresso`.
+- [x] Migrar compartilhamento de streak para o Composer unificado.
+  - `STREAK` virou um `PostAttachment` real (`lib/community/post-draft.ts`). O botão "Compartilhar" do toast de marco de streak (`AchievementCelebration.tsx`) agora abre o Composer unificado em vez de publicar direto sem preview/legenda/destino — mesmo fluxo de qualquer outro tipo de conteúdo. `POST /api/community/posts` já validava `STREAK` corretamente contra `UserGamification.longestStreak`; não precisou mudar.
+- [x] Criar posts reais de desafio/progresso antes de liberar filtro `Desafios/Progresso`.
+  - `PROGRESS_SHARE` já era real (cópia do blob, ownership validado) — só faltava o filtro no feed, adicionado.
+  - `CHALLENGE` era um tipo aceito no enum/schema mas sem nenhum jeito de criar um post de verdade. Implementado de ponta a ponta: `ChallengePickerModal` lista só desafios que o próprio usuário concluiu (novo `GET /api/community/challenges/completed`) → Composer → `POST /api/community/posts` revalida `ChallengeParticipant.completedAt` no banco antes de aceitar (nunca confia em título/progresso vindo do cliente) → card dedicado no feed com título/métrica/meta reais.
+  - Filtros "Desafios" e "Progresso" adicionados em `PostFeedList.tsx`, filtrando por `post.type` real (nunca busca de texto).
 - [ ] Implementar proteção anti-spam além do rate limiting, se o uso real mostrar necessidade.
-- [ ] Compartilhar receita isoladamente com ingredientes.
+  - Rate limiting auditado (10 posts/hora, 30 comentários/hora, 20 denúncias/hora) e continua a única camada. Nenhuma evidência de abuso real encontrada no projeto — não implementado por falta de necessidade comprovada, exatamente como a própria regra desta seção pede.
+- [x] Compartilhar receita isoladamente com ingredientes.
+  - Reaproveitado o attachment `MEAL_ITEM` já existente — uma refeição isolada já É o conceito de "receita" neste produto (não existe um catálogo de receitas separado das refeições geradas). Passou a incluir `ingredients`, sempre junto quando existirem (diferente das macros, que continuam opcionais via `showMacros`). Card do feed ganhou lista de ingredientes com "ver mais" quando a lista é longa.
 - [ ] Validar em ambiente com Blob configurado o fluxo completo de cópia da foto de progresso para `PROGRESS_SHARE`.
+  - Fluxo revisado de ponta a ponta (ownership validado antes de copiar, `copyPrivateImage` gera um blob novo e distinto, cleanup em falha de transação) e está correto — mas `BLOB_READ_WRITE_TOKEN` não está configurado neste ambiente, então a validação real (upload → cópia → visualização por outro usuário) não pôde ser executada. Pendência de infraestrutura, não de código.
 
 ---
 
 ## 25. Grupos
 
-- [ ] Definir regras de produto para metas coletivas de grupo.
-- [ ] Definir regras de produto para conquistas de grupo.
-- [ ] Avaliar necessidade de moderação específica por grupo além da moderação central.
+- [x] Definir regras de produto para metas coletivas de grupo.
+  - Decisão: metas coletivas de grupo já existem via `Challenge.scope=GROUP` + `collectiveTarget`/`deriveCollectiveTarget` (meta editorial opcional ou derivada automaticamente), com progresso agregado sempre calculado no servidor. Isso já satisfaz "participação agregada, nunca dado privado exposto" — as métricas disponíveis (dias ativos, refeições concluídas, contagens de atividade) não são dados de saúde sensíveis.
+  - Decisão explícita sobre exibição individual: o ranking de grupo e o ranking de desafio continuam mostrando XP/progresso por membro ao lado do agregado — mantido de propósito, não por descuido, porque nenhuma métrica hoje é sensível (peso/saúde nunca entram em métrica de desafio). Se uma métrica sensível existir no futuro, só o agregado deve aparecer.
+  - Entrada tardia (não importa histórico anterior) e período (`startsAt`/`endsAt`) já são regras existentes de `Challenge`.
+- [x] Definir regras de produto para conquistas de grupo.
+  - Regra definida, implementação adiada de propósito: não existe hoje nenhum `GroupAchievement`, e criar schema novo sem um caso de uso real antecipa demais. A regra: conquista de grupo representa um marco coletivo verificável, pertence ao grupo (não a um usuário), é idempotente por grupo, e NÃO concede XP pessoal automático a cada membro (evita farming com grupos artificiais). Registrada como definição pronta para quando a implementação for priorizada.
+- [x] Avaliar necessidade de moderação específica por grupo além da moderação central.
+  - Avaliado: havia uma lacuna real — OWNER/ADMIN do grupo geriam membros, mas não tinham nenhuma autoridade sobre conteúdo (só um MODERATOR/ADMIN global podia ocultar um post, mesmo dentro do próprio grupo do OWNER). Corrigido: OWNER/ADMIN do grupo agora pode remover (soft delete) um post do próprio grupo — `canDeleteCommunityPost` (`lib/community/authz.ts`), exposto como "Remover do grupo" no menu do post. Moderação central segue intocada e é a única via pra denúncia/ocultação por violação; denunciar um post dentro de um grupo nunca foi bloqueado pela privacidade do grupo (confirmado na auditoria, sem mudança necessária).
 
 ---
 
@@ -685,12 +697,21 @@
 
 > Esta seção trata da **lógica persistida no backend/Web**. Push nativo fica na Parte 4.
 
-- [ ] Criar gatilhos reais para categorias que ainda possuem apenas preferência/toggle.
+- [x] Criar gatilhos reais para categorias que ainda possuem apenas preferência/toggle.
+  - `notifyStreak` não tinha nenhum gatilho real — corrigido: desbloqueio de conquista `STREAK_*` agora usa a categoria correta (antes toda conquista, sem exceção, caía em `notifyProgress`, deixando `notifyStreak` sem efeito apesar de existir como toggle).
+  - `notifyMeals` e `notifyReminders` continuam sem gatilho — ver os dois itens abaixo (dependem de decisão de produto e/ou dado/infraestrutura que não existe).
 - [ ] Definir comportamento das notificações de Refeições.
+  - Não implementado: não existe hoje um conceito confiável de horário de refeição persistido de forma utilizável para lembrete. Inventar um horário arbitrário violaria a instrução desta task. Pendência de decisão de produto + de dado.
 - [ ] Definir comportamento das notificações de Lembretes.
-- [ ] Revisar cobertura de notificações de Desafios.
-- [ ] Revisar cobertura de notificações de Sequência.
-- [ ] Manter toda notificação persistida no backend como fonte canônica, independentemente do futuro push.
+  - Não implementado: "Lembretes" continua sem escopo definido além do nome/toggle. Lembretes configuráveis pelo usuário exigiriam infraestrutura de agendamento (cron/scheduler) que não existe no projeto hoje — confirmado: nenhum `vercel.json` de cron, nenhuma rota `/api/cron/*`, nenhuma lib de scheduler. Pendência de decisão de produto + infraestrutura.
+- [x] Revisar cobertura de notificações de Desafios.
+  - Corrigido um bug real: `CHALLENGE_COMPLETED` ia direto por `db.notification.create`, ignorando por completo a preferência `notifyChallenges` — quem desligava a categoria continuava recebendo a notificação de qualquer jeito. Agora passa por `notifyIfEnabled`, igual a `GROUP_CHALLENGE_STARTED`.
+  - Gatilhos adicionais avaliados (convite pra desafio, progresso em 50%, "prestes a terminar") e conscientemente não implementados agora — "convite" não existe como conceito (desafios são públicos numa lista, não convite direto), e "prestes a terminar" exigiria o mesmo scheduler inexistente do item de Lembretes. Ficam como backlog, não forçados só pra fechar checkbox.
+- [x] Revisar cobertura de notificações de Sequência.
+  - Corrigido: marcos de streak (`STREAK_*`) agora notificam sob `notifyStreak` (antes caíam sob `notifyProgress`).
+  - "Streak em risco" avaliado e conscientemente não implementado: exige um scheduler considerando o timezone de cada usuário, inexistente no projeto. Documentado como pendência de infraestrutura (Web/Pós-Mobile), não de código.
+- [x] Manter toda notificação persistida no backend como fonte canônica, independentemente do futuro push.
+  - Já era verdade para toda notificação existente. Reforçado: `Notification` ganhou um campo `link` (migration aditiva, nullable — nenhum dado existente afetado) com a rota relativa de destino, populado nos 8 gatilhos existentes. Antes, clicar em qualquer notificação levava genericamente pra `/community`; agora conquista leva pra `/profile?achievement=CODE` (reaproveitando o deep link já construído na consolidação de streak/conquistas), desafio de grupo leva pro grupo certo, etc.
 
 ---
 

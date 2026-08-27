@@ -57,11 +57,16 @@ export async function unlockAchievement(db: Db, userId: string, code: string) {
     referenceId: code,
   });
 
-  await notifyIfEnabled(userId, "notifyProgress", {
+  // STREAK_* usa a categoria "Sequência" (notifyStreak), não "Progresso" —
+  // antes toda conquista, sem exceção, caía em notifyProgress, deixando
+  // notifyStreak sem nenhum gatilho real (checklist seção 26).
+  const category = definition?.category === "STREAK" ? "notifyStreak" : "notifyProgress";
+  await notifyIfEnabled(userId, category, {
     type: "ACHIEVEMENT_UNLOCKED",
     title: "🏅 Nova conquista!",
     body: definition ? `Você desbloqueou "${definition.title}".` : "Você desbloqueou uma nova conquista.",
     data: { achievementCode: code },
+    link: `/profile?achievement=${encodeURIComponent(code)}`,
   });
 
   return created;

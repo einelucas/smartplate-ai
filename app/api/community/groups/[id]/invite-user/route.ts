@@ -51,6 +51,7 @@ export async function POST(request: Request, context: Params) {
     title: "📨 Convite para grupo",
     body: `Você foi convidado(a) para o grupo "${group.name}".`,
     data: { groupInviteId: invite.id, groupId: params.id },
+    link: "/community",
   });
 
   return NextResponse.json({ invite }, { status: 201 });

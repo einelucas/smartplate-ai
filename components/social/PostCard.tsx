@@ -24,6 +24,7 @@ import { useBlockUser, useDeletePost, useMarkNotInterested, useMuteUser, useTogg
 import { formatRelativeTime } from "@/lib/community/dates";
 import { resolveIcon } from "@/components/icon-registry";
 import type { AchievementRarity } from "@/lib/community/achievement-catalog";
+import { CHALLENGE_METRIC_LABELS } from "@/lib/community/challenge-labels";
 import { ACTIVITY_TYPE_ICON_KEY, findActivityIntensityLabel, findActivityTypeLabel } from "@/lib/activity/options";
 import type { CommunityPostSummary } from "@/types/community";
 import CommentSection from "./CommentSection";
@@ -79,7 +80,12 @@ type PlanShareMetadata = {
   mealProtein?: number | null;
   mealCarbs?: number | null;
   mealFat?: number | null;
+  mealIngredients?: string[];
 };
+// Sempre re-derivado no servidor a partir de ChallengeParticipant/Challenge
+// no momento da criação do post — nunca aceito do cliente (ver POST
+// /api/community/posts). completedAt vem serializado como string (JSON).
+type ChallengeMetadata = { challengeId?: string; title?: string; description?: string | null; metric?: string; target?: number; completedAt?: string };
 // Snapshot seguro no momento do compartilhamento — nunca dados privados de
 // Profile (peso, altura, objetivo). Ver POST /api/community/posts. `imageUrl`
 // é sempre uma foto escolhida manualmente pelo usuário ao compartilhar —
@@ -148,10 +154,13 @@ function PostImage({ src, width, height, onOpen }: { src: string; width?: number
 export default function PostCard({
   post,
   groupId,
+  viewerGroupRole,
   onRequireTerms,
 }: {
   post: Post;
   groupId?: string;
+  /** Papel do usuário atual NESTE grupo (só relevante quando groupId existe) — habilita "Remover do grupo" em posts de outros membros (governança local, checklist seção 25). */
+  viewerGroupRole?: string;
   onRequireTerms: (action: () => void) => void;
 }) {
   const [showComments, setShowComments] = useState(false);
@@ -249,6 +258,17 @@ export default function PostCard({
                   >
                     <UserX size={14} /> Bloquear usuário
                   </button>
+                  {!!groupId && (viewerGroupRole === "OWNER" || viewerGroupRole === "ADMIN") && (
+                    <button
+                      onClick={() => {
+                        setShowMenu(false);
+                        if (confirm("Remover esta publicação do grupo?")) deletePost.mutate(post.id);
+                      }}
+                      className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-500 hover:bg-red-50"
+                    >
+                      <Trash2 size={14} /> Remover do grupo
+                    </button>
+                  )}
                 </>
               )}
             </div>
@@ -323,6 +343,7 @@ function PostBody({
   setEditText: (v: string) => void;
 }) {
   const [viewerSrc, setViewerSrc] = useState<string | null>(null);
+  const [ingredientsExpanded, setIngredientsExpanded] = useState(false);
 
   if (editing) {
     return (
@@ -382,10 +403,27 @@ function PostBody({
   }
 
   if (post.type === "CHALLENGE") {
+    const { title, description, metric, target } = (post.metadata ?? {}) as ChallengeMetadata;
+    const metricLabel = metric ? (CHALLENGE_METRIC_LABELS[metric] ?? metric.toLowerCase()) : null;
     return (
-      <div className="bg-[#007BFF]/5 border border-[#007BFF]/20 rounded-xl p-4 flex items-center gap-3">
-        <Target className="text-[#007BFF] flex-shrink-0" size={24} />
-        <p className="text-sm text-slate-700">{post.text || "Progresso em um desafio"}</p>
+      <div>
+        {post.text && (
+          <p className="text-slate-600 text-sm mb-3">
+            <HashtagText text={post.text} />
+          </p>
+        )}
+        <div className="bg-[#007BFF]/5 border border-[#007BFF]/20 rounded-xl p-4 flex items-center gap-3">
+          <div className="w-10 h-10 bg-[#007BFF]/10 rounded-xl flex items-center justify-center flex-shrink-0">
+            <Target className="text-[#007BFF]" size={20} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-[#007BFF] mb-0.5">Desafio concluído</p>
+            <p className="font-semibold text-slate-800 text-sm truncate">{title ?? "Desafio"}</p>
+            <p className="text-xs text-slate-500 truncate">
+              {description || (target != null && metricLabel ? `${target} ${metricLabel}` : "Meta alcançada")}
+            </p>
+          </div>
+        </div>
       </div>
     );
   }
@@ -425,6 +463,25 @@ function PostBody({
               )}
             </div>
           </div>
+          {!!meta.mealIngredients?.length && (
+            <div className="mt-2 bg-slate-50 border border-slate-100 rounded-xl p-4">
+              <p className="text-xs font-semibold text-slate-600 mb-2">Ingredientes</p>
+              <ul className="text-xs text-slate-500 space-y-1 list-disc list-inside">
+                {(ingredientsExpanded ? meta.mealIngredients : meta.mealIngredients.slice(0, 4)).map((ingredient, i) => (
+                  <li key={i}>{ingredient}</li>
+                ))}
+              </ul>
+              {meta.mealIngredients.length > 4 && (
+                <button
+                  type="button"
+                  onClick={() => setIngredientsExpanded((v) => !v)}
+                  className="text-xs font-semibold text-[#007BFF] mt-2"
+                >
+                  {ingredientsExpanded ? "Ver menos" : `Ver mais ${meta.mealIngredients.length - 4}`}
+                </button>
+              )}
+            </div>
+          )}
         </div>
       );
     }

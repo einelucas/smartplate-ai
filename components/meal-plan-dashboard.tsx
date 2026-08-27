@@ -722,6 +722,7 @@ export default function MealPlanDashboard() {
           protein={shareMealTarget.proteina}
           carbs={shareMealTarget.carboidratos}
           fat={shareMealTarget.gordura}
+          ingredients={shareMealTarget.ingredientes}
           onClose={() => setShareMealTarget(null)}
         />
       )}

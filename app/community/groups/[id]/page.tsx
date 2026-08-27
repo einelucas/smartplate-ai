@@ -100,7 +100,7 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
 
       {activeTab === "feed" && (
         <div className="max-w-3xl">
-          <PostFeedList groupId={groupId} />
+          <PostFeedList groupId={groupId} viewerGroupRole={group.myRole} />
         </div>
       )}
       {activeTab === "ranking" && (

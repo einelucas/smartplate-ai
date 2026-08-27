@@ -36,6 +36,7 @@ export async function PATCH(request: Request, context: Params) {
       title: "🎉 Solicitação aceita",
       body: "Sua solicitação de amizade foi aceita.",
       data: { friendshipId: updated.id },
+      link: "/community",
     });
     return NextResponse.json({ friendship: updated });
   }

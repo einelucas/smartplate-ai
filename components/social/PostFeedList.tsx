@@ -13,13 +13,20 @@ import PostComposer from "./PostComposer";
 import PostCard from "./PostCard";
 import type { CommunityPostType, FeedTab } from "@/types/community";
 
-type FeedFilter = "ALL" | "ACTIVITY" | "ACHIEVEMENT" | "PLAN_SHARE" | "EXTERNAL_SHARE";
+// CHALLENGE e PROGRESS_SHARE só entraram aqui depois de existir um jeito
+// real do usuário criar esses posts (ChallengePickerModal / ShareProgressPhotoModal)
+// — checklist seção 24: "criar posts reais de desafio/progresso antes de
+// liberar filtro". STREAK fica de fora por enquanto: não há hoje um volume
+// que justifique um filtro dedicado só pra marcos de sequência.
+type FeedFilter = "ALL" | "ACTIVITY" | "ACHIEVEMENT" | "PLAN_SHARE" | "EXTERNAL_SHARE" | "CHALLENGE" | "PROGRESS_SHARE";
 
 const FEED_FILTERS: { key: FeedFilter; label: string }[] = [
   { key: "ALL", label: "Tudo" },
   { key: "ACTIVITY", label: "Atividades" },
   { key: "ACHIEVEMENT", label: "Conquistas" },
   { key: "PLAN_SHARE", label: "Alimentação" },
+  { key: "CHALLENGE", label: "Desafios" },
+  { key: "PROGRESS_SHARE", label: "Progresso" },
   { key: "EXTERNAL_SHARE", label: "Compartilhados" },
 ];
 
@@ -28,7 +35,7 @@ const AUDIENCE_TABS: { key: FeedTab; label: string }[] = [
   { key: "friends", label: "Amigos" },
 ];
 
-export default function PostFeedList({ groupId }: { groupId?: string }) {
+export default function PostFeedList({ groupId, viewerGroupRole }: { groupId?: string; viewerGroupRole?: string }) {
   const [audience, setAudience] = useState<FeedTab>("for-you");
   const effectiveTab: FeedTab = groupId ? "chronological" : audience;
 
@@ -121,7 +128,7 @@ export default function PostFeedList({ groupId }: { groupId?: string }) {
       )}
 
       {posts.map((post) => (
-        <PostCard key={post.id} post={post} groupId={groupId} onRequireTerms={guard} />
+        <PostCard key={post.id} post={post} groupId={groupId} viewerGroupRole={viewerGroupRole} onRequireTerms={guard} />
       ))}
 
       {hasNextPage && (

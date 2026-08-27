@@ -108,6 +108,7 @@ export async function POST(request: Request, context: Params) {
       title: "💬 Novo comentário",
       body: "Alguém comentou na sua publicação.",
       data: { postId: post.id, commentId: comment.id },
+      link: "/community",
     });
   }
 

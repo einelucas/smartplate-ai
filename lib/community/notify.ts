@@ -20,6 +20,8 @@ interface NotifyInput {
   title: string;
   body: string;
   data?: Prisma.InputJsonValue;
+  /** Rota relativa pra navegar ao clicar (nunca URL absoluta) — ver Notification.link. */
+  link?: string;
 }
 
 const PREFERENCE_SELECT = {
@@ -38,6 +40,6 @@ export async function notifyIfEnabled(userId: string, category: NotificationCate
   if (socialProfile && !socialProfile[category]) return;
 
   await prisma.notification.create({
-    data: { userId, type: input.type, title: input.title, body: input.body, data: input.data },
+    data: { userId, type: input.type, title: input.title, body: input.body, data: input.data, link: input.link },
   });
 }

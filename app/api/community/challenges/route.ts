@@ -111,6 +111,7 @@ export async function POST(request: Request) {
           title: "🏁 Novo desafio no grupo",
           body: `Um novo desafio "${challenge.title}" começou no seu grupo.`,
           data: { challengeId: challenge.id, groupId: data.groupId },
+          link: `/community/groups/${data.groupId}`,
         })
       )
     );

@@ -80,6 +80,24 @@ export async function requireGroupRole(db: Db, groupId: string, userId: string, 
   return membership;
 }
 
+/**
+ * Quem pode remover (soft delete) um post: o próprio autor, sempre; dentro
+ * de um grupo, também OWNER/ADMIN daquele grupo específico — governança
+ * local (checklist seção 25), nunca substitui a moderação central
+ * (denúncia + hide, gatilhadas por requireModerator). Posts fora de grupo
+ * (groupId null) só podem ser removidos pelo próprio autor.
+ */
+export async function canDeleteCommunityPost(
+  db: Db,
+  post: { authorUserId: string; groupId: string | null },
+  userId: string
+): Promise<boolean> {
+  if (post.authorUserId === userId) return true;
+  if (!post.groupId) return false;
+  const membership = await getGroupMembership(db, post.groupId, userId);
+  return membership?.role === "OWNER" || membership?.role === "ADMIN";
+}
+
 export async function getProfileRole(userId: string): Promise<"USER" | "MODERATOR" | "ADMIN"> {
   const profile = await prisma.profile.findUnique({ where: { userId }, select: { role: true } });
   return profile?.role ?? "USER";

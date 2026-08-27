@@ -8,6 +8,8 @@ export interface NotificationEntry {
   title: string;
   body: string;
   data: Record<string, unknown> | null;
+  /** Rota relativa pra navegar ao clicar — null em notificações antigas/sem destino específico. */
+  link: string | null;
   readAt: string | null;
   createdAt: string;
 }

@@ -116,6 +116,10 @@ export const createPostSchema = z
     imageHeight: z.number().int().positive().max(4096).optional(),
     achievementCode: z.string().trim().max(32).optional(),
     streakMilestone: z.number().int().positive().max(10000).optional(),
+    // Desafio já concluído pelo usuário (seção 24) — servidor sempre
+    // revalida contra ChallengeParticipant.completedAt, nunca confia em
+    // título/progresso vindo do cliente pra esse tipo.
+    challengeId: z.string().trim().min(1).max(64).optional(),
     shareToken: z.string().trim().min(1).max(128).optional(),
     // Snapshot de refeição específica (seção 23 do checklist) — nunca uma
     // referência viva, só o que o usuário está escolhendo mostrar agora.
@@ -124,6 +128,10 @@ export const createPostSchema = z
     mealProtein: z.number().min(0).max(2000).optional(),
     mealCarbs: z.number().min(0).max(2000).optional(),
     mealFat: z.number().min(0).max(2000).optional(),
+    // Ingredientes da receita/refeição compartilhada (seção 24: "compartilhar
+    // receita isoladamente com ingredientes") — snapshot no momento do
+    // compartilhamento, mesma lógica de nunca-referência-viva do mealName.
+    mealIngredients: z.array(z.string().trim().min(1).max(120)).max(40).optional(),
     showMacros: z.boolean().optional(),
     // Compartilhar Antes & Depois (seção 22) — ProgressPhoto continua
     // sempre privado por padrão; o post é uma CÓPIA explícita e deliberada
@@ -147,6 +155,10 @@ export const createPostSchema = z
   .refine((data) => data.type !== "STREAK" || !!data.streakMilestone, {
     message: "streakMilestone é obrigatório para posts do tipo STREAK",
     path: ["streakMilestone"],
+  })
+  .refine((data) => data.type !== "CHALLENGE" || !!data.challengeId, {
+    message: "challengeId é obrigatório para posts do tipo CHALLENGE",
+    path: ["challengeId"],
   })
   .refine((data) => data.type !== "PLAN_SHARE" || !!data.shareToken || !!data.mealName, {
     message: "shareToken ou mealName é obrigatório para posts do tipo PLAN_SHARE",

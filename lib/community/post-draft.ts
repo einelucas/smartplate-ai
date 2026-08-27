@@ -10,9 +10,28 @@ export type PostAttachment =
   // nunca uma referência viva a um Meal/DayPlan (o dashboard de plano
   // alimentar hoje identifica refeições por dia+tipo+índice, não por id
   // estável; um post da Comunidade precisa de conteúdo que não muda depois).
-  | { type: "MEAL_ITEM"; mealName: string; calories?: number; protein?: number; carbs?: number; fat?: number; showMacros: boolean }
+  // ingredients é o requisito da seção 24 ("compartilhar receita
+  // isoladamente com ingredientes") — não vira uma feature/PostType novo:
+  // uma "receita" aqui É uma refeição (mesmo snapshot), só que agora com a
+  // lista de ingredientes junto, sempre visível (não atrás de showMacros,
+  // que continua controlando só calorias/macros).
+  | {
+      type: "MEAL_ITEM";
+      mealName: string;
+      calories?: number;
+      protein?: number;
+      carbs?: number;
+      fat?: number;
+      showMacros: boolean;
+      ingredients?: string[];
+    }
   | { type: "ACTIVITY"; activityId: string; preview?: { label: string; durationMin: number } }
   | { type: "ACHIEVEMENT"; achievementCode: string; preview?: { title: string; icon: string } }
+  | { type: "STREAK"; milestone: number }
+  // Desafio já concluído pelo próprio usuário — servidor sempre reverifica
+  // ChallengeParticipant.completedAt antes de aceitar (nunca confia no
+  // título/progresso enviado aqui, que é só preview local).
+  | { type: "CHALLENGE"; challengeId: string; preview?: { title: string; metric: string; target: number } }
   | { type: "EXTERNAL_SHARE"; provider: string; url?: string }
   // Antes & Depois (seção 22) — a cópia do blob acontece no servidor a
   // partir de progressPhotoId; nunca envia bytes de imagem pelo cliente aqui.
@@ -46,18 +65,21 @@ export function draftToCreatePostInput(
   draft: PostDraft,
   uploadedImageUrl: string | undefined
 ): {
-  type: "TEXT" | "ACHIEVEMENT" | "PLAN_SHARE" | "ACTIVITY" | "EXTERNAL_SHARE" | "PROGRESS_SHARE";
+  type: "TEXT" | "ACHIEVEMENT" | "STREAK" | "CHALLENGE" | "PLAN_SHARE" | "ACTIVITY" | "EXTERNAL_SHARE" | "PROGRESS_SHARE";
   text?: string;
   imageUrl?: string;
   imageWidth?: number;
   imageHeight?: number;
   achievementCode?: string;
+  streakMilestone?: number;
+  challengeId?: string;
   shareToken?: string;
   mealName?: string;
   mealCalories?: number;
   mealProtein?: number;
   mealCarbs?: number;
   mealFat?: number;
+  mealIngredients?: string[];
   showMacros?: boolean;
   progressPhotoId?: string;
   showWeight?: boolean;
@@ -105,6 +127,9 @@ export function draftToCreatePostInput(
             }
           : {}),
         showMacros: draft.attachment.showMacros,
+        // Ingredientes sempre acompanham (não é opcional como as macros) —
+        // é o requisito mínimo pra uma "receita" compartilhada fazer sentido.
+        mealIngredients: draft.attachment.ingredients?.length ? draft.attachment.ingredients : undefined,
         groupId,
       };
     case "ACTIVITY":
@@ -127,6 +152,10 @@ export function draftToCreatePostInput(
         achievementCode: draft.attachment.achievementCode,
         groupId,
       };
+    case "STREAK":
+      return { type: "STREAK", text, streakMilestone: draft.attachment.milestone, groupId };
+    case "CHALLENGE":
+      return { type: "CHALLENGE", text, challengeId: draft.attachment.challengeId, groupId };
     case "EXTERNAL_SHARE":
       return {
         type: "EXTERNAL_SHARE",

@@ -84,6 +84,7 @@ export async function POST(request: Request) {
     title: "👋 Nova solicitação de amizade",
     body: "Alguém quer ser seu amigo na Comunidade.",
     data: { friendshipId: friendship.id },
+    link: "/community",
   });
 
   return NextResponse.json({ friendship }, { status: 201 });

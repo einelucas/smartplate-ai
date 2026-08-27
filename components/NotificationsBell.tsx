@@ -86,7 +86,15 @@ export default function NotificationsBell() {
               ) : (
                 <div className="p-2">
                   {notifications.map((n) => (
-                    <div key={n.id} className="flex items-start gap-3 p-2.5 rounded-xl hover:bg-slate-50">
+                    <button
+                      key={n.id}
+                      type="button"
+                      onClick={() => {
+                        setOpen(false);
+                        router.push(n.link ?? "/community");
+                      }}
+                      className="w-full flex items-start gap-3 p-2.5 rounded-xl hover:bg-slate-50 text-left"
+                    >
                       <div className="w-9 h-9 flex-shrink-0 bg-amber-50 rounded-full flex items-center justify-center">
                         <Trophy size={16} className="text-amber-500" />
                       </div>
@@ -94,7 +102,7 @@ export default function NotificationsBell() {
                         <p className="text-sm text-slate-700 font-medium">{n.title}</p>
                         <p className="text-xs text-slate-500 mt-0.5">{n.body}</p>
                       </div>
-                    </div>
+                    </button>
                   ))}
                   {incoming.map((f: FriendEntry) => (
                     <div key={f.friendshipId} className="flex items-start gap-3 p-2.5 rounded-xl hover:bg-slate-50">

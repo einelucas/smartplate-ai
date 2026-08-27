@@ -95,6 +95,7 @@ export async function checkActivityGoalCompletions(db: Db, userId: string, timez
         title: "🎯 Meta semanal atingida!",
         body: "Você bateu uma das suas metas de atividade física desta semana.",
         data: { goalId: goal.id, metric: goal.metric },
+        link: "/profile",
       });
     }
   }

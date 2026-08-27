@@ -16,6 +16,7 @@ export default function ShareMealModal({
   protein,
   carbs,
   fat,
+  ingredients,
   onClose,
 }: {
   mealName: string;
@@ -23,6 +24,7 @@ export default function ShareMealModal({
   protein?: number;
   carbs?: number;
   fat?: number;
+  ingredients?: string[];
   onClose: () => void;
 }) {
   const [showMacros, setShowMacros] = useState(false);
@@ -30,7 +32,7 @@ export default function ShareMealModal({
 
   const submit = () => {
     openComposer({
-      attachment: { type: "MEAL_ITEM", mealName, calories, protein, carbs, fat, showMacros },
+      attachment: { type: "MEAL_ITEM", mealName, calories, protein, carbs, fat, showMacros, ingredients },
     });
     onClose();
   };
@@ -61,7 +63,8 @@ export default function ShareMealModal({
             </button>
           </div>
 
-          <p className="text-sm text-slate-600 mb-4">{mealName}</p>
+          <p className={`text-sm text-slate-600 ${ingredients?.length ? "mb-1" : "mb-4"}`}>{mealName}</p>
+          {!!ingredients?.length && <p className="text-xs text-slate-400 mb-4">Os ingredientes desta receita vão junto na publicação.</p>}
 
           <label className="flex items-center gap-2 mb-5 text-sm text-slate-600 cursor-pointer">
             <input type="checkbox" checked={showMacros} onChange={(e) => setShowMacros(e.target.checked)} className="accent-[#007BFF]" />

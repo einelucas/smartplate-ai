@@ -9,6 +9,7 @@ import { prisma } from "@/lib/prisma";
 import type { Db } from "./types";
 import { getBlockedUserIds } from "./authz";
 import { publicIdentitySelect, resolveAvatarUrl } from "./avatar";
+import { notifyIfEnabled } from "./notify";
 import {
   diffInCalendarDays,
   getLocalDateString,
@@ -199,7 +200,8 @@ export async function recordChallengeCompletion(
   userId: string,
   challengeId: string,
   rewardXp: number,
-  challengeTitle: string
+  challengeTitle: string,
+  groupId?: string | null
 ) {
   const idempotencyKey = `challenge_complete:${challengeId}:${userId}`;
   const created = await tryCreateXpEvent(db, {
@@ -221,15 +223,16 @@ export async function recordChallengeCompletion(
 
   // Notificação mínima real (integrada ao NotificationsBell) — nunca
   // duplicada, porque esta função inteira só roda uma vez por desafio
-  // (gate acima: `if (!created) return`).
-  await db.notification.create({
-    data: {
-      userId,
-      type: "CHALLENGE_COMPLETED",
-      title: "🏆 Desafio concluído!",
-      body: rewardXp > 0 ? `Você completou "${challengeTitle}" e ganhou +${rewardXp} XP.` : `Você completou "${challengeTitle}".`,
-      data: { challengeId, rewardXp },
-    },
+  // (gate acima: `if (!created) return`). Antes ia direto por
+  // db.notification.create, ignorando notifyChallenges por completo — quem
+  // desligasse "Desafios" continuava recebendo esta notificação de qualquer
+  // jeito. Corrigido pra passar por notifyIfEnabled como GROUP_CHALLENGE_STARTED.
+  await notifyIfEnabled(userId, "notifyChallenges", {
+    type: "CHALLENGE_COMPLETED",
+    title: "🏆 Desafio concluído!",
+    body: rewardXp > 0 ? `Você completou "${challengeTitle}" e ganhou +${rewardXp} XP.` : `Você completou "${challengeTitle}".`,
+    data: { challengeId, rewardXp },
+    link: groupId ? `/community/groups/${groupId}` : "/community",
   });
 }
 
@@ -256,7 +259,14 @@ async function updateChallengeProgress(db: Db, userId: string, metric: Challenge
     });
 
     if (willComplete) {
-      await recordChallengeCompletion(db, userId, participant.challengeId, participant.challenge.rewardXp, participant.challenge.title);
+      await recordChallengeCompletion(
+        db,
+        userId,
+        participant.challengeId,
+        participant.challenge.rewardXp,
+        participant.challenge.title,
+        participant.challenge.groupId
+      );
     }
   }
 }
@@ -331,7 +341,7 @@ export async function recomputeChallengeProgressForMetrics(db: Db, userId: strin
     });
 
     if (willComplete) {
-      await recordChallengeCompletion(db, userId, challenge.id, challenge.rewardXp, challenge.title);
+      await recordChallengeCompletion(db, userId, challenge.id, challenge.rewardXp, challenge.title, challenge.groupId);
     }
   }
 }

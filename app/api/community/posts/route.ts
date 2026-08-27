@@ -102,11 +102,32 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Marco de streak ainda não alcançado" }, { status: 403 });
     }
     metadata = { milestone };
+  } else if (type === "CHALLENGE") {
+    const challengeId = parsed.data.challengeId as string;
+    const participant = await prisma.challengeParticipant.findUnique({
+      where: { challengeId_userId: { challengeId, userId } },
+      include: { challenge: true },
+    });
+    if (!participant || !participant.completedAt) {
+      return NextResponse.json({ error: "Desafio ainda não concluído" }, { status: 403 });
+    }
+    // Título/métrica/meta sempre re-derivados do banco — nunca do que o
+    // cliente mandou (mesma regra de ACHIEVEMENT/ACTIVITY acima).
+    metadata = {
+      challengeId,
+      title: participant.challenge.title,
+      description: participant.challenge.description,
+      metric: participant.challenge.metric,
+      target: participant.challenge.target,
+      completedAt: participant.completedAt,
+    };
   } else if (type === "PLAN_SHARE" && parsed.data.mealName) {
     // Snapshot de uma refeição específica — nunca uma referência viva (ver
     // lib/community/post-draft.ts). Macros só entram no metadata quando o
-    // próprio usuário escolheu mostrá-los (showMacros); a Zod já garante que
-    // valores fora de faixa nunca chegam aqui.
+    // próprio usuário escolheu mostrá-los (showMacros); ingredientes sempre
+    // acompanham quando enviados (requisito mínimo de "receita" compartilhada,
+    // não opcional como as macros). A Zod já garante que valores fora de
+    // faixa/tamanho nunca chegam aqui.
     metadata = {
       mealName: parsed.data.mealName,
       showMacros: !!parsed.data.showMacros,
@@ -118,6 +139,7 @@ export async function POST(request: Request) {
             mealFat: parsed.data.mealFat ?? null,
           }
         : {}),
+      ...(parsed.data.mealIngredients?.length ? { mealIngredients: parsed.data.mealIngredients } : {}),
       ...(genericImageUrl ? { imageUrl: genericImageUrl, ...genericImageDimensions } : {}),
     };
   } else if (type === "PLAN_SHARE") {

@@ -66,11 +66,14 @@ const PRIVACY_TOGGLES: ToggleConfig<PrivacyKey>[] = [
   },
 ];
 
-// Só Social e Atividades têm um gatilho real hoje (pedido de amizade,
-// amizade aceita, comentário, reação, conquista desbloqueada, meta semanal
-// batida). As demais já ficam disponíveis pra configurar, preparadas para
-// quando ganharem um gatilho — nunca marcadas como "implementadas" sem ter
-// nenhuma notificação real associada ainda.
+// Gatilho real hoje: Social (pedido/aceite de amizade, comentário, reação,
+// convite de grupo), Atividades (meta semanal batida), Desafios (desafio de
+// grupo iniciado/concluído), Sequência (marco de streak desbloqueado) e
+// Progresso (demais conquistas). Refeições e Lembretes continuam só
+// disponíveis pra configurar, sem nenhum gatilho ainda — não há conceito
+// confiável de horário de refeição nem infraestrutura de agendamento no
+// projeto (checklist seção 26); nunca marcadas como "implementadas" sem ter
+// nenhuma notificação real associada.
 const NOTIFICATION_TOGGLES: ToggleConfig<NotificationKey>[] = [
   { key: "notifySocial", label: "Social", description: "Solicitações de amizade, comentários e reações nas suas publicações." },
   { key: "notifyMeals", label: "Refeições", description: "Avisos relacionados ao seu plano alimentar." },
