@@ -1,7 +1,27 @@
 "use client";
 
 import React from 'react';
-import { AreaChart, Area, XAxis, ResponsiveContainer } from 'recharts';
+import Chart from 'react-apexcharts';
+import type { ApexOptions } from 'apexcharts';
+
+const weightFormat = new Intl.NumberFormat('pt-BR', {
+  maximumFractionDigits: 1,
+});
+const shortDate = new Intl.DateTimeFormat('pt-BR', {
+  day: 'numeric',
+  month: 'short',
+});
+const fullDate = new Intl.DateTimeFormat('pt-BR', {
+  dateStyle: 'medium',
+  timeStyle: 'short',
+});
+
+function formatDate(value: string | number | undefined, formatter: Intl.DateTimeFormat) {
+  if (value == null || value === '') return '';
+  const numeric = Number(value);
+  const timestamp = Number.isFinite(numeric) ? numeric : Date.parse(String(value));
+  return Number.isFinite(timestamp) ? formatter.format(timestamp) : '';
+}
 
 interface WeightChartProps {
   weightLogs: Array<{ date: string; weight: number }>;
@@ -35,6 +55,100 @@ export default function WeightChart({
 
   // Usa os dados reais do usuário
   const data = weightLogs;
+  const points = data
+    .map(({ date, weight }) => ({ x: new Date(date).getTime(), y: weight }))
+    .filter(({ x, y }) => Number.isFinite(x) && Number.isFinite(y))
+    .sort((a, b) => a.x - b.x);
+  const canZoom = points.length > 1 && points[0].x !== points[points.length - 1].x;
+  const options: ApexOptions = {
+    chart: {
+      type: 'area',
+      parentHeightOffset: 0,
+      foreColor: '#94a3b8',
+      fontFamily: 'inherit',
+      toolbar: {
+        show: points.length > 0,
+        tools: {
+          download: true,
+          selection: false,
+          zoom: canZoom,
+          zoomin: canZoom,
+          zoomout: canZoom,
+          pan: canZoom,
+          reset: canZoom,
+        },
+        autoSelected: 'zoom',
+        export: {
+          csv: {
+            filename: 'historico-de-peso',
+            headerCategory: 'Data',
+            headerValue: 'Peso (kg)',
+            categoryFormatter: (value) => formatDate(value, fullDate),
+          },
+          svg: { filename: 'progresso-de-peso' },
+          png: { filename: 'progresso-de-peso' },
+        },
+      },
+      zoom: { enabled: canZoom, type: 'x', allowMouseWheelZoom: false },
+      animations: { enabled: false },
+    },
+    colors: ['#007BFF'],
+    stroke: { curve: 'smooth', width: 2, lineCap: 'round' },
+    fill: {
+      type: 'gradient',
+      gradient: {
+        type: 'vertical',
+        shadeIntensity: 0,
+        gradientToColors: ['#007BFF'],
+        opacityFrom: 0.3,
+        opacityTo: 0,
+        stops: [5, 95, 100],
+      },
+    },
+    dataLabels: { enabled: false },
+    legend: { show: false },
+    markers: {
+      size: points.length === 1 ? 4 : 0,
+      strokeWidth: 2,
+      strokeColors: '#fff',
+      hover: { size: 5 },
+    },
+    grid: {
+      borderColor: '#f1f5f9',
+      strokeDashArray: 3,
+      padding: { top: 12, left: 0, right: 8 },
+    },
+    xaxis: {
+      type: 'datetime',
+      axisBorder: { show: false },
+      axisTicks: { show: false },
+      tooltip: { enabled: false },
+      labels: {
+        datetimeUTC: false,
+        showDuplicates: false,
+        hideOverlappingLabels: true,
+        rotate: 0,
+        style: { fontSize: '10px', colors: '#94a3b8' },
+        formatter: (value, timestamp) => formatDate(timestamp ?? value, shortDate),
+      },
+    },
+    yaxis: {
+      tickAmount: 3,
+      min: (value) => Math.max(0, Math.floor(value - 2)),
+      max: (value) => Math.ceil(value + 2),
+      labels: {
+        style: { fontSize: '10px', colors: '#94a3b8' },
+        formatter: (value) => weightFormat.format(value) + ' kg',
+      },
+    },
+    tooltip: {
+      shared: true,
+      intersect: false,
+      x: { formatter: (value) => formatDate(value, fullDate) },
+      y: { formatter: (value) => weightFormat.format(value) + ' kg' },
+    },
+    noData: { text: 'Nenhum registro de peso encontrado.' },
+  };
   const firstWeight = startWeight || data[0]?.weight || 0;
   const lastWeight = currentWeight || data[data.length - 1]?.weight || 0;
   const goalWeight = targetWeight || 0;
@@ -57,30 +171,14 @@ export default function WeightChart({
         </span>
       </div>
       
-      <div className="h-40">
-        <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={data}>
-            <defs>
-              <linearGradient id="weightGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#007BFF" stopOpacity={0.3}/>
-                <stop offset="95%" stopColor="#007BFF" stopOpacity={0}/>
-              </linearGradient>
-            </defs>
-            <XAxis 
-              dataKey="date" 
-              axisLine={false}
-              tickLine={false}
-              tick={{ fontSize: 10, fill: '#94a3b8' }}
-            />
-            <Area
-              type="monotone"
-              dataKey="weight"
-              stroke="#007BFF"
-              strokeWidth={2}
-              fill="url(#weightGradient)"
-            />
-          </AreaChart>
-        </ResponsiveContainer>
+      <div className="h-52 min-w-0">
+        <Chart
+          type="area"
+          width="100%"
+          height="100%"
+          options={options}
+          series={[{ name: 'Peso', data: points }]}
+        />
       </div>
 
       <div className="flex justify-between mt-3 pt-3 border-t border-slate-100 text-sm">

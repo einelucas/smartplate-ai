@@ -92,11 +92,6 @@ export default function ProfilePage() {
   const adherence = calculateMealAdherence(latestPlan?.days);
   const favoriteCount = favoritePlansData?.plans?.length ?? 0;
 
-  const formattedWeightLogs = weightLogs.map((log) => ({
-    date: new Date(log.date).toLocaleDateString("pt-BR", { month: "short", day: "numeric" }),
-    weight: log.weight,
-  }));
-
   const displayName = socialProfile?.displayName || user?.fullName || user?.firstName || "Usuário";
   // Sempre o valor já resolvido pelo backend (customAvatarUrl ?? providerAvatarUrl)
   // — nunca um fallback ad-hoc pra user.imageUrl aqui (ver lib/community/avatar.ts).
@@ -404,7 +399,7 @@ export default function ProfilePage() {
 
           {/* Gráfico de peso — só se tiver logs */}
           {weightLogs.length > 0 ? (
-            <WeightChart weightLogs={formattedWeightLogs} startWeight={startWeight} targetWeight={targetWeight} currentWeight={currentWeight} />
+            <WeightChart weightLogs={weightLogs} startWeight={startWeight} targetWeight={targetWeight} currentWeight={currentWeight} />
           ) : (
             <div className="bg-white rounded-2xl p-12 text-center shadow-sm border border-slate-100">
               <p className="text-5xl mb-4">📊</p>

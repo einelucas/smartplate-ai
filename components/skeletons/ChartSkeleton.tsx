@@ -1,4 +1,4 @@
-// Placeholder do tamanho exato do WeightChart (recharts, code-split), para
+// Placeholder do tamanho exato do WeightChart (ApexCharts, code-split), para
 // o card de peso não pular de altura quando o chunk terminar de carregar.
 export default function ChartSkeleton() {
   return (
@@ -10,7 +10,7 @@ export default function ChartSkeleton() {
         </div>
         <div className="h-5 w-14 bg-slate-100 rounded-full" />
       </div>
-      <div className="h-40 bg-slate-50 rounded-xl" />
+      <div className="h-52 bg-slate-50 rounded-xl" />
     </div>
   );
 }
