@@ -16,8 +16,10 @@ const fullDate = new Intl.DateTimeFormat('pt-BR', {
   timeStyle: 'short',
 });
 
-function formatDate(value: string | number, formatter: Intl.DateTimeFormat) {
-  const timestamp = Number(value);
+function formatDate(value: string | number | undefined, formatter: Intl.DateTimeFormat) {
+  if (value == null || value === '') return '';
+  const numeric = Number(value);
+  const timestamp = Number.isFinite(numeric) ? numeric : Date.parse(String(value));
   return Number.isFinite(timestamp) ? formatter.format(timestamp) : '';
 }
 
