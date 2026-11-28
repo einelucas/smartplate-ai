@@ -1,0 +1,81 @@
+.screen {
+  --ink: #191a18;
+  --muted: #767b7b;
+  --blue: #8fcbe8;
+  --track: #deedf5;
+  --surface: #f1f7fa;
+  width: 100%;
+  max-width: 540px;
+  margin: 0 auto;
+  padding: max(18px, env(safe-area-inset-top)) 11px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  color: var(--ink);
+  font-weight: 400;
+  line-height: 1.25;
+}
+.heading { padding: 1px 7px 0; }
+.heading p { color: var(--muted); font-size: 14px; margin: 0 0 5px; font-weight: 400; }
+.heading h1 { font-size: 30px; line-height: 1.05; letter-spacing: -.9px; font-weight: 400; margin: 0; }
+.card { background: #fff; border-radius: 24px; border: 0; box-shadow: none; min-width: 0; }
+.identity { display: flex; align-items: center; gap: 13px; min-height: 88px; padding: 14px 18px; }
+.avatar { width: 60px; height: 60px; }
+.identityText { flex: 1; min-width: 0; }
+.nameLine { display: flex; align-items: center; gap: 6px; min-width: 0; flex-wrap: wrap; }
+.nameLine h2 { font-size: 20px; font-weight: 400; letter-spacing: -.45px; line-height: 1.12; overflow-wrap: anywhere; margin: 0; }
+.badge { background: #20211e; color: #fff; padding: 3px 8px; border-radius: 8px; font-size: 12px; line-height: 1.25; white-space: nowrap; }
+.identityText p { color: var(--muted); font-size: 14px; margin-top: 4px; }
+.edit { flex-shrink: 0; padding: 8px 15px; font-size: 15px; font-weight: 400; background: #fff; border: 1px solid #d7d9d5; border-radius: 999px; min-height: 36px; }
+.goal { padding: 18px 20px 17px; }
+.muted { color: var(--muted); font-size: 14px; }
+.goalHeadline { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-top: 4px; }
+.goalAmount { display: flex; align-items: baseline; gap: 7px; flex-wrap: wrap; }
+.goalAmount > span { font-weight: 300; font-size: 38px; line-height: 1.05; letter-spacing: -1.7px; }
+.goalAmount small { color: var(--muted); font-size: 14px; }
+.goalHeadline > span { white-space: nowrap; font-size: 13px; }
+.scale { position: relative; padding-top: 28px; margin: 2px 0 14px; }
+.weightTrack { height: 14px; border-radius: 999px; background: var(--track); overflow: hidden; }
+.weightFill { height: 100%; background: linear-gradient(90deg, #b7e5f6, #65a8cf); position: relative; }
+.weightFill::after { content: ""; position: absolute; inset: 3px 5px; background: repeating-linear-gradient(90deg, transparent 0 8px, #ffffff80 8px 9px, transparent 9px 11px); }
+.marker { position: absolute; top: 24px; height: 22px; width: 3px; background: #f16c48; border-radius: 2px; box-shadow: 0 0 0 2px #fff; transform: translateX(-50%); }
+.markerLabel { position: absolute; top: -18px; left: 50%; font-size: 13px; color: var(--ink); white-space: nowrap; font-weight: 400; }
+.goalFoot { display: flex; justify-content: space-between; gap: 10px; color: var(--muted); font-size: 13px; }
+.metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: 17px; padding: 20px 20px 19px; }
+.metric { min-width: 0; }
+.metricValues { display: flex; align-items: baseline; gap: 4px; margin: 4px 0 15px; white-space: nowrap; }
+.metricValues > span { font-size: 23px; font-weight: 400; letter-spacing: -.8px; }
+.metricValues small { color: var(--muted); font-size: 12px; letter-spacing: -.2px; }
+.calories { height: 3px; background: #dedfdb; border-radius: 99px; overflow: hidden; margin-top: 3px; }
+.calories i { display: block; height: 100%; background: #ee6a46; border-radius: 99px; }
+.protein { display: flex; gap: 5px; height: 3px; margin-top: 3px; }
+.protein i { flex: 1; background: #dedfdb; border-radius: 99px; overflow: hidden; }
+.protein b { display: block; height: 100%; background: #21221f; border-radius: 99px; }
+.water { display: flex; align-items: center; justify-content: space-between; height: 9px; gap: 2px; }
+.water i { display: block; width: 6px; height: 6px; background: #e1e3df; border-radius: 50%; overflow: hidden; }
+.water b { display: block; width: 100%; height: 100%; background: #76b8dd; border-radius: 50%; }
+.settings { padding: 7px 16px; }
+.setting { display: flex; align-items: center; gap: 14px; width: 100%; min-height: 56px; padding: 7px 0; text-align: left; color: var(--ink); border-radius: 12px; }
+.settingIcon { display: flex; align-items: center; justify-content: center; border-radius: 13px; background: var(--surface); width: 41px; height: 41px; flex-shrink: 0; }
+.settingText { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 2px; font-size: 17px; font-weight: 400; letter-spacing: -.35px; }
+.settingText small { font-size: 13px; letter-spacing: 0; color: var(--muted); }
+.chevron { flex-shrink: 0; color: #969b98; }
+.setting:hover, .edit:hover { background: #f8fafb; }
+.setting:focus-visible, .edit:focus-visible { outline: 2px solid #65a8cf; outline-offset: 2px; }
+@media (max-width: 360px) {
+  .identity { gap: 9px; padding: 13px; }
+  .avatar { width: 49px; height: 49px; }
+  .nameLine h2 { font-size: 18px; }
+  .edit { padding: 7px 11px; }
+  .metrics { column-gap: 10px; padding: 17px 14px; }
+  .metricValues { gap: 3px; }
+  .metricValues > span { font-size: 20px; }
+  .metricValues small { font-size: 10px; }
+  .goal { padding: 17px; }
+}
+@media (min-width: 640px) {
+  .screen { padding: 28px 20px 24px; gap: 15px; }
+  .identity { padding: 18px 23px; }
+  .goal, .metrics { padding: 23px 25px; }
+  .setting { min-height: 63px; }
+}

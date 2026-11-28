@@ -94,7 +94,8 @@
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-urbanist), Arial, sans-serif;
+  font-weight: 400;
 }
 
 /* Rede de segurança final contra overflow horizontal — não substitui corrigir

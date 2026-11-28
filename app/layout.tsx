@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Urbanist } from "next/font/google";
+
+const urbanist = Urbanist({ subsets: ["latin"], display: "swap", variable: "--font-urbanist" });
 import "./globals.css";
 import PublicNavBar from "../components/PublicNavBar";
 import AppSidebar from "../components/AppSidebar";
@@ -31,7 +33,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="pt-BR" className={urbanist.variable}>
       <body className="bg-gray-50 text-gray-900">
         <ReactQueryClientProvider>
           <ClerkProvider>
