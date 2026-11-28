@@ -55,6 +55,9 @@ export default function ProgressPage() {
       return [];
     },
     enabled: !!isSignedIn,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    refetchOnMount: "always",
   });
 
   const { data: plansData } = useQuery({
