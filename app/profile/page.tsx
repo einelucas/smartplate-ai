@@ -87,7 +87,7 @@ export default function ProfilePage() {
   const day = plan?.days?.find(d => d.day === today);
   const meals = day ? [day.breakfast, day.lunch, ...(day.snacks ?? []), day.dinner].filter((m): m is Meal => !!m) : [];
   const completed = meals.filter(m => m.completed);
-  const sum = (items: Meal[], field: "calories" | "proteina") => items.reduce((total, m) => total + (valid(m[field]) ? m[field] : 0), 0);
+  const sum = (items: Meal[], field: "calories" | "proteina") => items.reduce((total, m) => { const value = m[field]; return total + (valid(value) ? value : 0); }, 0);
   const proteinKnown = meals.length > 0 && meals.every(m => valid(m.proteina));
   const proteinGoal = proteinKnown ? sum(meals, "proteina") : undefined;
   const protein = proteinKnown ? sum(completed, "proteina") : undefined;

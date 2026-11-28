@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
-import { Urbanist } from "next/font/google";
+import localFont from "next/font/local";
 
-const urbanist = Urbanist({ subsets: ["latin"], display: "swap", variable: "--font-urbanist" });
+const urbanist = localFont({ src: "./fonts/Urbanist-Variable.ttf", weight: "100 900", style: "normal", display: "swap", variable: "--font-urbanist" });
 import "./globals.css";
 import PublicNavBar from "../components/PublicNavBar";
 import AppSidebar from "../components/AppSidebar";
