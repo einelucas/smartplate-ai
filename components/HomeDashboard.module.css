@@ -1,0 +1,87 @@
+.screen {
+  --ink:#191a18; --muted:#767b7b; --surface:#f1f7fa; --accent:#f47b58;
+  color:var(--ink); font-weight:400; line-height:1.25; max-width:540px; width:100%; margin:0 auto; padding:max(18px,env(safe-area-inset-top)) 12px 20px;
+  display:flex; flex-direction:column; gap:12px;
+}
+.header {display:flex;align-items:center;gap:12px;min-width:0;padding:8px 3px 10px}
+.avatarLink {flex-shrink:0}
+.greeting {flex:1;min-width:0}
+.greeting p {font-size:14px;color:var(--muted);margin:0 0 4px}
+.greeting h1 {font-size:21px;font-weight:400;letter-spacing:-.45px;overflow-wrap:anywhere}
+.headerActions {display:flex;align-items:center;gap:2px;flex-shrink:0}
+.headerActions>a {display:grid;place-items:center;width:40px;height:40px;border-radius:50%}
+.headerActions>a:hover {background:white}
+.card {min-width:0;border:0;border-radius:24px;background:#fff;padding:19px 20px;box-shadow:none}
+.cardHead,.sectionHead {display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:15px;color:var(--muted)}
+.cardHead h2,.sectionHead h2,.nutrition h2 {font-weight:400;font-size:15px;color:var(--muted)}
+.sectionHead {margin-bottom:14px}
+.weightDelta {display:flex;gap:6px;align-items:center;color:var(--ink);font-size:13px;text-align:right}
+.weightDelta i {width:7px;height:7px;border-radius:50%;background:#86c4e4;flex-shrink:0}
+.weightNumber {display:flex;align-items:baseline;gap:10px;margin:14px 0 20px}
+.weightNumber>span {font-size:70px;line-height:1.02;letter-spacing:-3px;font-weight:300}
+.weightNumber small {font-size:20px;color:var(--muted)}
+.ruler {display:block;width:100%;height:auto;overflow:visible}
+.weightFooter {display:flex;justify-content:space-between;gap:8px;color:var(--muted);font-size:14px;margin-top:9px}
+.weightFooter span:last-child {color:var(--ink)}
+.weightLink {display:flex;justify-content:flex-end;align-items:center;gap:3px;color:var(--muted);font-size:12px;margin-top:10px}
+.twoCards {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}
+.nutrition {display:flex;flex-direction:column;min-height:160px}
+.nutritionValue {display:flex;align-items:baseline;gap:5px;margin:9px 0 12px;min-width:0}
+.nutritionValue>span {font-size:37px;line-height:1;letter-spacing:-1.3px;font-weight:300;white-space:nowrap}
+.nutritionValue small {font-size:13px;color:var(--muted)}
+.nutrition p {font-size:13px;color:var(--muted);margin-top:9px;line-height:1.25}
+.calorieBars {display:flex;align-items:flex-end;justify-content:space-between;height:32px;gap:4px;margin-top:auto}
+.calorieBars i {width:10px;border-radius:8px}
+.proteinTrack {position:relative;height:6px;border-radius:9px;background:#e4e7e2;margin-top:auto;margin-bottom:6px}
+.proteinTrack>div {height:100%;background:#86c4e4;border-radius:9px}
+.proteinTrack>i {position:absolute;top:50%;width:9px;height:9px;background:#78b6d5;transform:translate(-50%,-50%);border-radius:50%;box-shadow:0 0 0 3px #e8f4fa}
+.nextMeal {display:flex;align-items:center;gap:12px;padding:16px}
+.mealIcon {display:grid;place-items:center;width:59px;height:59px;background:var(--surface);color:#527987;border-radius:17px;flex-shrink:0}
+.nextMealText {flex:1;min-width:0}
+.nextMealText h2 {font-size:17px;letter-spacing:-.25px;font-weight:400;overflow-wrap:anywhere;margin:3px 0}
+.nextMealText p {font-size:12px;color:var(--muted);overflow-wrap:anywhere}
+.addMeal {width:43px;height:43px;display:grid;place-items:center;border-radius:50%;background:#242520;color:white;flex-shrink:0}
+.addMeal:disabled,.mealRow:disabled,.waterQuick:disabled {opacity:.5}
+.waterAmount {font-size:14px;color:var(--ink);white-space:nowrap;margin-left:auto}
+.waterActions {display:flex;gap:2px;align-items:center}
+.waterAction {display:grid;place-items:center;width:29px;height:32px;border-radius:8px;color:var(--muted)}
+.waterAction:hover {background:var(--surface)}
+.waterTrack {display:flex;gap:4px;margin:12px 0 17px}
+.waterTrack i {flex:1;background:#e1e9ed;height:9px;border-radius:99px;overflow:hidden}
+.waterTrack b {display:block;height:100%;background:#86c4e4;border-radius:99px}
+.waterQuick {flex:1;min-width:77px;display:flex;justify-content:center;align-items:center;gap:4px;border:1px solid #e4e9eb;border-radius:99px;padding:10px 6px;font-size:13px;color:var(--ink)}
+.waterQuick:hover {background:var(--surface)}
+.outline {display:flex;align-items:center;gap:4px;font-size:12px;color:var(--ink);border:1px solid #d9dcd7;padding:7px 10px;border-radius:99px;white-space:nowrap}
+.mealList {display:flex;flex-direction:column;gap:6px}
+.mealRow {display:flex;gap:10px;align-items:center;text-align:left;padding:8px 0;width:100%;border-bottom:1px solid #eef2f4}
+.mealRow:last-child {border-bottom:0}
+.smallMealIcon {width:38px;height:38px;display:grid;place-items:center;background:var(--surface);border-radius:11px;color:#527987;flex-shrink:0}
+.mealRowText {flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;font-size:15px}
+.mealRowText small {font-size:12px;color:var(--muted)}
+.mealRowText>span {overflow-wrap:anywhere}
+.mealCheck {display:grid;place-items:center;width:30px;height:30px;border:1px solid #dce0dd;color:var(--muted);border-radius:50%;flex-shrink:0}
+.mealCheck.checked {background:#242520;border-color:#242520;color:white}
+.adherenceTrack {height:6px;background:#e4e7e2;border-radius:99px;overflow:hidden;margin:0 0 15px}
+.adherenceTrack i {display:block;height:100%;background:#86c4e4}
+.details {display:flex;flex-direction:column;gap:10px;font-size:14px}
+.details>div {display:flex;justify-content:space-between;gap:8px;color:var(--muted)}
+.details strong {font-weight:400;color:var(--ink)}
+.muted {color:var(--muted);font-size:14px;line-height:1.5}
+.textLink {display:flex;align-items:center;justify-content:flex-end;gap:4px;font-size:13px;color:var(--ink);margin-top:14px}
+.extras {display:flex;flex-direction:column;gap:12px;min-width:0}
+.extras :global(.bg-white.rounded-3xl) {border:0;box-shadow:none;border-radius:24px}
+.extras :global(.font-bold),.extras :global(.font-semibold),.extras :global(.font-medium) {font-weight:400}
+.extras :global(.text-slate-800),.extras :global(.text-slate-700) {color:var(--ink)}
+.extras :global(.text-slate-500),.extras :global(.text-slate-400) {color:var(--muted)}
+.extras :global(.text-\[\#007BFF\]) {color:#527987}
+.extras :global(.bg-slate-100),.extras :global(.bg-slate-50) {background:var(--surface)}
+.screen button:focus-visible,.screen a:focus-visible {outline:2px solid #65a8cf;outline-offset:2px}
+@media(max-width:380px) {.screen{padding-inline:8px}.card{padding:16px 15px}.nutritionValue>span{font-size:32px}.nutritionValue small{font-size:12px}.header{gap:8px}.greeting h1{font-size:19px}.waterAmount{font-size:12px}.waterAction{width:24px}.nextMeal{gap:9px}.mealIcon{width:52px;height:52px}}
+@media(min-width:640px) {.screen{padding:28px 20px;gap:15px}.card{padding:23px 25px}.nutrition{min-height:180px}.nextMeal{padding:20px}}
+
+.avatarLink {position:relative}
+.avatarLink summary {list-style:none;cursor:pointer;border-radius:50%}
+.avatarLink summary::-webkit-details-marker {display:none}
+.accountMenu {position:absolute;top:56px;left:0;width:155px;background:#fff;border:1px solid #e7ecee;border-radius:16px;padding:6px;z-index:25;box-shadow:0 4px 18px #0001}
+.accountMenu a,.accountMenu button {display:block;width:100%;padding:10px;text-align:left;font-size:14px;border-radius:9px}
+.accountMenu a:hover,.accountMenu button:hover {background:var(--surface)}
