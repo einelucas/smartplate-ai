@@ -6,7 +6,7 @@ import { useState } from "react";
 import dynamic from "next/dynamic";
 import { Toaster } from "react-hot-toast";
 import { Spinner } from "@/components/spinner";
-import { Scale, Ruler, Target, Edit, Flame, Star, Trophy, Share2 } from "lucide-react";
+import { Flame, Star, Trophy } from "lucide-react";
 import AdherenceRing from "@/components/AdherenceRing";
 import ProgressOverview from "@/components/ProgressOverview";
 import ProgressLoading from "./loading";
@@ -17,11 +17,9 @@ import ActivitySummaryCard from "@/components/ActivitySummaryCard";
 import ActivityGoalsCard from "@/components/ActivityGoalsCard";
 import ActivityInsightsCard from "@/components/ActivityInsightsCard";
 import { useProfile } from "@/hooks/useProfile";
-import { formatHeightMeters, findLabel, DIET_GOALS, DIET_TYPES, COOKING_LEVELS, BUDGET_LEVELS } from "@/lib/profile/options";
 import { calculateMealAdherence } from "@/lib/mealplan";
 
 const StatisticsStoryModal = dynamic(() => import("@/components/StatisticsStoryModal"), { ssr: false });
-const EditProfileModal = dynamic(() => import("@/components/EditProfileModal"), { ssr: false });
 
 interface WeightLog {
   id: string;
@@ -34,14 +32,12 @@ export default function ProgressPage() {
 
   const {
     physicalData,
-    preferences,
     socialProfile,
     gamification,
     isLoading: profileHookLoading,
     addWeightLog,
   } = useProfile();
 
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [showStatisticsStory, setShowStatisticsStory] = useState(false);
 
   const { data: weightLogs = [], isLoading: isLoadingWeightLogs, isError: weightError } = useQuery<WeightLog[]>({
@@ -83,7 +79,6 @@ export default function ProgressPage() {
   const currentWeight = physicalData?.currentWeight;
   const startWeight = physicalData?.startWeight;
   const targetWeight = physicalData?.targetWeight;
-  const userHeight = physicalData?.height;
 
   const latestPlan = plansData?.plans?.[0] ?? null;
   const adherence = calculateMealAdherence(latestPlan?.days);
@@ -116,119 +111,10 @@ export default function ProgressPage() {
   return (
     <div className={styles.screen}>
       <Toaster position="top-center" />
-      <ProgressOverview logs={weightLogs} currentWeight={currentWeight} startWeight={startWeight} targetWeight={targetWeight} timezone={socialProfile?.timezone} error={weightError} pending={addWeightLog.isPending} onRegister={(weight, onSuccess) => addWeightLog.mutate({ weight }, { onSuccess })} />
+      <ProgressOverview logs={weightLogs} currentWeight={currentWeight} startWeight={startWeight} targetWeight={targetWeight} timezone={socialProfile?.timezone} error={weightError} pending={addWeightLog.isPending} onShare={() => setShowStatisticsStory(true)} onRegister={(weight, onSuccess) => addWeightLog.mutate({ weight }, { onSuccess })} />
 
       <div className={styles.extras}>
         <h2 className={styles.sectionTitle}>Mais sobre seu progresso</h2>
-        {/* Coluna esquerda */}
-        <div className={styles.extraGroup}>
-          {/* Dados físicos e preferências antes disponíveis no Perfil */}
-          <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
-            <div className="flex items-center justify-between gap-2 mb-4">
-              <h2 className="text-lg font-medium text-slate-800">Dados físicos</h2>
-              <button type="button" onClick={() => setIsEditModalOpen(true)} className="flex items-center gap-1.5 text-sm text-slate-600 rounded-lg border border-slate-200 px-3 py-2"><Edit size={15} /> Editar</button>
-            </div>
-            {(currentWeight !== undefined || userHeight !== undefined || targetWeight !== undefined) && (
-              <div className="grid grid-cols-3 gap-3 border-t border-slate-100 pt-5">
-                <div className="text-center">
-                  <div className="w-10 h-10 bg-[#007BFF]/10 rounded-xl flex items-center justify-center mx-auto mb-2">
-                    <Scale size={18} className="text-[#007BFF]" />
-                  </div>
-                  <p className="text-lg font-bold text-slate-800">{currentWeight !== undefined ? `${currentWeight}kg` : "—"}</p>
-                  <p className="text-xs text-slate-400">Atual</p>
-                </div>
-                <div className="text-center">
-                  <div className="w-10 h-10 bg-[#28A745]/10 rounded-xl flex items-center justify-center mx-auto mb-2">
-                    <Ruler size={18} className="text-[#28A745]" />
-                  </div>
-                  <p className="text-lg font-bold text-slate-800">{formatHeightMeters(userHeight)}</p>
-                  <p className="text-xs text-slate-400">Altura</p>
-                </div>
-                <div className="text-center">
-                  <div className="w-10 h-10 bg-orange-100 rounded-xl flex items-center justify-center mx-auto mb-2">
-                    <Target size={18} className="text-orange-500" />
-                  </div>
-                  <p className="text-lg font-bold text-slate-800">{targetWeight !== undefined ? `${targetWeight}kg` : "—"}</p>
-                  <p className="text-xs text-slate-400">Meta</p>
-                </div>
-              </div>
-            )}
-
-            {(startWeight !== undefined || preferences?.dietGoal) && (
-              <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-slate-100">
-                {startWeight !== undefined && <span className="px-3 py-1 bg-slate-100 text-slate-600 rounded-full text-xs font-medium">Início: {startWeight}kg</span>}
-                {preferences?.dietGoal && (
-                  <span className="px-3 py-1 bg-[#007BFF]/10 text-[#007BFF] rounded-full text-xs font-medium">
-                    {findLabel(DIET_GOALS, preferences.dietGoal) ?? preferences.dietGoal}
-                  </span>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Preferências */}
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
-            <h3 className="font-semibold text-slate-800 mb-3">Preferências</h3>
-            <div className="flex flex-wrap gap-2">
-              {physicalData?.dietType && (
-                <span className="px-3 py-1 bg-[#007BFF]/10 text-[#007BFF] rounded-full text-xs font-medium">
-                  {findLabel(DIET_TYPES, physicalData.dietType) ?? physicalData.dietType}
-                </span>
-              )}
-              {physicalData?.cookingLevel && (
-                <span className="px-3 py-1 bg-[#28A745]/10 text-[#28A745] rounded-full text-xs font-medium">
-                  {findLabel(COOKING_LEVELS, physicalData.cookingLevel) ?? physicalData.cookingLevel}
-                </span>
-              )}
-              {preferences?.budgetLevel && (
-                <span className="px-3 py-1 bg-slate-100 text-slate-600 rounded-full text-xs font-medium">
-                  {findLabel(BUDGET_LEVELS, preferences.budgetLevel) ?? preferences.budgetLevel}
-                </span>
-              )}
-              {preferences?.maxPrepTime && (
-                <span className="px-3 py-1 bg-slate-100 text-slate-600 rounded-full text-xs font-medium">Até {preferences.maxPrepTime} min</span>
-              )}
-            </div>
-            {(preferences?.allergies?.length ?? 0) > 0 && (
-              <div className="mt-3">
-                <p className="text-xs text-slate-400 mb-1.5">Alergias</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {preferences!.allergies.map((a) => (
-                    <span key={a} className="px-2 py-0.5 bg-red-50 text-red-500 rounded-full text-xs">
-                      {a}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-            {(preferences?.preferredFoods?.length ?? 0) > 0 && (
-              <div className="mt-3">
-                <p className="text-xs text-slate-400 mb-1.5">Gosta de</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {preferences!.preferredFoods.map((f) => (
-                    <span key={f} className="px-2 py-0.5 bg-[#28A745]/10 text-[#28A745] rounded-full text-xs">
-                      {f}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-            {(preferences?.dislikedFoods?.length ?? 0) > 0 && (
-              <div className="mt-3">
-                <p className="text-xs text-slate-400 mb-1.5">Não gosta de</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {preferences!.dislikedFoods.map((f) => (
-                    <span key={f} className="px-2 py-0.5 bg-slate-100 text-slate-500 rounded-full text-xs">
-                      {f}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-        </div>
-
         {/* Coluna direita */}
         <div className={styles.extraGroup}>
           {/* Gamificação — grid-cols-3 sem breakpoint deixava cada card com
@@ -266,10 +152,6 @@ export default function ProgressPage() {
             </div>
           </div>
 
-          <button type="button" onClick={() => setShowStatisticsStory(true)}
-            className={styles.share}>
-            <Share2 size={18} /> Compartilhar estatísticas
-          </button>
 
           {/* Adesão + Antes & Depois */}
           <div className={styles.extraGroup}>
@@ -313,14 +195,6 @@ export default function ProgressPage() {
           streak={gamification?.currentStreak} />
       )}
 
-      {/* Modal de edição */}
-      <EditProfileModal
-        isOpen={isEditModalOpen}
-        onClose={() => setIsEditModalOpen(false)}
-        physicalData={physicalData ?? {}}
-        preferences={preferences}
-        socialProfile={socialProfile}
-      />
     </div>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { CalendarDays, Plus, X, Download } from "lucide-react";
+import { CalendarDays, Plus, X, Download, Share2 } from "lucide-react";
 import { getLocalDateString, toUtcDateOnly } from "@/lib/community/dates";
 import { dailyWeights, dayDistance, shiftDay, rangeWeights, carryForwardWeights, sevenDaySummary, loggingStreak, resolveWeightTimezone, weightMilestones, type ChartWeight, type WeightEntry, type WeightRange } from "@/lib/statistics/weight-progress";
 import styles from "@/app/progress/progress.module.css";
@@ -55,8 +55,8 @@ function WeightGraph({ points, start, end, target, range }: { points: ChartWeigh
   </div>;
 }
 
-export default function ProgressOverview({ logs, currentWeight, startWeight, targetWeight, timezone, error, pending, onRegister }: {
-  logs: WeightEntry[]; currentWeight?: number; startWeight?: number; targetWeight?: number; timezone?: string; error?: boolean; pending: boolean; onRegister: (weight: number, onSuccess: () => void) => void;
+export default function ProgressOverview({ logs, currentWeight, startWeight, targetWeight, timezone, error, pending, onShare, onRegister }: {
+  logs: WeightEntry[]; currentWeight?: number; startWeight?: number; targetWeight?: number; timezone?: string; error?: boolean; pending: boolean; onShare: () => void; onRegister: (weight: number, onSuccess: () => void) => void;
 }) {
   const [range, setRange] = useState<WeightRange>(30);
   const [weight, setWeight] = useState("");
@@ -110,6 +110,7 @@ export default function ProgressOverview({ logs, currentWeight, startWeight, tar
       {periods.map(p => <button key={p.value} type="button" aria-pressed={range===p.value} onClick={() => setRange(p.value)}>{p.label}</button>)}
     </div>
     {error && <p role="alert" className={styles.error}>Não foi possível carregar seu histórico. Tente novamente mais tarde.</p>}
+    <button type="button" className={styles.share} onClick={onShare}><Share2 size={18} strokeWidth={1.5} /> Compartilhar estatísticas</button>
     <section className={styles.card + " " + styles.weightCard} aria-label="Peso">
       <div className={styles.cardHeading}><h2>Peso</h2><span>{periods.find(p=>p.value===range)?.subtitle}</span></div>
       <div className={styles.bigNumber}><span>{decimal(current)}</span><small>kg</small></div>

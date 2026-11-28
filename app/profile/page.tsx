@@ -6,8 +6,9 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Bell, ChevronRight, LogOut, Plug, Zap, type LucideIcon } from "lucide-react";
+import { Bell, ChevronRight, LogOut, Plug, Zap, Scale, Ruler, Target, Edit, type LucideIcon } from "lucide-react";
 import { useProfile } from "@/hooks/useProfile";
+import { formatHeightMeters, findLabel, DIET_GOALS } from "@/lib/profile/options";
 import { useSubscriptionStatus } from "@/hooks/useSubscriptionStatus";
 import { useHydrationSummary } from "@/hooks/useHydration";
 import Avatar from "@/components/social/Avatar";
@@ -119,6 +120,21 @@ export default function ProfilePage() {
         <p>{memberDate ? "Membro desde " + memberDate : socialProfile?.username ? "@" + socialProfile.username : "Sua conta SmartPlate"}</p>
       </div>
       <button type="button" className={styles.edit} onClick={() => setEditing(true)}>Editar</button>
+    </section>
+    <section className={styles.card + " " + styles.physical} aria-label="Dados físicos">
+      <div className={styles.physicalHeader}>
+        <h2>Dados físicos</h2>
+        <button type="button" className={styles.physicalEdit} onClick={() => setEditing(true)}><Edit size={15} strokeWidth={1.5} /> Editar</button>
+      </div>
+      <div className={styles.physicalGrid}>
+        <div><span className={styles.physicalIcon}><Scale size={20} strokeWidth={1.5} /></span><strong>{valid(physicalData?.currentWeight) ? physicalData.currentWeight.toLocaleString("pt-BR") + " kg" : "—"}</strong><small>Atual</small></div>
+        <div><span className={styles.physicalIcon}><Ruler size={20} strokeWidth={1.5} /></span><strong>{formatHeightMeters(physicalData?.height)}</strong><small>Altura</small></div>
+        <div><span className={styles.physicalIcon + " " + styles.physicalTarget}><Target size={20} strokeWidth={1.5} /></span><strong>{valid(physicalData?.targetWeight) ? physicalData.targetWeight.toLocaleString("pt-BR") + " kg" : "—"}</strong><small>Meta</small></div>
+      </div>
+      {(valid(physicalData?.startWeight) || preferences?.dietGoal) && <div className={styles.physicalFooter}>
+        {valid(physicalData?.startWeight) && <span>Início: {physicalData.startWeight.toLocaleString("pt-BR")} kg</span>}
+        {preferences?.dietGoal && <span>{findLabel(DIET_GOALS, preferences.dietGoal) ?? preferences.dietGoal}</span>}
+      </div>}
     </section>
     <WeightGoal start={physicalData?.startWeight} current={physicalData?.currentWeight} target={physicalData?.targetWeight} />
     <section className={styles.card + " " + styles.metrics} aria-label="Resumo de hoje">
