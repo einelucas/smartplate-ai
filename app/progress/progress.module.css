@@ -22,7 +22,10 @@
 .weightNote i {width:7px;height:7px;background:#86c4e4;flex-shrink:0;border-radius:50%;align-self:center}
 .graph {position:relative;min-width:0;padding-top:8px}
 .chart {display:block;width:100%;height:auto;overflow:visible}
-.axis {display:flex;justify-content:space-between;gap:4px;color:var(--muted);font-size:13px;margin-top:8px}
+.axis {position:relative;height:18px;color:var(--muted);font-size:13px;margin-top:8px}
+.axis span {position:absolute;white-space:nowrap}
+.weekAxis {font-size:clamp(10px,2.9vw,13px)}
+.streakStatus {display:block;font-size:11px;margin-top:3px}
 .chartHint {position:absolute;top:-13px;right:0;font-size:12px;background:#fff;padding:4px 8px;border-radius:10px;box-shadow:0 1px 4px #0001}
 .graphEmpty {min-height:145px;display:grid;place-items:center;color:var(--muted);font-size:14px;text-align:center}
 .twoCards {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}
