@@ -3,6 +3,7 @@ import { getLocalDateString, toUtcDateOnly, diffInCalendarDays } from "../commun
 export type WeightRange = 7 | 30 | 90 | "all";
 export type WeightEntry = { date: string; weight: number };
 export type DailyWeight = { date: string; weight: number };
+export type ChartWeight = DailyWeight & { recorded: boolean; sourceDate: string };
 export const DAY_MS = 86400000;
 export function shiftDay(date: string, days: number) {
   return new Date(toUtcDateOnly(date).getTime() + days * DAY_MS).toISOString().slice(0, 10);
@@ -34,6 +35,40 @@ export function dailyWeights(logs: WeightEntry[], timezone?: string, now = new D
 export function rangeWeights(points: DailyWeight[], range: WeightRange, today: string) {
   const start = range === "all" ? points[0]?.date ?? today : shiftDay(today, 1 - range);
   return { start, end: today, points: points.filter(p => p.date >= start && p.date <= today) };
+}
+/** Carry the last known weight forward, including a reading before the range.
+ * Never fill days before the first real measurement, and never persist synthetic values.
+ */
+export function carryForwardWeights(points: DailyWeight[], start: string, end: string): ChartWeight[] {
+  const sorted = [...points].filter(p => p.date <= end).sort((a,b) => a.date.localeCompare(b.date));
+  const result: ChartWeight[] = [];
+  let index = 0;
+  let known: DailyWeight | undefined;
+  for (let date = start; date <= end; date = shiftDay(date, 1)) {
+    while (index < sorted.length && sorted[index].date <= date) known = sorted[index++];
+    if (known) result.push({ date, weight: known.weight, recorded: known.date === date, sourceDate: known.date });
+  }
+  return result;
+}
+
+/** Seven daily differences use the weight at the preceding day as baseline.
+ * Both arithmetic mean of daily weights and mean daily variation are available.
+ * No estimate when there is no known weight at the start of the interval.
+ */
+export function sevenDaySummary(points: DailyWeight[], today: string) {
+  const start = shiftDay(today, -6);
+  const series = carryForwardWeights(points, shiftDay(today, -7), today);
+  const week = series.filter(p => p.date >= start);
+  const baseline = series.find(p => p.date === shiftDay(today, -7));
+  const end = week[week.length - 1];
+  const averageWeight = week.length === 7 ? week.reduce((sum,p) => sum + p.weight, 0) / 7 : null;
+  // Require an actual measurement after baseline, otherwise zero would imply evidence of stability.
+  const hasMeasurement = week.some(p => p.recorded);
+  const change = baseline && end && hasMeasurement ? end.weight - baseline.weight : null;
+  const dailyAverage = change === null ? null : change / 7;
+  const dailyChanges = series.slice(1).map((p,i) => p.weight - series[i].weight);
+  const scale = Math.max(0.1, Math.ceil(Math.max(Math.abs(dailyAverage ?? 0), ...dailyChanges.map(Math.abs)) * 10) / 10);
+  return { averageWeight, dailyAverage, change, scale };
 }
 /** Signed change per seven elapsed calendar days, only for distinct dates. */
 export function weeklyChange(points: DailyWeight[]): number | null {

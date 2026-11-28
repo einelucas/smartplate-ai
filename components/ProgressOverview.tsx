@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { CalendarDays, Plus, X, Download } from "lucide-react";
 import { getLocalDateString, toUtcDateOnly } from "@/lib/community/dates";
-import { dailyWeights, dayDistance, shiftDay, rangeWeights, lastSevenDayChange, loggingStreak, estimateGoal, resolveWeightTimezone, weightMilestones, type DailyWeight, type WeightEntry, type WeightRange } from "@/lib/statistics/weight-progress";
+import { dailyWeights, dayDistance, shiftDay, rangeWeights, carryForwardWeights, sevenDaySummary, loggingStreak, resolveWeightTimezone, weightMilestones, type ChartWeight, type WeightEntry, type WeightRange } from "@/lib/statistics/weight-progress";
 import styles from "@/app/progress/progress.module.css";
 
 const periods: { value: WeightRange; label: string; subtitle: string }[] = [
@@ -13,11 +13,11 @@ const periods: { value: WeightRange; label: string; subtitle: string }[] = [
   { value: "all", label: "Tudo", subtitle: "Todo o período" },
 ];
 const decimal = (n: number | undefined | null) => n == null || !Number.isFinite(n) ? "—" : n.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
-const signed = (n: number | null) => n == null ? "—" : (Math.abs(n) < .05 ? "0,0" : (n < 0 ? "−" : "+") + decimal(Math.abs(n)));
+const signed = (n: number | null, digits = 1) => n == null ? "—" : (Math.abs(n) < 0.5 * 10 ** -digits ? (0).toLocaleString("pt-BR", {minimumFractionDigits:digits, maximumFractionDigits:digits}) : (n < 0 ? "−" : "+") + Math.abs(n).toLocaleString("pt-BR", {minimumFractionDigits:digits, maximumFractionDigits:digits}));
 const dateLabel = (date: string) => toUtcDateOnly(date).toLocaleDateString("pt-BR", { day: "numeric", month: "short", timeZone: "UTC" }).replace(" de ", " ").replace(".", "");
 const validWeight = (weight: number | undefined): weight is number => weight !== undefined && Number.isFinite(weight) && weight > 0;
 
-function WeightGraph({ points, start, end, target, range }: { points: DailyWeight[]; start: string; end: string; target?: number; range: WeightRange }) {
+function WeightGraph({ points, start, end, target, range }: { points: ChartWeight[]; start: string; end: string; target?: number; range: WeightRange }) {
   const [selected, setSelected] = useState<string | null>(null);
 
   const w = 340, h = 136, pad = 6;
@@ -42,16 +42,16 @@ function WeightGraph({ points, start, end, target, range }: { points: DailyWeigh
   const labels = Array.from(new Set(Array.from({ length: tickCount }, (_, i) => shiftDay(start, Math.round(elapsedDays * i / Math.max(1, tickCount - 1))))));
   const active = coords.find(p => p.date === selected);
   return <div className={styles.graph}>
-    {!points.length ? <div className={styles.graphEmpty}>Nenhuma pesagem neste período.</div> : <svg viewBox={"0 0 " + w + " " + h} className={styles.chart} role="img" aria-label="Histórico de peso no período selecionado">
+    {!points.length ? <div className={styles.graphEmpty}>Nenhuma pesagem neste período.</div> : <svg viewBox={"0 0 " + w + " " + h} className={styles.chart} role="img" aria-label="Histórico de peso; dias sem pesagem mantêm o último peso conhecido">
       {coords.length > 1 && <path d={area} fill="#e8f4fa" />}
       {validWeight(target) && <><line x1="0" x2={w} y1={y(target)} y2={y(target)} stroke="#c2ced2" strokeWidth="1" strokeDasharray="3 4" /><text x={w-1} y={Math.max(11,y(target)-5)} textAnchor="end" fill="#747b7c" fontSize="12">Meta {decimal(target)}</text></>}
       <path d={line} fill="none" stroke="#1b1c19" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
       {last && <><circle cx={last.x} cy={last.y} r="8" fill="#f47b58" opacity=".16" /><circle cx={last.x} cy={last.y} r="4.6" fill="#f47b58" /></>}
-      {coords.map(point => <circle key={point.date} cx={point.x} cy={point.y} r="8" fill="transparent" onClick={() => setSelected(point.date)} onPointerEnter={() => setSelected(point.date)} onPointerLeave={() => setSelected(null)}><title>{dateLabel(point.date)}: {decimal(point.weight)} kg</title></circle>)}
+      {coords.map(point => <circle key={point.date} cx={point.x} cy={point.y} r="8" fill="transparent" onClick={() => setSelected(point.date)} onPointerEnter={() => setSelected(point.date)} onPointerLeave={() => setSelected(null)}><title>{dateLabel(point.date)}: {decimal(point.weight)} kg{!point.recorded ? " (último peso de " + dateLabel(point.sourceDate) + ")" : ""}</title></circle>)}
       {active && <circle cx={active.x} cy={active.y} r="3.5" fill="#191a18" pointerEvents="none" />}
     </svg>}
     <div className={styles.axis + (range === 7 ? " " + styles.weekAxis : "")}>{labels.map(d => <span key={d} title={dateLabel(d)} style={{left: (x(d)/w*100)+"%", transform: d===start ? "translateX(0)" : d===end ? "translateX(-100%)" : "translateX(-50%)"}}>{d === end ? "Hoje" : range === 7 ? d.slice(8,10)+"/"+d.slice(5,7) : dateLabel(d)}</span>)}</div>
-    {active && <div className={styles.chartHint}>{dateLabel(active.date)} · {decimal(active.weight)} kg</div>}
+    {active && <div className={styles.chartHint}>{dateLabel(active.date)} · {decimal(active.weight)} kg{!active.recorded && " · mantido"}</div>}
   </div>;
 }
 
@@ -80,17 +80,19 @@ export default function ProgressOverview({ logs, currentWeight, startWeight, tar
   const all = dailyWeights(logs, zone, referenceNow);
   const rawHistory = logs.filter(p => Number.isFinite(Date.parse(p.date)) && Date.parse(p.date) <= referenceNow.getTime() && validWeight(p.weight)).sort((a,b)=>Date.parse(b.date)-Date.parse(a.date));
   const selected = rangeWeights(all, range, today);
+  // Do not backfill before the first measurement: shorten the plotted start only for new histories.
+  const chartStart = all[0] && all[0].date > selected.start ? all[0].date : selected.start;
+  const chartPoints = carryForwardWeights(all, chartStart, selected.end);
   const current = all[all.length-1]?.weight ?? currentWeight;
   const first = all[0];
   const total = current != null && first ? current - first.weight : null;
-  const weekly = lastSevenDayChange(all, today);
-  // A escala visual representa a variação observada, com zero no centro.
-  const weeklyTick = weekly === null ? -1 : Math.round(13.5 + Math.max(-1, Math.min(1, weekly / 2)) * 13.5);
+  const week = sevenDaySummary(all, today);
+  const weekly = week.dailyAverage;
+  // The ruler is a signed daily-change scale, centered on zero and scaled to observed changes.
+  const weeklyTick = weekly === null ? -1 : Math.round(14 + Math.max(-1, Math.min(1, weekly / week.scale)) * 14);
   const streak = loggingStreak(all, today);
-  const estimated = estimateGoal(rangeWeights(all, 30, today).points, targetWeight);
   const milestones = weightMilestones(all, startWeight, targetWeight);
   const completed = milestones.filter(m => m.date !== null).length;
-  const targetReached = validWeight(targetWeight) && validWeight(current) && (validWeight(startWeight) ? (startWeight === targetWeight ? current === targetWeight : Math.sign(targetWeight - startWeight) * (current - targetWeight) >= 0) : current === targetWeight);
   function exportHistory() {
     const csv = ["Data;Peso (kg)", ...rawHistory.map(p => new Date(p.date).toISOString() + ";" + String(p.weight).replace(".", ","))].join("\n");
     const url = URL.createObjectURL(new Blob(["\ufeff", csv], {type:"text/csv;charset=utf-8"}));
@@ -112,14 +114,15 @@ export default function ProgressOverview({ logs, currentWeight, startWeight, tar
       <div className={styles.cardHeading}><h2>Peso</h2><span>{periods.find(p=>p.value===range)?.subtitle}</span></div>
       <div className={styles.bigNumber}><span>{decimal(current)}</span><small>kg</small></div>
       <div className={styles.weightNote}><i />{total == null ? "Registre seu peso para acompanhar a evolução" : Math.abs(total) < .05 ? "Peso estável desde " + dateLabel(first!.date) : decimal(Math.abs(total)) + " kg " + (total < 0 ? "perdidos" : "ganhos") + " desde " + dateLabel(first!.date)}</div>
-      <WeightGraph key={range} points={selected.points} start={selected.start} end={selected.end} target={targetWeight} range={range}/>
+      <WeightGraph key={range} points={chartPoints} start={chartStart} end={selected.end} target={targetWeight} range={range}/>
     </section>
     <div className={styles.twoCards}>
       <section className={styles.card + " " + styles.statCard}>
         <h2>Média semanal</h2>
-        <div className={styles.statNumber}><span>{signed(weekly)}</span><small>kg/7 dias</small></div>
-        <div className={styles.weekTicks} aria-hidden="true">{Array.from({length:28},(_,i)=><i key={i} className={weekly!==null && i===weeklyTick?styles.orangeTick:weekly!==null&&i>=Math.min(14,weeklyTick)&&i<=Math.max(14,weeklyTick)?styles.blackTick:undefined}/>)}</div>
-        <p>{targetReached ? "Meta atingida" : estimated && estimated >= today ? "Meta por volta de " + dateLabel(estimated) : weekly===null ? "Registre em 2 dias da semana" : "Variação real nos últimos 7 dias"}</p>
+        <div className={styles.statNumber}><span>{signed(weekly, 2)}</span><small>kg/dia</small></div>
+        <div className={styles.weekTicks} role="img" aria-label={weekly===null ? "Sem dados suficientes" : "Escala da variação média diária: de menos " + decimal(week.scale) + " a mais " + decimal(week.scale) + " kg por dia; marcador em " + signed(weekly, 2)}>{Array.from({length:29},(_,i)=><i key={i} className={weekly!==null && i===weeklyTick?styles.orangeTick:weekly!==null&&i>=Math.min(14,weeklyTick)&&i<=Math.max(14,weeklyTick)?styles.blackTick:undefined}/>)}</div>
+        <div className={styles.rulerLabels}><span>−{decimal(week.scale)}</span><span>0</span><span>+{decimal(week.scale)}</span></div>
+        <p>{week.change === null ? "Sem dados para 7 dias" : "Total em 7 dias: " + signed(week.change) + " kg"}<span className={styles.streakStatus}>Peso médio: {decimal(week.averageWeight)} kg</span></p>
       </section>
       <section className={styles.card + " " + styles.statCard}>
         <h2>Sequência de pesagens</h2>

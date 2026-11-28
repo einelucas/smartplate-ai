@@ -91,3 +91,5 @@
   .card {padding:24px 26px}
   .statCard {min-height:185px}
 }
+
+.rulerLabels {display:flex;justify-content:space-between;gap:2px;font-size:10px;color:var(--muted);line-height:1.2;margin-top:1px}
