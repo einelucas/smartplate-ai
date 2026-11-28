@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { X, Share2, Download, TrendingUp, CalendarDays, Trophy } from "lucide-react";
 import type { AchievementsResponse } from "@/hooks/useAchievements";
-import { buildStorySvg, storyPng, getStoryWeights, type StoryKind, type StoryTheme, type StoryPeriod, type WeightEntry, type WeeklyStory } from "@/lib/statistics/story";
+import { buildStorySvg, storyPng, getStoryWeights, STORY_THEMES, type StoryKind, type StoryTheme, type StoryPeriod, type WeightEntry, type WeeklyStory } from "@/lib/statistics/story";
 
 interface Props {
   onClose: () => void; weightLogs: WeightEntry[]; startWeight?: number; targetWeight?: number;
@@ -15,10 +15,12 @@ const choice = (active: boolean) => "rounded-xl border px-3 py-2 text-sm font-me
 export default function StatisticsStoryModal({onClose,weightLogs,startWeight,targetWeight,currentWeight,displayName,timezone,streak}:Props){
   const dialog=useRef<HTMLDialogElement>(null);
   const [kind,setKind]=useState<StoryKind>("weight");
-  const [theme,setTheme]=useState<StoryTheme>("dark");
+  const [theme,setTheme]=useState<StoryTheme>("signature");
   const [period,setPeriod]=useState<StoryPeriod>(7);
   const [showWeight,setShowWeight]=useState(false);
   const [showName,setShowName]=useState(false);
+  const [showGraph,setShowGraph]=useState(true);
+  const [showGoal,setShowGoal]=useState(true);
   const [code,setCode]=useState("");
   const [rendered,setRendered]=useState<{svg:string;file:File;url:string}|null>(null);
   const [renderError,setRenderError]=useState(false);
@@ -37,17 +39,17 @@ export default function StatisticsStoryModal({onClose,weightLogs,startWeight,tar
   const hasWeights=getStoryWeights(weightLogs,period,timezone).points.length>0;
   const svg=useMemo(()=>{
     if(kind==="week"&&!weekly.data || kind==="achievement"&&!achievement || kind==="weight"&&!hasWeights)return null;
-    return buildStorySvg({kind,theme,period,logs:weightLogs,startWeight,targetWeight,currentWeight,timezone,showWeight,name:showName?displayName:undefined,week:weekly.data,streak,achievement});
-  },[kind,theme,period,weightLogs,startWeight,targetWeight,currentWeight,timezone,showWeight,showName,displayName,weekly.data,streak,achievement,hasWeights]);
+    return buildStorySvg({kind,theme,period,logs:weightLogs,startWeight,targetWeight,currentWeight,timezone,showWeight,showGraph,showGoal,name:showName?displayName:undefined,week:weekly.data,streak,achievement});
+  },[kind,theme,period,weightLogs,startWeight,targetWeight,currentWeight,timezone,showWeight,showGraph,showGoal,showName,displayName,weekly.data,streak,achievement,hasWeights]);
   useEffect(()=>{
     let cancelled=false;let url:string|undefined;setRenderError(false);setShareError("");
     if(svg) storyPng(svg).then(blob=>{
       if(cancelled)return;
       url=URL.createObjectURL(blob);
-      setRendered({svg,file:new File([blob],"smartplate-estatisticas.png",{type:"image/png"}),url});
+      setRendered({svg,file:new File([blob],`smartplate-estatisticas-${theme}.png`,{type:"image/png"}),url});
     }).catch(()=>{if(!cancelled)setRenderError(true);});
     return()=>{cancelled=true;if(url)URL.revokeObjectURL(url);};
-  },[svg]);
+  },[svg,theme]);
   const ready=svg&&rendered?.svg===svg&&!renderError?rendered:null;
   function save(){
     if(!ready)return;
@@ -77,10 +79,28 @@ export default function StatisticsStoryModal({onClose,weightLogs,startWeight,tar
           </div>
           {kind==="weight"&&<div><p className="mb-2 text-xs font-semibold text-slate-600">Período</p><div className="flex gap-2">{([7,15,30] as const).map(n=><button type="button" key={n} aria-pressed={period===n} className={choice(period===n)} onClick={()=>setPeriod(n)}>{n} dias</button>)}</div></div>}
           {kind==="achievement"&&unlocked.length>0&&<label className="block text-xs font-semibold text-slate-600">Conquista<select value={achievement?.code??""} onChange={e=>setCode(e.target.value)} className="mt-2 w-full rounded-xl border border-slate-200 bg-white p-3 text-sm">{unlocked.map(a=><option key={a.code} value={a.code}>{a.title}</option>)}</select></label>}
-          <div><p className="mb-2 text-xs font-semibold text-slate-600">Estilo</p><div className="flex gap-2"><button type="button" aria-pressed={theme==="dark"} className={choice(theme==="dark")} onClick={()=>setTheme("dark")}>Noturno</button><button type="button" aria-pressed={theme==="light"} className={choice(theme==="light")} onClick={()=>setTheme("light")}>Claro</button></div></div>
+          <div>
+            <p className="mb-2 text-xs font-semibold text-slate-600">Estilo do story</p>
+            <div className="grid grid-cols-3 gap-2" role="group" aria-label="Estilo visual">
+              {STORY_THEMES.map(option=><button key={option.id} type="button" aria-pressed={theme===option.id} onClick={()=>setTheme(option.id)} className={choice(theme===option.id)+" flex min-w-0 flex-col items-center gap-2 px-1.5"}>
+                <span aria-hidden="true" className="relative flex aspect-[9/12] w-full max-w-[54px] flex-col justify-center gap-1 overflow-hidden rounded-md border border-black/10 p-1.5" style={{background:option.id==="signature"?"linear-gradient(145deg,#1468E9,#1036A6)":option.color,color:option.id==="minimal"?"#096BD3":"#FFFFFF"}}>
+                  <span className="h-1 w-1/3 rounded-full bg-current opacity-60"/>
+                  <span className="text-base font-extrabold leading-none">−</span>
+                  <svg viewBox="0 0 40 15" className="w-full" fill="none"><path d="M1 2L11 5L20 4L30 11L39 14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  <span className="h-1 w-2/3 rounded-full bg-current opacity-50"/>
+                </span>
+                <span className="text-[11px] font-semibold leading-tight sm:text-xs">{option.label}</span>
+              </button>)}
+            </div>
+            <p className="mt-2 text-xs text-slate-500">{STORY_THEMES.find(option=>option.id===theme)?.description} · a prévia e a imagem salva usam o estilo escolhido.</p>
+          </div>
           <div className="space-y-3 rounded-xl bg-slate-50 p-3">
-            <p className="text-xs font-semibold text-slate-700">Privacidade</p>
-            {kind!=="achievement"&&<label className="flex items-center gap-2 text-sm text-slate-600"><input type="checkbox" checked={showWeight} onChange={e=>setShowWeight(e.target.checked)} className="accent-[#007BFF]"/> {kind==="weight"?"Mostrar pesos exatos e meta":"Mostrar peso atual"}</label>}
+            <p className="text-xs font-semibold text-slate-700">Informações e privacidade</p>
+            {kind!=="achievement"&&<label className="flex items-center gap-2 text-sm text-slate-600"><input type="checkbox" checked={showWeight} onChange={e=>setShowWeight(e.target.checked)} className="accent-[#007BFF]"/> {kind==="weight"?"Mostrar pesos exatos (incluindo a meta, se visível)":"Mostrar peso atual"}</label>}
+            {kind==="weight"&&<>
+              <label className="flex items-center gap-2 text-sm text-slate-600"><input type="checkbox" checked={showGraph} onChange={e=>setShowGraph(e.target.checked)} className="accent-[#007BFF]"/> Mostrar gráfico de evolução</label>
+              <label className="flex items-center gap-2 text-sm text-slate-600"><input type="checkbox" checked={showGoal} onChange={e=>setShowGoal(e.target.checked)} className="accent-[#007BFF]"/> Mostrar progresso da meta</label>
+            </>}
             <label className="flex items-center gap-2 text-sm text-slate-600"><input type="checkbox" checked={showName} onChange={e=>setShowName(e.target.checked)} className="accent-[#007BFF]"/> Mostrar meu nome</label>
             <p className="text-xs text-slate-500">A imagem é criada neste dispositivo. Revise os dados antes de compartilhar.</p>
           </div>
