@@ -3,34 +3,63 @@
 import { useUser, useClerk } from "@clerk/nextjs";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { useState } from "react";
 import dynamic from "next/dynamic";
-import { Toaster } from "react-hot-toast";
 import { useRouter } from "next/navigation";
-import { Spinner } from "@/components/spinner";
-import { Camera, Scale, Ruler, Target, LogOut, Edit, Flame, Star, Trophy, Plug, Sparkles, Lock, Share2 } from "lucide-react";
-import AdherenceRing from "@/components/AdherenceRing";
-import ChartSkeleton from "@/components/skeletons/ChartSkeleton";
-import ProfileSkeleton from "@/components/skeletons/ProfileSkeleton";
-import BeforeAfterSection from "@/components/BeforeAfterSection";
-import PlanSubscriptionCard from "@/components/PlanSubscriptionCard";
-import AchievementsSummaryCard from "@/components/AchievementsSummaryCard";
-import ActivitySummaryCard from "@/components/ActivitySummaryCard";
-import ActivityGoalsCard from "@/components/ActivityGoalsCard";
-import ActivityInsightsCard from "@/components/ActivityInsightsCard";
+import { useState } from "react";
+import { Bell, ChevronRight, LogOut, Plug, Zap, type LucideIcon } from "lucide-react";
 import { useProfile } from "@/hooks/useProfile";
+import { useSubscriptionStatus } from "@/hooks/useSubscriptionStatus";
+import { useHydrationSummary } from "@/hooks/useHydration";
 import Avatar from "@/components/social/Avatar";
-import { formatHeightMeters, findLabel, DIET_GOALS, DIET_TYPES, COOKING_LEVELS, BUDGET_LEVELS } from "@/lib/profile/options";
-import { calculateMealAdherence } from "@/lib/mealplan";
+import ProfileLoading from "./loading";
+import styles from "./profile.module.css";
 
-const WeightChart = dynamic(() => import("@/components/WeightChart"), { ssr: false, loading: () => <ChartSkeleton /> });
-const StatisticsStoryModal = dynamic(() => import("@/components/StatisticsStoryModal"), { ssr: false });
 const EditProfileModal = dynamic(() => import("@/components/EditProfileModal"), { ssr: false });
 
-interface WeightLog {
-  id: string;
-  weight: number;
-  date: string;
+type Meal = { calories?: number; proteina?: number; completed?: boolean };
+type Day = { day: string; breakfast?: Meal | null; lunch?: Meal | null; dinner?: Meal | null; snacks?: Meal[] | null };
+type Plan = { calories?: number; days?: Day[] };
+
+const format = (n: number | undefined, digits = 0) => n === undefined ? "—" : n.toLocaleString("pt-BR", { minimumFractionDigits: digits, maximumFractionDigits: digits });
+const valid = (n: unknown): n is number => typeof n === "number" && Number.isFinite(n);
+const clamp = (n: number) => Math.max(0, Math.min(1, n));
+const fraction = (value: number | undefined, goal: number | undefined) => valid(value) && valid(goal) && goal > 0 ? clamp(value / goal) : 0;
+
+function WeightGoal({ start, current, target }: { start?: number; current?: number; target?: number }) {
+  const ready = valid(start) && valid(current) && valid(target);
+  const progress = ready ? (start === target ? Number(current === target) : clamp((current - start) / (target - start))) : 0;
+  const remaining = ready ? Math.max(0, target === start ? Math.abs(current - target) : (target - current) * Math.sign(target - start)) : undefined;
+  return <section className={styles.card + " " + styles.goal} aria-label="Meta de peso">
+    <div className={styles.muted}>Meta de peso</div>
+    <div className={styles.goalHeadline}>
+      <div className={styles.goalAmount}><span>{format(remaining, 1)}</span><small>{remaining === 0 ? "meta atingida" : "kg restantes"}</small></div>
+      <span className={styles.muted}>{ready ? Math.round(progress * 100) + "% concluído" : "Sem meta"}</span>
+    </div>
+    <div className={styles.scale} role="meter" aria-label="Progresso da meta de peso" aria-valuemin={0} aria-valuemax={100} aria-valuenow={ready ? Math.round(progress * 100) : undefined}>
+      <div className={styles.weightTrack}><div className={styles.weightFill} style={{ width: (progress * 100) + "%" }} /></div>
+      {ready && <div className={styles.marker} style={{left: (progress * 100) + "%"}}>
+        <span className={styles.markerLabel} style={{transform: progress < 0.12 ? "translateX(0)" : progress > 0.88 ? "translateX(-100%)" : "translateX(-50%)"}}>{format(current, 1)} kg</span>
+      </div>}
+    </div>
+    <div className={styles.goalFoot}><span>{format(start, 1)} kg início</span><span>{format(target, 1)} kg meta</span></div>
+  </section>;
+}
+
+function Metric({ label, value, goal, unit, kind, digits = 0 }: { label: string; value?: number; goal?: number; unit?: string; kind: "calories" | "protein" | "water"; digits?: number }) {
+  const p = fraction(value, goal);
+  return <div className={styles.metric}>
+    <div className={styles.muted}>{label}</div>
+    <div className={styles.metricValues}><span>{format(value, digits)}</span><small>/ {format(goal, digits)}{unit ? " " + unit : ""}</small></div>
+    <div aria-hidden="true" className={styles[kind]}>
+      {kind === "calories" ? <i style={{width: (p * 100) + "%"}} /> :
+        Array.from({length: kind === "water" ? 8 : 4}, (_, i) => <i key={i}>{kind === "protein" && <b style={{width: (clamp(p * 4 - i) * 100) + "%"}} />}{kind === "water" && <b style={{opacity: clamp(p * 8 - i)}} />}</i>)}
+    </div>
+  </div>;
+}
+
+function SettingsRow({ icon: Icon, title, subtitle, href, onClick }: { icon: LucideIcon; title: string; subtitle: string; href?: string; onClick?: () => void }) {
+  const content = <><span className={styles.settingIcon}><Icon size={21} strokeWidth={1.5} /></span><span className={styles.settingText}><span>{title}</span><small>{subtitle}</small></span><ChevronRight size={17} strokeWidth={1.5} className={styles.chevron} /></>;
+  return href ? <Link className={styles.setting} href={href}>{content}</Link> : <button className={styles.setting} type="button" onClick={onClick}>{content}</button>;
 }
 
 export default function ProfilePage() {
@@ -38,403 +67,69 @@ export default function ProfilePage() {
   const { signOut } = useClerk();
   const router = useRouter();
   const queryClient = useQueryClient();
-
-  const {
-    physicalData,
-    preferences,
-    socialProfile,
-    gamification,
-    isLoading: profileHookLoading,
-    addWeightLog,
-  } = useProfile();
-
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [newWeight, setNewWeight] = useState("");
-  const [showStatisticsStory, setShowStatisticsStory] = useState(false);
-
-  const { data: weightLogs = [], isLoading: isLoadingWeightLogs } = useQuery<WeightLog[]>({
-    queryKey: ["weight-logs"],
-    queryFn: async () => {
-      const res = await fetch("/api/weight-logs");
-      if (!res.ok) return [];
-      const data = await res.json();
-      if (Array.isArray(data)) return data;
-      if (Array.isArray(data?.logs)) return data.logs;
-      return [];
-    },
-    enabled: !!isSignedIn,
-  });
-
-  const { data: plansData } = useQuery({
+  const { physicalData, preferences, socialProfile, isLoading } = useProfile();
+  const { data: subscription } = useSubscriptionStatus();
+  const { data: hydration } = useHydrationSummary();
+  const [editing, setEditing] = useState(false);
+  const { data: plans } = useQuery<{plans: Plan[]}>({
     queryKey: ["meal-plans"],
     queryFn: async () => {
       const res = await fetch("/api/meal-plans");
-      if (!res.ok) return { plans: [] };
+      if (!res.ok) throw new Error("Erro ao buscar planos");
       return res.json();
     },
     enabled: !!isSignedIn,
   });
+  const timezone = socialProfile?.timezone;
+  const now = new Date();
+  const today = now.toLocaleDateString("en-US", {weekday:"long", timeZone: timezone || undefined});
+  const plan = plans?.plans?.[0];
+  const day = plan?.days?.find(d => d.day === today);
+  const meals = day ? [day.breakfast, day.lunch, ...(day.snacks ?? []), day.dinner].filter((m): m is Meal => !!m) : [];
+  const completed = meals.filter(m => m.completed);
+  const sum = (items: Meal[], field: "calories" | "proteina") => items.reduce((total, m) => { const value = m[field]; return total + (valid(value) ? value : 0); }, 0);
+  const proteinKnown = meals.length > 0 && meals.every(m => valid(m.proteina));
+  const proteinGoal = proteinKnown ? sum(meals, "proteina") : undefined;
+  const protein = proteinKnown ? sum(completed, "proteina") : undefined;
+  const calories = day ? sum(completed, "calories") : undefined;
+  const name = socialProfile?.displayName || user?.fullName || user?.firstName || "Usuário";
+  const joined = user?.createdAt;
+  const memberDate = joined?.toLocaleDateString("pt-BR", {month:"short", year:"numeric", timeZone:timezone || undefined});
+  const dayCount = joined ? Math.max(1, Math.floor((Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) - Date.UTC(joined.getFullYear(), joined.getMonth(), joined.getDate())) / 86400000) + 1) : undefined;
+  const isPremium = subscription?.premium.isPremium;
+  const isBeta = subscription?.premium.source === "BETA_CODE" && isPremium;
+  const subscriptionDescription = isBeta ? (subscription?.premium.expiresAt ? "Beta ativo até " + new Date(subscription.premium.expiresAt).toLocaleDateString("pt-BR") : "Acesso Beta ativo") : isPremium ? "Premium · assinatura ativa" : subscription ? "Plano gratuito" : "Gerenciar assinatura";
 
-  const { data: favoritePlansData } = useQuery({
-    queryKey: ["meal-plans", "favorites"],
-    queryFn: async () => {
-      const res = await fetch("/api/meal-plans?favorites=true");
-      if (!res.ok) return { plans: [] };
-      return res.json();
-    },
-    enabled: !!isSignedIn,
-  });
+  if (!isLoaded || isLoading) return <ProfileLoading />;
+  if (!isSignedIn) return <p className="p-6">Faça login para visualizar seu perfil.</p>;
 
-  const currentWeight = physicalData?.currentWeight;
-  const startWeight = physicalData?.startWeight;
-  const targetWeight = physicalData?.targetWeight;
-  const userHeight = physicalData?.height;
-
-  const latestPlan = plansData?.plans?.[0] ?? null;
-  const adherence = calculateMealAdherence(latestPlan?.days);
-  const favoriteCount = favoritePlansData?.plans?.length ?? 0;
-
-  const displayName = socialProfile?.displayName || user?.fullName || user?.firstName || "Usuário";
-  // Sempre o valor já resolvido pelo backend (customAvatarUrl ?? providerAvatarUrl)
-  // — nunca um fallback ad-hoc pra user.imageUrl aqui (ver lib/community/avatar.ts).
-  const avatarUrl = socialProfile?.avatarUrl;
-
-
-  const handleSignOut = () => {
-    if (confirm("Deseja realmente sair?")) {
-      signOut(() => {
-        queryClient.clear();
-        router.push("/");
-      });
-    }
-  };
-
-  if (!isLoaded) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-slate-50">
-        <Spinner />
-        <span className="ml-2 text-slate-600">Carregando...</span>
-      </div>
-    );
-  }
-
-  if (!isSignedIn) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-slate-50">
-        <p className="text-slate-600">Faça login para visualizar seu perfil.</p>
-      </div>
-    );
-  }
-
-  const isLoading = isLoadingWeightLogs || profileHookLoading;
-
-  if (isLoading) {
-    return <ProfileSkeleton />;
-  }
-
-  return (
-    <div className="p-4 sm:p-8">
-      <Toaster position="top-center" />
-
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Coluna esquerda */}
-        <div className="lg:col-span-4 space-y-6">
-          {/* Card de identidade */}
-          <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
-            <div className="flex flex-col items-center mb-6 text-center">
-              <div className="relative mb-4">
-                <Avatar
-                  avatarUrl={avatarUrl}
-                  name={displayName}
-                  sizeClassName="w-24 h-24 shadow-lg"
-                  textSizeClassName="text-3xl"
-                  fallbackClassName="bg-gradient-to-br from-[#007BFF] to-[#28A745] text-white"
-                />
-                <button
-                  onClick={() => setIsEditModalOpen(true)}
-                  className="absolute bottom-0 right-0 w-8 h-8 bg-[#28A745] rounded-full flex items-center justify-center border-2 border-white shadow"
-                  title="Alterar foto"
-                >
-                  <Camera size={14} className="text-white" />
-                </button>
-              </div>
-              <h2 className="text-xl font-bold text-slate-800">{displayName}</h2>
-              {socialProfile?.username && <p className="text-slate-400 text-sm">@{socialProfile.username}</p>}
-              {socialProfile?.bio && <p className="text-sm text-slate-500 mt-2 max-w-xs">{socialProfile.bio}</p>}
-              <button
-                onClick={() => setIsEditModalOpen(true)}
-                className="mt-4 py-2 px-4 border border-slate-200 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors flex items-center justify-center gap-2"
-              >
-                <Edit size={14} />
-                Editar perfil
-              </button>
-            </div>
-
-            {(currentWeight !== undefined || userHeight !== undefined || targetWeight !== undefined) && (
-              <div className="grid grid-cols-3 gap-3 border-t border-slate-100 pt-5">
-                <div className="text-center">
-                  <div className="w-10 h-10 bg-[#007BFF]/10 rounded-xl flex items-center justify-center mx-auto mb-2">
-                    <Scale size={18} className="text-[#007BFF]" />
-                  </div>
-                  <p className="text-lg font-bold text-slate-800">{currentWeight !== undefined ? `${currentWeight}kg` : "—"}</p>
-                  <p className="text-xs text-slate-400">Atual</p>
-                </div>
-                <div className="text-center">
-                  <div className="w-10 h-10 bg-[#28A745]/10 rounded-xl flex items-center justify-center mx-auto mb-2">
-                    <Ruler size={18} className="text-[#28A745]" />
-                  </div>
-                  <p className="text-lg font-bold text-slate-800">{formatHeightMeters(userHeight)}</p>
-                  <p className="text-xs text-slate-400">Altura</p>
-                </div>
-                <div className="text-center">
-                  <div className="w-10 h-10 bg-orange-100 rounded-xl flex items-center justify-center mx-auto mb-2">
-                    <Target size={18} className="text-orange-500" />
-                  </div>
-                  <p className="text-lg font-bold text-slate-800">{targetWeight !== undefined ? `${targetWeight}kg` : "—"}</p>
-                  <p className="text-xs text-slate-400">Meta</p>
-                </div>
-              </div>
-            )}
-
-            {(startWeight !== undefined || preferences?.dietGoal) && (
-              <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-slate-100">
-                {startWeight !== undefined && <span className="px-3 py-1 bg-slate-100 text-slate-600 rounded-full text-xs font-medium">Início: {startWeight}kg</span>}
-                {preferences?.dietGoal && (
-                  <span className="px-3 py-1 bg-[#007BFF]/10 text-[#007BFF] rounded-full text-xs font-medium">
-                    {findLabel(DIET_GOALS, preferences.dietGoal) ?? preferences.dietGoal}
-                  </span>
-                )}
-              </div>
-            )}
-          </div>
-
-          <PlanSubscriptionCard />
-
-          {/* Preferências */}
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
-            <h3 className="font-semibold text-slate-800 mb-3">Preferências</h3>
-            <div className="flex flex-wrap gap-2">
-              {physicalData?.dietType && (
-                <span className="px-3 py-1 bg-[#007BFF]/10 text-[#007BFF] rounded-full text-xs font-medium">
-                  {findLabel(DIET_TYPES, physicalData.dietType) ?? physicalData.dietType}
-                </span>
-              )}
-              {physicalData?.cookingLevel && (
-                <span className="px-3 py-1 bg-[#28A745]/10 text-[#28A745] rounded-full text-xs font-medium">
-                  {findLabel(COOKING_LEVELS, physicalData.cookingLevel) ?? physicalData.cookingLevel}
-                </span>
-              )}
-              {preferences?.budgetLevel && (
-                <span className="px-3 py-1 bg-slate-100 text-slate-600 rounded-full text-xs font-medium">
-                  {findLabel(BUDGET_LEVELS, preferences.budgetLevel) ?? preferences.budgetLevel}
-                </span>
-              )}
-              {preferences?.maxPrepTime && (
-                <span className="px-3 py-1 bg-slate-100 text-slate-600 rounded-full text-xs font-medium">Até {preferences.maxPrepTime} min</span>
-              )}
-            </div>
-            {(preferences?.allergies?.length ?? 0) > 0 && (
-              <div className="mt-3">
-                <p className="text-xs text-slate-400 mb-1.5">Alergias</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {preferences!.allergies.map((a) => (
-                    <span key={a} className="px-2 py-0.5 bg-red-50 text-red-500 rounded-full text-xs">
-                      {a}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-            {(preferences?.preferredFoods?.length ?? 0) > 0 && (
-              <div className="mt-3">
-                <p className="text-xs text-slate-400 mb-1.5">Gosta de</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {preferences!.preferredFoods.map((f) => (
-                    <span key={f} className="px-2 py-0.5 bg-[#28A745]/10 text-[#28A745] rounded-full text-xs">
-                      {f}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-            {(preferences?.dislikedFoods?.length ?? 0) > 0 && (
-              <div className="mt-3">
-                <p className="text-xs text-slate-400 mb-1.5">Não gosta de</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {preferences!.dislikedFoods.map((f) => (
-                    <span key={f} className="px-2 py-0.5 bg-slate-100 text-slate-500 rounded-full text-xs">
-                      {f}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Configurações */}
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-            <div className="p-4 border-b border-slate-100">
-              <h3 className="font-semibold text-slate-800">Configurações</h3>
-            </div>
-            <div className="p-2">
-              <Link href="/profile/connected-apps" className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 transition-colors min-h-[44px]">
-                <div className="w-9 h-9 bg-[#007BFF]/10 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <Plug size={16} className="text-[#007BFF]" />
-                </div>
-                <span className="text-sm font-medium text-slate-700 flex-1 text-left">Apps conectados</span>
-              </Link>
-              <Link href="/community/privacy" className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 transition-colors min-h-[44px]">
-                <div className="w-9 h-9 bg-slate-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <Lock size={16} className="text-slate-600" />
-                </div>
-                <span className="text-sm font-medium text-slate-700 flex-1 text-left">Privacidade e notificações</span>
-              </Link>
-              <Link href="/subscribe" className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 transition-colors min-h-[44px]">
-                <div className="w-9 h-9 bg-amber-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <Sparkles size={16} className="text-amber-500" />
-                </div>
-                <span className="text-sm font-medium text-slate-700 flex-1 text-left">Plano e assinatura</span>
-              </Link>
-              <button onClick={handleSignOut} className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-red-50 transition-colors min-h-[44px]">
-                <div className="w-9 h-9 bg-red-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <LogOut size={16} className="text-red-500" />
-                </div>
-                <span className="text-sm font-medium text-red-500 flex-1 text-left">Sair da conta</span>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Coluna direita */}
-        <div className="lg:col-span-8 space-y-6">
-          {/* Gamificação — grid-cols-3 sem breakpoint deixava cada card com
-              menos de ~25px pra texto num celular (icone 40px + gap ocupavam
-              a maior parte da largura da célula), cortando "sequência atual"/
-              "XP total"/"maior sequência: N". Empilha em 1 coluna até `sm`
-              (640px), onde já cabe confortavelmente em 3. */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex items-center gap-3">
-              <div className="w-10 h-10 bg-orange-50 rounded-xl flex items-center justify-center flex-shrink-0">
-                <Flame size={18} className="text-orange-500" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-lg font-bold text-slate-800 leading-none">{gamification?.currentStreak ?? 0}</p>
-                <p className="text-xs text-slate-400 mt-1">sequência atual</p>
-              </div>
-            </div>
-            <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex items-center gap-3">
-              <div className="w-10 h-10 bg-[#007BFF]/10 rounded-xl flex items-center justify-center flex-shrink-0">
-                <Star size={18} className="text-[#007BFF]" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-lg font-bold text-slate-800 leading-none">{gamification?.totalXp ?? 0}</p>
-                <p className="text-xs text-slate-400 mt-1">XP total</p>
-              </div>
-            </div>
-            <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex items-center gap-3">
-              <div className="w-10 h-10 bg-[#28A745]/10 rounded-xl flex items-center justify-center flex-shrink-0">
-                <Trophy size={18} className="text-[#28A745]" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-lg font-bold text-slate-800 leading-none">Nível {gamification?.level ?? 1}</p>
-                <p className="text-xs text-slate-400 mt-1">maior sequência: {gamification?.longestStreak ?? 0}</p>
-              </div>
-            </div>
-          </div>
-
-          <button type="button" onClick={() => setShowStatisticsStory(true)}
-            className="w-full min-h-[48px] flex items-center justify-center gap-2 rounded-2xl border border-[#007BFF]/20 bg-[#007BFF]/5 px-4 py-3 text-sm font-semibold text-[#007BFF] transition-colors hover:bg-[#007BFF]/10">
-            <Share2 size={18} /> Compartilhar estatísticas
-          </button>
-
-          {/* Adesão + Antes & Depois */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
-              <h3 className="font-bold text-slate-800 mb-4">Adesão ao Plano</h3>
-              <div className="flex items-center justify-around flex-wrap gap-4">
-                <AdherenceRing percentage={adherence.percentage} size={120} />
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-[#007BFF]" />
-                    <span className="text-sm text-slate-600 flex-1">Refeições concluídas</span>
-                    <span className="text-sm font-bold text-slate-800">
-                      {adherence.completed}/{adherence.total}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-[#28A745]" />
-                    <span className="text-sm text-slate-600 flex-1">Planos favoritos</span>
-                    <span className="text-sm font-bold text-slate-800">{favoriteCount}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <BeforeAfterSection currentWeight={currentWeight} />
-          </div>
-
-          <ActivitySummaryCard />
-          <ActivityGoalsCard />
-          <ActivityInsightsCard />
-
-          {/* Registrar novo peso */}
-          <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
-            <div className="flex items-center gap-3">
-              <Scale size={16} className="text-[#007BFF] flex-shrink-0" />
-              <input
-                type="number"
-                step="0.1"
-                inputMode="decimal"
-                value={newWeight}
-                onChange={(e) => setNewWeight(e.target.value)}
-                placeholder="Registrar peso de hoje (kg)"
-                className="flex-1 px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#007BFF]"
-              />
-              <button
-                onClick={() => {
-                  const weight = Number(newWeight);
-                  if (!newWeight.trim() || Number.isNaN(weight) || weight <= 0) return;
-                  addWeightLog.mutate({ weight }, { onSuccess: () => setNewWeight("") });
-                }}
-                disabled={!newWeight.trim() || Number.isNaN(Number(newWeight)) || addWeightLog.isPending}
-                className="bg-[#007BFF] hover:bg-[#0056b3] text-white text-sm font-medium px-4 py-2 rounded-xl disabled:opacity-50 transition-colors"
-              >
-                {addWeightLog.isPending ? "..." : "Registrar"}
-              </button>
-            </div>
-          </div>
-
-          {/* Gráfico de peso — só se tiver logs */}
-          {weightLogs.length > 0 ? (
-            <WeightChart weightLogs={weightLogs} startWeight={startWeight} targetWeight={targetWeight} currentWeight={currentWeight} />
-          ) : (
-            <div className="bg-white rounded-2xl p-12 text-center shadow-sm border border-slate-100">
-              <p className="text-5xl mb-4">📊</p>
-              <h3 className="text-lg font-semibold text-slate-700 mb-2">Registre seu progresso</h3>
-              <p className="text-slate-500 mb-6">Registre seu peso para ver seu progresso ao longo do tempo.</p>
-            </div>
-          )}
-
-          {/* Conquistas */}
-          <AchievementsSummaryCard />
-        </div>
-      </div>
-
-      {showStatisticsStory && (
-        <StatisticsStoryModal onClose={() => setShowStatisticsStory(false)}
-          weightLogs={weightLogs} startWeight={startWeight} targetWeight={targetWeight}
-          currentWeight={currentWeight} displayName={displayName} timezone={socialProfile?.timezone}
-          streak={gamification?.currentStreak} />
-      )}
-
-      {/* Modal de edição */}
-      <EditProfileModal
-        isOpen={isEditModalOpen}
-        onClose={() => setIsEditModalOpen(false)}
-        physicalData={physicalData ?? {}}
-        preferences={preferences}
-        socialProfile={socialProfile}
-      />
+  return <div className={styles.screen}>
+    <div className={styles.heading}>
+      <p>{dayCount ? "Dia " + dayCount + " · desde " + joined?.toLocaleDateString("pt-BR", {day:"numeric", month:"short", timeZone: timezone || undefined}) : "Sua jornada"}</p>
+      <h1>Perfil</h1>
     </div>
-  );
+    <section className={styles.card + " " + styles.identity} aria-label="Sua conta">
+      <Avatar avatarUrl={socialProfile?.avatarUrl} name={name} sizeClassName={styles.avatar} textSizeClassName="text-xl" fallbackClassName="bg-[#edf3f5] text-[#555c5e]" />
+      <div className={styles.identityText}>
+        <div className={styles.nameLine}><h2 title={name}>{name}</h2>{isPremium && <span className={styles.badge}>{isBeta ? "Beta" : "Pro"}</span>}</div>
+        <p>{memberDate ? "Membro desde " + memberDate : socialProfile?.username ? "@" + socialProfile.username : "Sua conta SmartPlate"}</p>
+      </div>
+      <button type="button" className={styles.edit} onClick={() => setEditing(true)}>Editar</button>
+    </section>
+    <WeightGoal start={physicalData?.startWeight} current={physicalData?.currentWeight} target={physicalData?.targetWeight} />
+    <section className={styles.card + " " + styles.metrics} aria-label="Resumo de hoje">
+      <Metric label="Calorias" value={calories} goal={plan?.calories} kind="calories" />
+      <Metric label="Proteína" value={protein} goal={proteinGoal} unit="g" kind="protein" />
+      <Metric label="Água" value={hydration ? hydration.totalMl / 1000 : undefined} goal={hydration ? hydration.goalMl / 1000 : undefined} unit="L" digits={1} kind="water" />
+    </section>
+    <section className={styles.card + " " + styles.settings} aria-label="Configurações da conta">
+      <SettingsRow icon={Plug} title="Apps conectados" subtitle="Integrações e dispositivos" href="/profile/connected-apps" />
+      <SettingsRow icon={Bell} title="Privacidade e notificações" subtitle="Preferências e permissões" href="/community/privacy" />
+      <SettingsRow icon={Zap} title="Plano e assinatura" subtitle={subscriptionDescription} href="/subscribe" />
+      <SettingsRow icon={LogOut} title="Sair da conta" subtitle="Encerrar sessão" onClick={() => {
+        if (confirm("Deseja realmente sair?")) signOut(() => { queryClient.clear(); router.push("/"); });
+      }} />
+    </section>
+    {editing && <EditProfileModal isOpen={editing} onClose={() => setEditing(false)} physicalData={physicalData ?? {}} preferences={preferences} socialProfile={socialProfile} />}
+  </div>;
 }

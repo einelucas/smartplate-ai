@@ -24,7 +24,7 @@ const isPublicRoute = createRouteMatcher([
 const isMealPlanRoute = createRouteMatcher(["/mealplan(.*)"]);
 
 // 3. Define a route group for Profile Routes (Protected but may not require subscription)
-const isProfileRoute = createRouteMatcher(["/profile(.*)"]);
+const isProfileRoute = createRouteMatcher(["/profile(.*)", "/progress(.*)"]);
 
 const isSignUpRoute = createRouteMatcher(["/sign-up(.*)"]);
 const isSignInRoute = createRouteMatcher(["/sign-in(.*)"]);

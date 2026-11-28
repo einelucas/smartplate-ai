@@ -175,7 +175,7 @@ export default function AppSidebar({ children }: { children: React.ReactNode }) 
       {/* Main content */}
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
         {/* Top bar — compacta em mobile, completa em desktop */}
-        <header className="bg-white border-b border-slate-100 px-4 py-3 sm:px-8 sm:py-4 flex items-center justify-between sticky top-0 z-20 shadow-sm">
+        <header className={(pathname === "/profile" ? "hidden lg:flex" : "flex") + " bg-white border-b border-slate-100 px-4 py-3 sm:px-8 sm:py-4 items-center justify-between sticky top-0 z-20 shadow-sm"}>
           <div className="min-w-0">
             <h1 className="text-lg sm:text-xl font-bold text-slate-800 truncate">{currentItem?.label || "SmartPlateAI"}</h1>
             <p className="hidden sm:block text-sm text-slate-400">
@@ -243,7 +243,7 @@ export default function AppSidebar({ children }: { children: React.ReactNode }) 
         </header>
 
         {/* Page content — pb extra em telas < lg para nunca ficar atrás da MobileBottomNav */}
-        <main className="flex-1 overflow-auto pb-24 lg:pb-0">{children}</main>
+        <main className={"flex-1 overflow-auto pb-[calc(76px+env(safe-area-inset-bottom))] lg:pb-0 " + (pathname === "/profile" ? "bg-[#f1f7fa]" : "")}>{children}</main>
       </div>
 
       <MobileBottomNav />
