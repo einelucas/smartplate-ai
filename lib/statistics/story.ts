@@ -137,14 +137,47 @@ export function buildStorySvg(input: StoryInput) {
   return head+content+footer;
 }
 
-export async function storyPng(svg: string): Promise<Blob> {
-  const source=URL.createObjectURL(new Blob([svg],{type:"image/svg+xml;charset=utf-8"}));
+// SVG images loaded through a Blob URL do not reliably inherit document fonts.
+// Rasterize the artwork first, then paint text with the loaded self-hosted font.
+export async function storyPng(svg: string, fontFamily: string): Promise<Blob> {
+  const doc=new DOMParser().parseFromString(svg,"image/svg+xml");
+  if(doc.querySelector("parsererror")) throw new Error("Story SVG inválido.");
+  const textNodes=Array.from(doc.querySelectorAll("text"));
+  const texts=textNodes.map(node=>({
+    value:node.textContent??"",
+    x:Number(node.getAttribute("x")),y:Number(node.getAttribute("y")),
+    size:Number(node.getAttribute("font-size")??36),
+    weight:Number(node.getAttribute("font-weight")??500),
+    spacing:Number(node.getAttribute("letter-spacing")??0),
+    fill:node.getAttribute("fill")??"#15253A",
+    anchor:node.getAttribute("text-anchor")??"start",
+  }));
+  // Load the actual Manrope face for each weight before export, not a fallback.
+  const family=fontFamily.split(",")[0].trim();
+  const font=(size:number,weight:number)=>weight+" "+size+"px "+family;
+  await Promise.all(Array.from(new Set(texts.map(t=>t.weight))).map(async weight=>{
+    const faces=await document.fonts.load(font(36,weight),"SmartPlateAI áéíóúçã −0123456789");
+    if(!faces.length||faces.some(face=>face.status!=="loaded")) throw new Error("Não foi possível carregar Manrope.");
+  }));
+  textNodes.forEach(node=>node.remove());
+  const artwork=new XMLSerializer().serializeToString(doc.documentElement);
+  const source=URL.createObjectURL(new Blob([artwork],{type:"image/svg+xml;charset=utf-8"}));
   try{
     const image=new Image();
     await new Promise<void>((resolve,reject)=>{image.onload=()=>resolve();image.onerror=()=>reject(new Error("Não foi possível renderizar a imagem."));image.src=source;});
     const canvas=document.createElement("canvas");canvas.width=1080;canvas.height=1920;
     const ctx=canvas.getContext("2d");if(!ctx)throw new Error("Canvas indisponível.");
     ctx.drawImage(image,0,0);
+    ctx.textBaseline="alphabetic";
+    for(const t of texts){
+      ctx.font=font(t.size,t.weight);
+      ctx.fillStyle=t.fill;
+      ctx.textAlign=t.anchor==="end"?"right":t.anchor==="middle"?"center":"left";
+      // Keep the native shaping/kerning on all browsers; spacing is supported
+      // on recent Canvas implementations, older ones still render Manrope.
+      if("letterSpacing" in ctx) (ctx as CanvasRenderingContext2D & {letterSpacing:string}).letterSpacing=t.spacing+"px";
+      ctx.fillText(t.value,t.x,t.y);
+    }
     return await new Promise<Blob>((resolve,reject)=>canvas.toBlob(blob=>blob?resolve(blob):reject(new Error("Não foi possível gerar o PNG.")),"image/png"));
   }finally{URL.revokeObjectURL(source);}
 }
