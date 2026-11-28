@@ -79,3 +79,18 @@
   .goal, .metrics { padding: 23px 25px; }
   .setting { min-height: 63px; }
 }
+
+.physical {padding:18px 20px}
+.physicalHeader {display:flex;align-items:center;justify-content:space-between;gap:8px}
+.physicalHeader h2 {font-size:17px;font-weight:400;margin:0}
+.physicalEdit {display:flex;align-items:center;gap:5px;border:1px solid #d7d9d5;border-radius:11px;padding:8px 12px;font-size:14px;min-height:36px}
+.physicalEdit:hover {background:#f8fafb}
+.physicalEdit:focus-visible {outline:2px solid #65a8cf;outline-offset:2px}
+.physicalGrid {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;padding:16px 0 12px;margin-top:14px;border-top:1px solid #eef1f2}
+.physicalGrid>div {display:flex;flex-direction:column;align-items:center;gap:5px;text-align:center;min-width:0}
+.physicalGrid strong {font-size:17px;font-weight:400;letter-spacing:-.4px;overflow-wrap:anywhere}
+.physicalGrid small {font-size:13px;color:var(--muted)}
+.physicalIcon {display:grid;place-items:center;width:38px;height:38px;background:var(--surface);border-radius:12px;color:#3b687d;margin-bottom:4px}
+.physicalTarget {background:#fff0db;color:#dc8a32}
+.physicalFooter {display:flex;gap:7px;flex-wrap:wrap;border-top:1px solid #eef1f2;padding-top:12px}
+.physicalFooter span {background:var(--surface);color:#3b687d;padding:4px 10px;font-size:12px;border-radius:99px}
