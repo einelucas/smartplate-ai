@@ -78,3 +78,10 @@
 .screen button:focus-visible,.screen a:focus-visible {outline:2px solid #65a8cf;outline-offset:2px}
 @media(max-width:380px) {.screen{padding-inline:8px}.card{padding:16px 15px}.nutritionValue>span{font-size:32px}.nutritionValue small{font-size:12px}.header{gap:8px}.greeting h1{font-size:19px}.waterAmount{font-size:12px}.waterAction{width:24px}.nextMeal{gap:9px}.mealIcon{width:52px;height:52px}}
 @media(min-width:640px) {.screen{padding:28px 20px;gap:15px}.card{padding:23px 25px}.nutrition{min-height:180px}.nextMeal{padding:20px}}
+
+.avatarLink {position:relative}
+.avatarLink summary {list-style:none;cursor:pointer;border-radius:50%}
+.avatarLink summary::-webkit-details-marker {display:none}
+.accountMenu {position:absolute;top:56px;left:0;width:155px;background:#fff;border:1px solid #e7ecee;border-radius:16px;padding:6px;z-index:25;box-shadow:0 4px 18px #0001}
+.accountMenu a,.accountMenu button {display:block;width:100%;padding:10px;text-align:left;font-size:14px;border-radius:9px}
+.accountMenu a:hover,.accountMenu button:hover {background:var(--surface)}

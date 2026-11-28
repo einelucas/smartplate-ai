@@ -1,7 +1,8 @@
 // components/HomeDashboard.tsx
 "use client";
 
-import { useUser } from "@clerk/nextjs";
+import { useUser, useClerk } from "@clerk/nextjs";
+import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import dynamic from "next/dynamic";
@@ -60,6 +61,8 @@ function NutritionCard({label,value,target,unit,kind,subtitle}: {label:string;va
 
 export default function HomeDashboard() {
   const { user } = useUser();
+  const { signOut } = useClerk();
+  const router = useRouter();
   const queryClient = useQueryClient();
   const [showActivityModal, setShowActivityModal] = useState(false);
   const { data: activitySummary } = useActivitySummary();
@@ -114,7 +117,7 @@ export default function HomeDashboard() {
     : [];
 
   const completedCount = todayMeals.filter((m: any) => m.completed).length;
-  const daysWithMeals = latestPlan ? latestPlan.days.filter((d: any) => d.breakfast || d.lunch || d.dinner).length : 0;
+  const daysWithMeals = latestPlan?.days?.filter((d: any) => d.breakfast || d.lunch || d.dinner || d.snacks?.length).length ?? 0;
   const adherence = todayMeals.length ? Math.round((completedCount / todayMeals.length) * 100) : 0;
   const todayCalories: number = todayMeals.filter((m: any) => m.completed).reduce((acc: number, m: any) => acc + (numeric(m.calories ?? m.calorias) ?? 0), 0);
   const calorieTarget: number | undefined = latestPlan?.calories;
@@ -182,8 +185,8 @@ export default function HomeDashboard() {
   return (
     <div className={styles.screen}>
       <header className={styles.header}>
-        <Link href="/profile" aria-label="Abrir perfil" className={styles.avatarLink}><Avatar avatarUrl={meData?.profile?.avatarUrl} name={name} sizeClassName="w-12 h-12" fallbackClassName="bg-white text-slate-600" /></Link>
-        <div className={styles.greeting}><p>{greeting}, boas-vindas</p><h1>{name}</h1></div>
+        <details className={styles.avatarLink}><summary aria-label="Menu da conta"><Avatar avatarUrl={meData?.profile?.avatarUrl} name={name} sizeClassName="w-12 h-12" fallbackClassName="bg-white text-slate-600" /></summary><div className={styles.accountMenu}><Link href="/profile">Perfil</Link><button type="button" onClick={()=>{if(confirm("Deseja realmente sair?")) signOut(()=>{queryClient.clear();router.push("/");});}}>Sair da conta</button></div></details>
+        <div className={styles.greeting}><p>{greeting},</p><h1>{name}</h1></div>
         <div className={styles.headerActions}><div className="lg:hidden"><NotificationsBell minimal /></div><Link href="/mealplan" aria-label="Calendário de refeições"><CalendarDays size={25} strokeWidth={1.5}/></Link></div>
       </header>
       <WeightRuler current={numeric(physicalData?.currentWeight)} start={numeric(physicalData?.startWeight)} target={numeric(physicalData?.targetWeight)} />
