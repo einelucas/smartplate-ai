@@ -1,0 +1,130 @@
+"use client";
+
+import { useRef, useState } from "react";
+import { CalendarDays, Plus, X, Download } from "lucide-react";
+import { getLocalDateString, toUtcDateOnly } from "@/lib/community/dates";
+import { dailyWeights, dayDistance, shiftDay, rangeWeights, weeklyChange, loggingStreak, estimateGoal, weightMilestones, type DailyWeight, type WeightEntry, type WeightRange } from "@/lib/statistics/weight-progress";
+import styles from "@/app/progress/progress.module.css";
+
+const periods: { value: WeightRange; label: string; subtitle: string }[] = [
+  { value: 7, label: "Semana", subtitle: "Últimos 7 dias" },
+  { value: 30, label: "Mês", subtitle: "Últimos 30 dias" },
+  { value: 90, label: "3 meses", subtitle: "Últimos 90 dias" },
+  { value: "all", label: "Tudo", subtitle: "Todo o período" },
+];
+const decimal = (n: number | undefined | null) => n == null || !Number.isFinite(n) ? "—" : n.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+const signed = (n: number | null) => n == null ? "—" : (Math.abs(n) < .05 ? "0,0" : (n < 0 ? "−" : "+") + decimal(Math.abs(n)));
+const dateLabel = (date: string) => toUtcDateOnly(date).toLocaleDateString("pt-BR", { day: "numeric", month: "short", timeZone: "UTC" }).replace(" de ", " ").replace(".", "");
+const validWeight = (weight: number | undefined): weight is number => weight !== undefined && Number.isFinite(weight) && weight > 0;
+
+function WeightGraph({ points, start, end, target }: { points: DailyWeight[]; start: string; end: string; target?: number }) {
+  const [selected, setSelected] = useState<string | null>(null);
+  if (!points.length) return <div className={styles.graphEmpty}>Nenhuma pesagem neste período.</div>;
+  const w = 340, h = 136, pad = 6;
+  const values = [...points.map(p => p.weight), ...(validWeight(target) ? [target] : [])];
+  const low = Math.min(...values), high = Math.max(...values);
+  const margin = Math.max(.7, (high - low) * .16);
+  const min = low - margin, max = high + margin;
+  const days = Math.max(1, dayDistance(start, end));
+  const x = (date: string) => pad + dayDistance(start, date) / days * (w - 2 * pad);
+  const y = (weight: number) => pad + (max - weight) / (max - min) * (h - 2 * pad);
+  const coords = points.map(p => ({ ...p, x: x(p.date), y: y(p.weight) }));
+  const first = coords[0], last = coords[coords.length - 1];
+  // Horizontal tangent cubic interpolation avoids overshoot between real measurements.
+  const line = coords.reduce((d, p, i) => {
+    if (i === 0) return "M " + p.x + " " + p.y;
+    const prev = coords[i - 1], mid = (prev.x + p.x) / 2;
+    return d + " C " + mid + " " + prev.y + ", " + mid + " " + p.y + ", " + p.x + " " + p.y;
+  }, "");
+  const area = line + " L " + last.x + " " + h + " L " + first.x + " " + h + " Z";
+  const tickCount = Math.min(4, days + 1);
+  const labels = Array.from(new Set(Array.from({ length: tickCount }, (_, i) => shiftDay(start, Math.round(days * i / Math.max(1, tickCount - 1))))));
+  const active = coords.find(p => p.date === selected);
+  return <div className={styles.graph}>
+    <svg viewBox={"0 0 " + w + " " + h} className={styles.chart} role="img" aria-label="Histórico de peso no período selecionado">
+      {coords.length > 1 && <path d={area} fill="#e8f4fa" />}
+      {validWeight(target) && <><line x1="0" x2={w} y1={y(target)} y2={y(target)} stroke="#c2ced2" strokeWidth="1" strokeDasharray="3 4" /><text x={w-1} y={Math.max(11,y(target)-5)} textAnchor="end" fill="#747b7c" fontSize="12">Meta {decimal(target)}</text></>}
+      <path d={line} fill="none" stroke="#1b1c19" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx={last.x} cy={last.y} r="8" fill="#f47b58" opacity=".16" /><circle cx={last.x} cy={last.y} r="4.6" fill="#f47b58" />
+      {coords.map(point => <circle key={point.date} cx={point.x} cy={point.y} r="8" fill="transparent" onClick={() => setSelected(point.date)} onPointerEnter={() => setSelected(point.date)} onPointerLeave={() => setSelected(null)}><title>{dateLabel(point.date)}: {decimal(point.weight)} kg</title></circle>)}
+      {active && <circle cx={active.x} cy={active.y} r="3.5" fill="#191a18" pointerEvents="none" />}
+    </svg>
+    <div className={styles.axis}>{labels.map(d => <span key={d}>{d === end ? "Hoje" : dateLabel(d)}</span>)}</div>
+    {active && <div className={styles.chartHint}>{dateLabel(active.date)} · {decimal(active.weight)} kg</div>}
+  </div>;
+}
+
+export default function ProgressOverview({ logs, currentWeight, startWeight, targetWeight, timezone, error, pending, onRegister }: {
+  logs: WeightEntry[]; currentWeight?: number; startWeight?: number; targetWeight?: number; timezone?: string; error?: boolean; pending: boolean; onRegister: (weight: number, onSuccess: () => void) => void;
+}) {
+  const [range, setRange] = useState<WeightRange>(30);
+  const [weight, setWeight] = useState("");
+  const registerRef = useRef<HTMLDialogElement>(null);
+  const historyRef = useRef<HTMLDialogElement>(null);
+  const now = new Date(), today = getLocalDateString(now, timezone);
+  const all = dailyWeights(logs, timezone, now);
+  const selected = rangeWeights(all, range, today);
+  const current = all[all.length-1]?.weight ?? currentWeight;
+  const first = all[0];
+  const total = current != null && first ? current - first.weight : null;
+  const weekly = weeklyChange(selected.points);
+  const streak = loggingStreak(all, today);
+  const estimated = estimateGoal(selected.points, targetWeight);
+  const milestones = weightMilestones(all, startWeight, targetWeight);
+  const completed = milestones.filter(m => m.date !== null).length;
+  const targetReached = validWeight(targetWeight) && validWeight(current) && (validWeight(startWeight) ? (startWeight === targetWeight ? current === targetWeight : Math.sign(targetWeight - startWeight) * (current - targetWeight) >= 0) : current === targetWeight);
+  function exportHistory() {
+    const csv = ["Data;Peso (kg)", ...all.map(p => p.date + ";" + String(p.weight).replace(".", ","))].join("\n");
+    const url = URL.createObjectURL(new Blob(["\ufeff", csv], {type:"text/csv;charset=utf-8"}));
+    const a = document.createElement("a"); a.href=url; a.download="historico-de-peso.csv"; a.click(); URL.revokeObjectURL(url);
+  }
+  return <>
+    <header className={styles.heading}>
+      <div><p>{first ? "Desde " + dateLabel(first.date) : "Sua jornada"}</p><h1>Progresso</h1></div>
+      <div className={styles.headerActions}>
+        <button type="button" aria-label="Histórico de pesagens" onClick={() => historyRef.current?.showModal()}><CalendarDays size={25} strokeWidth={1.5}/></button>
+        <button type="button" aria-label="Registrar peso" onClick={() => registerRef.current?.showModal()}><Plus size={28} strokeWidth={1.5}/></button>
+      </div>
+    </header>
+    <div role="group" aria-label="Período de peso" className={styles.periods}>
+      {periods.map(p => <button key={p.value} type="button" aria-pressed={range===p.value} onClick={() => setRange(p.value)}>{p.label}</button>)}
+    </div>
+    {error && <p role="alert" className={styles.error}>Não foi possível carregar seu histórico. Tente novamente mais tarde.</p>}
+    <section className={styles.card + " " + styles.weightCard} aria-label="Peso">
+      <div className={styles.cardHeading}><h2>Peso</h2><span>{periods.find(p=>p.value===range)?.subtitle}</span></div>
+      <div className={styles.bigNumber}><span>{decimal(current)}</span><small>kg</small></div>
+      <div className={styles.weightNote}><i />{total == null ? "Registre seu peso para acompanhar a evolução" : Math.abs(total) < .05 ? "Peso estável desde " + dateLabel(first!.date) : decimal(Math.abs(total)) + " kg " + (total < 0 ? "perdidos" : "ganhos") + " desde " + dateLabel(first!.date)}</div>
+      <WeightGraph key={range} points={selected.points} start={selected.start} end={selected.end} target={targetWeight}/>
+    </section>
+    <div className={styles.twoCards}>
+      <section className={styles.card + " " + styles.statCard}>
+        <h2>Média semanal</h2>
+        <div className={styles.statNumber}><span>{signed(weekly)}</span><small>kg/sem</small></div>
+        <div className={styles.weekTicks} aria-hidden="true">{Array.from({length:28},(_,i)=><i key={i} className={weekly!==null && i===11?styles.orangeTick:weekly!==null&&i<11?styles.blackTick:undefined}/>)}</div>
+        <p>{targetReached ? "Meta atingida" : estimated && estimated >= today ? "Meta por volta de " + dateLabel(estimated) : weekly===null ? "Registre em dias diferentes" : "Estimativa indisponível"}</p>
+      </section>
+      <section className={styles.card + " " + styles.statCard}>
+        <h2>Sequência de pesagens</h2>
+        <div className={styles.statNumber}><span>{error ? "—" : streak.current}</span><small>dias</small></div>
+        <div className={styles.streakBars} aria-label="Pesagens nos últimos sete dias">{streak.recent.map((d,i)=><i key={d.date} title={dateLabel(d.date)+(d.logged?": registrado":": sem registro")} style={{height: [22,27,20,30,25,33,35][i]}} className={d.logged ? (i===6?styles.orangeBar:styles.blackBar) : undefined}/>)}</div>
+        <p>Melhor: {error ? "—" : streak.best} dias</p>
+      </section>
+    </div>
+    <section className={styles.card + " " + styles.milestones}>
+      <div className={styles.cardHeading}><h2>Marcos</h2><span>{completed} de {milestones.length}</span></div>
+      {milestones.length ? <div className={styles.milestoneList}>{milestones.map(m=><div key={m.fraction} className={styles.milestone}><i className={m.date ? styles.completeDot : undefined}/><div><h3>{m.fraction===1?"Meta de peso":decimal(m.amount)+" kg "+(m.direction<0?"perdidos":"ganhos")}</h3><p>{m.date ? dateLabel(m.date) : "Ainda não atingido"}</p></div></div>)}</div> : <p className={styles.emptyText}>Defina uma meta de peso diferente do peso inicial para acompanhar seus marcos.</p>}
+    </section>
+    <dialog ref={registerRef} className={styles.dialog} onClose={()=>setWeight("")}>
+      <div className={styles.dialogTitle}><h2>Registrar peso</h2><button type="button" aria-label="Fechar" onClick={()=>registerRef.current?.close()}><X size={22}/></button></div>
+      <form onSubmit={e=>{e.preventDefault(); const value=Number(weight.replace(",", ".")); if(!Number.isFinite(value)||value<=0)return; onRegister(value,()=>registerRef.current?.close());}}>
+        <label htmlFor="progress-weight">Peso de hoje (kg)</label><input id="progress-weight" value={weight} onChange={e=>setWeight(e.target.value)} inputMode="decimal" placeholder="0,0" required autoFocus/>
+        <button className={styles.primary} type="submit" disabled={pending||!weight.trim()||!Number.isFinite(Number(weight.replace(",",".")))||Number(weight.replace(",","."))<=0}>{pending?"Registrando…":"Registrar"}</button>
+      </form>
+    </dialog>
+    <dialog ref={historyRef} className={styles.dialog}>
+      <div className={styles.dialogTitle}><h2>Histórico de peso</h2><button type="button" aria-label="Fechar" onClick={()=>historyRef.current?.close()}><X size={22}/></button></div>
+      <button type="button" className={styles.export} onClick={exportHistory} disabled={!all.length}><Download size={16}/> Exportar CSV</button>
+      <div className={styles.historyList}>{[...all].reverse().map(p=><div key={p.date}><span>{dateLabel(p.date)} · {p.date.slice(0,4)}</span><span>{decimal(p.weight)} kg</span></div>)}{!all.length&&<p>Nenhum registro encontrado.</p>}</div>
+    </dialog>
+  </>;
+}

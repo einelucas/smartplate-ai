@@ -1,0 +1,90 @@
+.screen {
+  --ink:#191a18; --muted:#767b7b; --surface:#f1f7fa; --accent:#f47b58;
+  width:100%; max-width:540px; margin:0 auto; padding:max(18px,env(safe-area-inset-top)) 8px 20px;
+  color:var(--ink); font-weight:400; line-height:1.25; display:flex; flex-direction:column; gap:12px;
+}
+.heading {display:flex;align-items:center;justify-content:space-between;padding:2px 8px 0}
+.heading p {font-size:14px;color:var(--muted);margin:0 0 6px}
+.heading h1 {font-size:30px;line-height:1.05;letter-spacing:-.9px;font-weight:400}
+.headerActions {display:flex;gap:3px;align-items:center}
+.headerActions button {width:42px;height:44px;display:grid;place-items:center;border-radius:50%}
+.headerActions button:hover {background:#e6eff3}
+.periods {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;padding:5px 5px 7px}
+.periods button {font-size:16px;color:var(--muted);min-height:44px;border:1.4px solid transparent;border-radius:999px;white-space:nowrap}
+.periods button[aria-pressed=true] {border-color:var(--ink);color:var(--ink)}
+.card {min-width:0;border:0;border-radius:24px;background:#fff;padding:19px 20px;box-shadow:none}
+.cardHeading {display:flex;justify-content:space-between;align-items:center;gap:8px;color:var(--muted);font-size:15px}
+.cardHeading h2,.statCard h2 {font-weight:400;font-size:15px;color:var(--muted)}
+.bigNumber {display:flex;align-items:baseline;gap:9px;margin-top:10px}
+.bigNumber>span {font-weight:300;font-size:54px;letter-spacing:-2px;line-height:1.02}
+.bigNumber small,.statNumber small {font-size:15px;color:var(--muted)}
+.weightNote {font-size:14px;color:var(--muted);display:flex;align-items:baseline;gap:8px;margin:8px 0 20px}
+.weightNote i {width:7px;height:7px;background:#86c4e4;flex-shrink:0;border-radius:50%;align-self:center}
+.graph {position:relative;min-width:0;padding-top:8px}
+.chart {display:block;width:100%;height:auto;overflow:visible}
+.axis {display:flex;justify-content:space-between;gap:4px;color:var(--muted);font-size:13px;margin-top:8px}
+.chartHint {position:absolute;top:-13px;right:0;font-size:12px;background:#fff;padding:4px 8px;border-radius:10px;box-shadow:0 1px 4px #0001}
+.graphEmpty {min-height:145px;display:grid;place-items:center;color:var(--muted);font-size:14px;text-align:center}
+.twoCards {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}
+.statCard {padding:19px 20px 18px;display:flex;flex-direction:column;min-height:163px}
+.statCard h2 {min-height:19px;line-height:1.15}
+.statNumber {display:flex;gap:5px;align-items:baseline;margin:10px 0 9px;white-space:nowrap}
+.statNumber>span {font-size:37px;font-weight:300;line-height:1;letter-spacing:-1.5px}
+.statNumber small {font-size:13px}
+.statCard p {font-size:13px;color:var(--muted);margin-top:7px}
+.weekTicks {display:flex;align-items:center;justify-content:space-between;gap:1px;height:28px;margin-top:auto}
+.weekTicks i {width:1.5px;height:17px;background:#d5d8d4;border-radius:2px}
+.weekTicks .blackTick {background:#20211e}
+.weekTicks .orangeTick {background:var(--accent);height:28px;width:2px}
+.streakBars {display:flex;align-items:flex-end;justify-content:space-between;gap:4px;height:35px;margin-top:auto;padding:0 4px}
+.streakBars i {width:9px;background:#e2e5e1;border-radius:6px}
+.streakBars .blackBar {background:#242520}
+.streakBars .orangeBar {background:var(--accent)}
+.milestones .cardHeading>span {color:var(--ink)}
+.milestoneList {display:flex;flex-direction:column;gap:13px;margin-top:16px}
+.milestone {display:flex;align-items:center;gap:14px}
+.milestone>i {width:10px;height:10px;border:1px solid #c5cfce;border-radius:50%;flex-shrink:0}
+.milestone>i.completeDot {background:var(--ink);border-color:var(--ink)}
+.milestone h3 {font-size:16px;font-weight:400}
+.milestone p,.emptyText {color:var(--muted);font-size:13px;margin-top:3px}
+.emptyText {margin-top:14px}
+.extras,.extraGroup {display:flex;flex-direction:column;gap:12px;min-width:0}
+.sectionTitle {font-size:20px;font-weight:400;padding:10px 8px 0}
+.share {display:flex;align-items:center;justify-content:center;gap:8px;border-radius:24px;background:white;color:var(--ink);padding:15px;border:0;font-weight:400;min-height:48px}
+.extraGroup :global(.bg-white.rounded-2xl),.extraGroup :global(.bg-white.rounded-3xl) {border-radius:24px;box-shadow:none;border:0}
+.extraGroup :global(.font-bold),.extraGroup :global(.font-semibold),.extraGroup :global(.font-medium) {font-weight:400}
+.extraGroup :global(h3) {font-size:17px;color:var(--ink);letter-spacing:-.15px}
+.extraGroup :global(.bg-slate-50),.extraGroup :global(.bg-slate-100) {background-color:var(--surface)}
+.extraGroup :global(.text-slate-800),.extraGroup :global(.text-slate-700) {color:var(--ink)}
+.extraGroup :global(.text-slate-400),.extraGroup :global(.text-slate-500) {color:var(--muted)}
+.extraGroup :global(.bg-gradient-to-r) {background-image:none;background-color:#86c4e4}
+.extraGroup :global(.text-\[\#007BFF\]),.extraGroup :global(.text-\[\#28A745\]) {color:#3b687d}
+.extraGroup :global(.bg-\[\#007BFF\]),.extraGroup :global(.bg-\[\#28A745\]) {background-color:#252623}
+.extraGroup :global(.bg-\[\#007BFF\]\/10),.extraGroup :global(.bg-\[\#28A745\]\/10),.extraGroup :global(.bg-orange-50) {background-color:var(--surface)}
+.dialog {border:0;border-radius:24px;padding:22px;color:var(--ink);width:min(92vw,420px);max-height:80dvh;overflow:auto;margin:auto;background:white}
+.dialog::backdrop {background:#19232a66}
+.dialogTitle {display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:18px}
+.dialogTitle h2 {font-size:23px;font-weight:400}
+.dialogTitle button {width:40px;height:40px;display:grid;place-items:center}
+.dialog form {display:flex;flex-direction:column;gap:12px}
+.dialog label {font-size:14px;color:var(--muted)}
+.dialog input {border:1px solid #d5e0e5;border-radius:13px;padding:13px;font-size:18px;width:100%}
+.primary {border-radius:99px;background:#242520;color:white;min-height:44px}
+.primary:disabled,.export:disabled {opacity:.45}
+.export {display:flex;align-items:center;gap:6px;color:var(--ink);font-size:14px;min-height:44px}
+.historyList {display:flex;flex-direction:column}
+.historyList>div {display:flex;justify-content:space-between;gap:10px;border-top:1px solid #e8eef0;padding:12px 0;font-size:15px}
+.error {color:#a0442c;font-size:14px;padding:0 8px}
+@media(max-width:380px) {
+  .card {padding:17px 15px}
+  .statNumber>span {font-size:32px}
+  .statNumber small {font-size:12px}
+  .statCard h2 {font-size:14px}
+  .statCard p {font-size:12px}
+  .periods button {font-size:14px}
+}
+@media(min-width:640px) {
+  .screen {padding:28px 20px 24px;gap:15px}
+  .card {padding:24px 26px}
+  .statCard {min-height:185px}
+}
