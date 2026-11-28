@@ -5,6 +5,7 @@
 "use client";
 
 import { Star } from "lucide-react";
+import styles from "./HomeDashboard.module.css";
 import { useGamificationDetail } from "@/hooks/useCommunity";
 
 interface XpTodayEntry {
@@ -20,13 +21,13 @@ export default function XpTodayCard() {
   const totalToday = xpToday.reduce((sum, entry) => sum + entry.points, 0);
 
   return (
-    <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="font-bold text-slate-800 flex items-center gap-2">
-          <Star size={18} className="text-[#007BFF]" />
+    <div className={styles.card}>
+      <div className={styles.sectionHead}>
+        <h3 className="flex items-center gap-2 font-normal">
+          <Star size={18} className="text-[#747b7c]" />
           XP de hoje
         </h3>
-        <span className="text-lg font-bold text-[#007BFF]">+{totalToday}</span>
+        <span className="text-lg font-normal text-[#191a18]">+{totalToday}</span>
       </div>
 
       {isLoading && <div className="h-16 bg-slate-100 rounded-xl animate-pulse" />}

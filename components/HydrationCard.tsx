@@ -6,9 +6,9 @@
 
 import { useState } from "react";
 import dynamic from "next/dynamic";
-import { motion } from "framer-motion";
-import { Droplets, Plus, History, Settings2, Loader2, RefreshCw } from "lucide-react";
+import { Plus, History, Settings2, Loader2, RefreshCw } from "lucide-react";
 import { useHydrationSummary, useAddWaterLog } from "@/hooks/useHydration";
+import styles from "./HomeDashboard.module.css";
 
 const HydrationCustomAmountModal = dynamic(() => import("./HydrationCustomAmountModal"), { ssr: false });
 const HydrationGoalModal = dynamic(() => import("./HydrationGoalModal"), { ssr: false });
@@ -33,18 +33,16 @@ export default function HydrationCard() {
   const isAdding = addWaterLog.isPending;
 
   return (
-    <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="font-bold text-slate-800 flex items-center gap-2">
-          <Droplets size={18} className="text-[#007BFF]" />
-          Água
-        </h3>
-        <div className="flex items-center gap-1">
+    <div className={styles.card}>
+      <div className={styles.sectionHead}>
+        <h2>Água hoje</h2>
+        <span className={styles.waterAmount}>{summary ? (totalMl/1000).toLocaleString("pt-BR",{maximumFractionDigits:2}) + " de " + (goalMl/1000).toLocaleString("pt-BR",{maximumFractionDigits:2}) + " L" : "—"}</span>
+        <div className={styles.waterActions}>
           <button
             onClick={() => setShowHistoryModal(true)}
             title="Histórico"
             aria-label="Ver histórico de hidratação"
-            className="p-1.5 text-slate-400 hover:text-[#007BFF] hover:bg-[#007BFF]/10 rounded-lg transition-colors"
+            className={styles.waterAction}
           >
             <History size={16} />
           </button>
@@ -52,7 +50,7 @@ export default function HydrationCard() {
             onClick={() => setShowGoalModal(true)}
             title="Editar meta"
             aria-label="Editar meta diária de água"
-            className="p-1.5 text-slate-400 hover:text-[#007BFF] hover:bg-[#007BFF]/10 rounded-lg transition-colors"
+            className={styles.waterAction}
           >
             <Settings2 size={16} />
           </button>
@@ -77,10 +75,6 @@ export default function HydrationCard() {
             </div>
           )}
 
-          <div className="flex items-end gap-2 mb-1">
-            <span className="text-2xl font-bold text-slate-800">{totalMl.toLocaleString("pt-BR")}</span>
-            <span className="text-slate-400 text-sm mb-0.5">/ {goalMl.toLocaleString("pt-BR")} ml</span>
-          </div>
           <p className="text-xs text-slate-500 mb-3">
             {goalCompleted
               ? overageMl > 0
@@ -89,12 +83,8 @@ export default function HydrationCard() {
               : `Faltam ${remainingMl.toLocaleString("pt-BR")} ml`}
           </p>
 
-          <div className="h-2 bg-slate-100 rounded-full overflow-hidden mb-4" role="progressbar" aria-valuenow={progressPercentage} aria-valuemin={0} aria-valuemax={100} aria-label="Progresso da meta diária de água">
-            <motion.div
-              initial={false}
-              animate={{ width: `${progressPercentage}%` }}
-              className={`h-full rounded-full transition-colors ${goalCompleted ? "bg-[#28A745]" : "bg-gradient-to-r from-[#007BFF] to-[#28A745]"}`}
-            />
+          <div className={styles.waterTrack} role="progressbar" aria-valuenow={progressPercentage} aria-valuemin={0} aria-valuemax={100} aria-label="Progresso da meta diária de água">
+            {Array.from({length:12},(_,i)=><i key={i}><b style={{width:Math.max(0,Math.min(1,progressPercentage/100*12-i))*100+"%"}}/></i>)}
           </div>
 
           <div className="flex flex-wrap gap-2">
@@ -104,7 +94,7 @@ export default function HydrationCard() {
                 onClick={() => addWaterLog.mutate({ amountMl: amount })}
                 disabled={isAdding}
                 aria-label={`Adicionar ${amount} ml de água`}
-                className="flex-1 min-w-[84px] flex items-center justify-center gap-1 bg-[#007BFF]/10 hover:bg-[#007BFF]/20 text-[#007BFF] text-sm font-medium rounded-xl py-2.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className={styles.waterQuick}
               >
                 {isAdding ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
                 {amount} ml
@@ -113,7 +103,7 @@ export default function HydrationCard() {
             <button
               onClick={() => setShowCustomModal(true)}
               disabled={isAdding}
-              className="flex-1 min-w-[84px] flex items-center justify-center bg-slate-50 hover:bg-slate-100 text-slate-600 text-sm font-medium rounded-xl py-2.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className={styles.waterQuick}
             >
               Outro valor
             </button>

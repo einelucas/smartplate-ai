@@ -28,7 +28,7 @@ function Avatar({ avatarUrl, name }: { avatarUrl?: string | null; name: string }
   );
 }
 
-export default function NotificationsBell() {
+export default function NotificationsBell({ minimal = false }: { minimal?: boolean }) {
   const [open, setOpen] = useState(false);
   const router = useRouter();
   const { data } = useFriends();
@@ -54,9 +54,10 @@ export default function NotificationsBell() {
           // contador some de verdade, persistido no banco.
           if (next && unreadNotificationCount > 0) markAllRead.mutate();
         }}
-        className="relative w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center hover:bg-slate-200 transition-colors"
+        aria-label="Notificações" aria-expanded={open}
+        className={"relative w-10 h-10 rounded-full flex items-center justify-center transition-colors " + (minimal ? "hover:bg-white/70" : "bg-slate-100 hover:bg-slate-200")}
       >
-        <Bell size={18} className="text-slate-600" />
+        <Bell size={minimal ? 25 : 18} strokeWidth={minimal ? 1.5 : 2} className={minimal ? "text-[#191a18]" : "text-slate-600"} />
         {count > 0 && (
           <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 bg-red-500 rounded-full border-2 border-white flex items-center justify-center">
             <span className="text-[10px] font-bold text-white leading-none">{count > 9 ? "9+" : count}</span>
