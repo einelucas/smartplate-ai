@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { dailyWeights, weeklyChange, lastSevenDayChange, resolveWeightTimezone, loggingStreak, rangeWeights, estimateGoal, weightMilestones } from "../../lib/statistics/weight-progress";
+import { dailyWeights, weeklyChange, lastSevenDayChange, carryForwardWeights, sevenDaySummary, resolveWeightTimezone, loggingStreak, rangeWeights, estimateGoal, weightMilestones } from "../../lib/statistics/weight-progress";
 
 const points = [{date:"2026-11-01",weight:100},{date:"2026-11-08",weight:99},{date:"2026-11-15",weight:98}];
 test("weekly change respects actual elapsed days and sign", () => {
@@ -57,4 +57,25 @@ test("device timezone fallback and local day near midnight", () => {
   assert.equal(zone,"America/Campo_Grande");
   assert.equal(resolveWeightTimezone("America/Sao_Paulo","America/Campo_Grande"),"America/Sao_Paulo");
   assert.deepEqual(dailyWeights([{date:"2026-11-28T02:00:00Z",weight:106},{date:"2026-11-28T14:00:00Z",weight:105}],zone,new Date("2026-11-28T15:00:00Z")),[{date:"2026-11-27",weight:106},{date:"2026-11-28",weight:105}]);
+});
+
+test("graph fills missing days using earlier real measurements including today",()=>{
+  const entries=[{date:"2026-11-21",weight:112},{date:"2026-11-23",weight:110.6},{date:"2026-11-27",weight:106}];
+  const series=carryForwardWeights(entries,"2026-11-22","2026-11-28");
+  assert.equal(series.length,7);
+  assert.deepEqual(series.map(p=>p.weight),[112,110.6,110.6,110.6,110.6,106,106]);
+  assert.equal(series[0].sourceDate,"2026-11-21");
+  assert.equal(series[0].recorded,false);
+  assert.equal(series[6].recorded,false);
+  assert.equal(loggingStreak(entries,"2026-11-28").best,1);
+  const summary=sevenDaySummary(entries,"2026-11-28");
+  assert.equal(summary.change,-6);
+  assert.equal(summary.dailyAverage,-6/7);
+  assert.ok(Math.abs(summary.averageWeight! - 766.4/7)<1e-8);
+});
+test("never backfills before first known weight and does not infer stability from stale records",()=>{
+  const entries=[{date:"2026-11-25",weight:110}];
+  assert.equal(carryForwardWeights(entries,"2026-11-22","2026-11-28").length,4);
+  assert.equal(sevenDaySummary(entries,"2026-11-28").dailyAverage,null);
+  assert.equal(sevenDaySummary([{date:"2026-11-20",weight:112}],"2026-11-28").dailyAverage,null);
 });
