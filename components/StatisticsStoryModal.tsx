@@ -2,9 +2,12 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { Manrope } from "next/font/google";
 import { X, Share2, Download, TrendingUp, CalendarDays, Trophy } from "lucide-react";
 import type { AchievementsResponse } from "@/hooks/useAchievements";
 import { buildStorySvg, storyPng, getStoryWeights, STORY_THEMES, type StoryKind, type StoryTheme, type StoryPeriod, type WeightEntry, type WeeklyStory } from "@/lib/statistics/story";
+
+const storyFont = Manrope({ subsets: ["latin"], weight: "variable", display: "swap", preload: false });
 
 interface Props {
   onClose: () => void; weightLogs: WeightEntry[]; startWeight?: number; targetWeight?: number;
@@ -43,7 +46,7 @@ export default function StatisticsStoryModal({onClose,weightLogs,startWeight,tar
   },[kind,theme,period,weightLogs,startWeight,targetWeight,currentWeight,timezone,showWeight,showGraph,showGoal,showName,displayName,weekly.data,streak,achievement,hasWeights]);
   useEffect(()=>{
     let cancelled=false;let url:string|undefined;setRenderError(false);setShareError("");
-    if(svg) storyPng(svg).then(blob=>{
+    if(svg) storyPng(svg,storyFont.style.fontFamily).then(blob=>{
       if(cancelled)return;
       url=URL.createObjectURL(blob);
       setRendered({svg,file:new File([blob],`smartplate-estatisticas-${theme}.png`,{type:"image/png"}),url});
@@ -67,7 +70,7 @@ export default function StatisticsStoryModal({onClose,weightLogs,startWeight,tar
   const error=kind==="week"&&weekly.isError||kind==="achievement"&&achievements.isError;
   return (
     <dialog ref={dialog} onCancel={e=>{e.preventDefault();onClose();}} onClick={e=>{if(e.target===e.currentTarget)onClose();}}
-      aria-labelledby="statistics-story-title" className="fixed m-auto w-[calc(100%-1rem)] max-w-3xl max-h-[92dvh] overflow-auto rounded-2xl bg-white p-0 shadow-xl backdrop:bg-black/50">
+      aria-labelledby="statistics-story-title" className={storyFont.className+" fixed m-auto w-[calc(100%-1rem)] max-w-3xl max-h-[92dvh] overflow-auto rounded-2xl bg-white p-0 shadow-xl backdrop:bg-black/50"}>
       <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-slate-100 bg-white p-4">
         <div><h2 id="statistics-story-title" className="font-bold text-slate-800">Compartilhar estatísticas</h2><p className="text-xs text-slate-500">Crie um story personalizado</p></div>
         <button type="button" aria-label="Fechar" onClick={onClose} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"><X size={22}/></button>
