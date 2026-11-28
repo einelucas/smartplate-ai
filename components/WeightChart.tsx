@@ -1,19 +1,20 @@
 "use client";
 
-import React from 'react';
+import React, { useState } from 'react';
 import Chart from 'react-apexcharts';
 import type { ApexOptions } from 'apexcharts';
 
 const weightFormat = new Intl.NumberFormat('pt-BR', {
-  maximumFractionDigits: 1,
+  maximumFractionDigits: 2,
 });
 const shortDate = new Intl.DateTimeFormat('pt-BR', {
-  day: 'numeric',
-  month: 'short',
+  day: '2-digit',
+  month: '2-digit',
+  timeZone: 'UTC',
 });
 const fullDate = new Intl.DateTimeFormat('pt-BR', {
   dateStyle: 'medium',
-  timeStyle: 'short',
+  timeZone: 'UTC',
 });
 
 function formatDate(value: string | number | undefined, formatter: Intl.DateTimeFormat) {
@@ -21,6 +22,22 @@ function formatDate(value: string | number | undefined, formatter: Intl.DateTime
   const numeric = Number(value);
   const timestamp = Number.isFinite(numeric) ? numeric : Date.parse(String(value));
   return Number.isFinite(timestamp) ? formatter.format(timestamp) : '';
+}
+
+const DAY_MS = 86_400_000;
+const PERIODS = [30, 15, 7] as const;
+type Period = (typeof PERIODS)[number];
+
+// Calendar-day coordinates keep the axis evenly spaced, including days
+// without weigh-ins, without shifting local dates at midnight.
+function localDay(timestamp: number) {
+  const date = new Date(timestamp);
+  return Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / DAY_MS;
+}
+
+function formatDay(value: string | number | undefined, formatter: Intl.DateTimeFormat) {
+  if (value == null || value === '') return '';
+  return formatDate(Math.round(Number(value)) * DAY_MS, formatter);
 }
 
 interface WeightChartProps {
@@ -36,6 +53,7 @@ export default function WeightChart({
   targetWeight,
   currentWeight
 }: WeightChartProps) {
+  const [period, setPeriod] = useState<Period>(7);
   // Se não houver logs, não renderiza o gráfico
   if (!weightLogs || weightLogs.length === 0) {
     return (
@@ -55,11 +73,22 @@ export default function WeightChart({
 
   // Usa os dados reais do usuário
   const data = weightLogs;
-  const points = data
-    .map(({ date, weight }) => ({ x: new Date(date).getTime(), y: weight }))
-    .filter(({ x, y }) => Number.isFinite(x) && Number.isFinite(y))
-    .sort((a, b) => a.x - b.x);
-  const canZoom = points.length > 1 && points[0].x !== points[points.length - 1].x;
+  const today = localDay(Date.now());
+  const firstDay = today - period + 1;
+  const dailyWeights = new Map<number, { x: number; y: number }>();
+  // Show the latest real measurement of each calendar day. No fabricated
+  // weights for missing days; the original history remains untouched.
+  data
+    .map(({ date, weight }) => ({ timestamp: new Date(date).getTime(), weight }))
+    .filter(({ timestamp, weight }) => Number.isFinite(timestamp) && Number.isFinite(weight))
+    .sort((a, b) => a.timestamp - b.timestamp)
+    .forEach(({ timestamp, weight }) => {
+      const day = localDay(timestamp);
+      if (day >= firstDay && day <= today) {
+        dailyWeights.set(day, { x: day, y: weight });
+      }
+    });
+  const points = Array.from(dailyWeights.values());
   const options: ApexOptions = {
     chart: {
       type: 'area',
@@ -71,25 +100,24 @@ export default function WeightChart({
         tools: {
           download: true,
           selection: false,
-          zoom: canZoom,
-          zoomin: canZoom,
-          zoomout: canZoom,
-          pan: canZoom,
-          reset: canZoom,
+          zoom: false,
+          zoomin: false,
+          zoomout: false,
+          pan: false,
+          reset: false,
         },
-        autoSelected: 'zoom',
         export: {
           csv: {
             filename: 'historico-de-peso',
             headerCategory: 'Data',
             headerValue: 'Peso (kg)',
-            categoryFormatter: (value) => formatDate(value, fullDate),
+            categoryFormatter: (value) => formatDay(value, shortDate),
           },
           svg: { filename: 'progresso-de-peso' },
           png: { filename: 'progresso-de-peso' },
         },
       },
-      zoom: { enabled: canZoom, type: 'x', allowMouseWheelZoom: false },
+      zoom: { enabled: false },
       animations: { enabled: false },
     },
     colors: ['#007BFF'],
@@ -119,17 +147,20 @@ export default function WeightChart({
       padding: { top: 12, left: 0, right: 8 },
     },
     xaxis: {
-      type: 'datetime',
+      type: 'numeric',
+      min: firstDay,
+      max: today,
+      // Seven daily labels, or about six spaced labels on longer periods.
+      tickAmount: period === 7 ? 6 : 5,
       axisBorder: { show: false },
       axisTicks: { show: false },
       tooltip: { enabled: false },
       labels: {
-        datetimeUTC: false,
         showDuplicates: false,
         hideOverlappingLabels: true,
         rotate: 0,
         style: { fontSize: '10px', colors: '#94a3b8' },
-        formatter: (value, timestamp) => formatDate(timestamp ?? value, shortDate),
+        formatter: (value) => formatDay(value, shortDate),
       },
     },
     yaxis: {
@@ -144,10 +175,10 @@ export default function WeightChart({
     tooltip: {
       shared: true,
       intersect: false,
-      x: { formatter: (value) => formatDate(value, fullDate) },
+      x: { formatter: (value) => formatDay(value, fullDate) },
       y: { formatter: (value) => weightFormat.format(value) + ' kg' },
     },
-    noData: { text: 'Nenhum registro de peso encontrado.' },
+    noData: { text: 'Nenhum registro neste período.' },
   };
   const firstWeight = startWeight || data[0]?.weight || 0;
   const lastWeight = currentWeight || data[data.length - 1]?.weight || 0;
@@ -171,8 +202,26 @@ export default function WeightChart({
         </span>
       </div>
       
-      <div className="h-52 min-w-0">
+      <div className="relative h-52 min-w-0">
+        <div className="absolute left-0 top-0 z-10 flex items-center gap-1" role="group" aria-label="Período do gráfico de peso">
+          {PERIODS.map((days) => (
+            <button
+              key={days}
+              type="button"
+              aria-pressed={period === days}
+              onClick={() => setPeriod(days)}
+              className={`rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#007BFF] ${
+                period === days
+                  ? 'bg-[#007BFF]/10 text-[#007BFF]'
+                  : 'text-slate-500 hover:bg-slate-50'
+              }`}
+            >
+              {days}D
+            </button>
+          ))}
+        </div>
         <Chart
+          key={period}
           type="area"
           width="100%"
           height="100%"
