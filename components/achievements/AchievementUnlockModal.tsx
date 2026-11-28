@@ -247,7 +247,7 @@ export default function AchievementUnlockModal({
           achievements={resolved}
           onSeeAll={() => {
             onDismissAll();
-            router.push("/profile?achievements=1");
+            router.push("/progress?achievements=1");
           }}
           onContinue={onDismissAll}
         />
@@ -262,7 +262,7 @@ export default function AchievementUnlockModal({
         achievement={current}
         onSeeAchievement={() => {
           onDismissAll();
-          router.push(`/profile?achievement=${encodeURIComponent(current.code)}`);
+          router.push(`/progress?achievement=${encodeURIComponent(current.code)}`);
         }}
         onContinue={() => onDismissOne(current.code)}
       />

@@ -8,8 +8,9 @@ import { Toaster } from "react-hot-toast";
 import { Spinner } from "@/components/spinner";
 import { Scale, Ruler, Target, Edit, Flame, Star, Trophy, Share2 } from "lucide-react";
 import AdherenceRing from "@/components/AdherenceRing";
-import ChartSkeleton from "@/components/skeletons/ChartSkeleton";
-import ProfileSkeleton from "@/components/skeletons/ProfileSkeleton";
+import ProgressOverview from "@/components/ProgressOverview";
+import ProgressLoading from "./loading";
+import styles from "./progress.module.css";
 import BeforeAfterSection from "@/components/BeforeAfterSection";
 import AchievementsSummaryCard from "@/components/AchievementsSummaryCard";
 import ActivitySummaryCard from "@/components/ActivitySummaryCard";
@@ -19,7 +20,6 @@ import { useProfile } from "@/hooks/useProfile";
 import { formatHeightMeters, findLabel, DIET_GOALS, DIET_TYPES, COOKING_LEVELS, BUDGET_LEVELS } from "@/lib/profile/options";
 import { calculateMealAdherence } from "@/lib/mealplan";
 
-const WeightChart = dynamic(() => import("@/components/WeightChart"), { ssr: false, loading: () => <ChartSkeleton /> });
 const StatisticsStoryModal = dynamic(() => import("@/components/StatisticsStoryModal"), { ssr: false });
 const EditProfileModal = dynamic(() => import("@/components/EditProfileModal"), { ssr: false });
 
@@ -42,14 +42,13 @@ export default function ProgressPage() {
   } = useProfile();
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [newWeight, setNewWeight] = useState("");
   const [showStatisticsStory, setShowStatisticsStory] = useState(false);
 
-  const { data: weightLogs = [], isLoading: isLoadingWeightLogs } = useQuery<WeightLog[]>({
+  const { data: weightLogs = [], isLoading: isLoadingWeightLogs, isError: weightError } = useQuery<WeightLog[]>({
     queryKey: ["weight-logs"],
     queryFn: async () => {
       const res = await fetch("/api/weight-logs");
-      if (!res.ok) return [];
+      if (!res.ok) throw new Error("Não foi possível carregar os pesos");
       const data = await res.json();
       if (Array.isArray(data)) return data;
       if (Array.isArray(data?.logs)) return data.logs;
@@ -108,16 +107,18 @@ export default function ProgressPage() {
   const isLoading = isLoadingWeightLogs || profileHookLoading;
 
   if (isLoading) {
-    return <ProfileSkeleton />;
+    return <ProgressLoading />;
   }
 
   return (
-    <div className="p-4 sm:p-8">
+    <div className={styles.screen}>
       <Toaster position="top-center" />
+      <ProgressOverview logs={weightLogs} currentWeight={currentWeight} startWeight={startWeight} targetWeight={targetWeight} timezone={socialProfile?.timezone} error={weightError} pending={addWeightLog.isPending} onRegister={(weight, onSuccess) => addWeightLog.mutate({ weight }, { onSuccess })} />
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className={styles.extras}>
+        <h2 className={styles.sectionTitle}>Mais sobre seu progresso</h2>
         {/* Coluna esquerda */}
-        <div className="lg:col-span-4 space-y-6">
+        <div className={styles.extraGroup}>
           {/* Dados físicos e preferências antes disponíveis no Perfil */}
           <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
             <div className="flex items-center justify-between gap-2 mb-4">
@@ -226,15 +227,15 @@ export default function ProgressPage() {
         </div>
 
         {/* Coluna direita */}
-        <div className="lg:col-span-8 space-y-6">
+        <div className={styles.extraGroup}>
           {/* Gamificação — grid-cols-3 sem breakpoint deixava cada card com
               menos de ~25px pra texto num celular (icone 40px + gap ocupavam
               a maior parte da largura da célula), cortando "sequência atual"/
               "XP total"/"maior sequência: N". Empilha em 1 coluna até `sm`
               (640px), onde já cabe confortavelmente em 3. */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex items-center gap-3">
-              <div className="w-10 h-10 bg-orange-50 rounded-xl flex items-center justify-center flex-shrink-0">
+          <div className="grid grid-cols-3 gap-2">
+            <div className="bg-white rounded-2xl p-3 flex flex-col sm:flex-row items-start sm:items-center gap-2">
+              <div className="hidden sm:flex w-9 h-9 bg-[#f1f7fa] rounded-xl items-center justify-center flex-shrink-0">
                 <Flame size={18} className="text-orange-500" />
               </div>
               <div className="min-w-0">
@@ -243,7 +244,7 @@ export default function ProgressPage() {
               </div>
             </div>
             <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex items-center gap-3">
-              <div className="w-10 h-10 bg-[#007BFF]/10 rounded-xl flex items-center justify-center flex-shrink-0">
+              <div className="hidden sm:flex w-9 h-9 bg-[#f1f7fa] rounded-xl items-center justify-center flex-shrink-0">
                 <Star size={18} className="text-[#007BFF]" />
               </div>
               <div className="min-w-0">
@@ -252,7 +253,7 @@ export default function ProgressPage() {
               </div>
             </div>
             <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex items-center gap-3">
-              <div className="w-10 h-10 bg-[#28A745]/10 rounded-xl flex items-center justify-center flex-shrink-0">
+              <div className="hidden sm:flex w-9 h-9 bg-[#f1f7fa] rounded-xl items-center justify-center flex-shrink-0">
                 <Trophy size={18} className="text-[#28A745]" />
               </div>
               <div className="min-w-0">
@@ -263,12 +264,12 @@ export default function ProgressPage() {
           </div>
 
           <button type="button" onClick={() => setShowStatisticsStory(true)}
-            className="w-full min-h-[48px] flex items-center justify-center gap-2 rounded-2xl border border-[#007BFF]/20 bg-[#007BFF]/5 px-4 py-3 text-sm font-semibold text-[#007BFF] transition-colors hover:bg-[#007BFF]/10">
+            className={styles.share}>
             <Share2 size={18} /> Compartilhar estatísticas
           </button>
 
           {/* Adesão + Antes & Depois */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          <div className={styles.extraGroup}>
             <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
               <h3 className="font-bold text-slate-800 mb-4">Adesão ao Plano</h3>
               <div className="flex items-center justify-around flex-wrap gap-4">
@@ -296,44 +297,6 @@ export default function ProgressPage() {
           <ActivitySummaryCard />
           <ActivityGoalsCard />
           <ActivityInsightsCard />
-
-          {/* Registrar novo peso */}
-          <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
-            <div className="flex items-center gap-3">
-              <Scale size={16} className="text-[#007BFF] flex-shrink-0" />
-              <input
-                type="number"
-                step="0.1"
-                inputMode="decimal"
-                value={newWeight}
-                onChange={(e) => setNewWeight(e.target.value)}
-                placeholder="Registrar peso de hoje (kg)"
-                className="min-w-0 flex-1 px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#007BFF]"
-              />
-              <button
-                onClick={() => {
-                  const weight = Number(newWeight);
-                  if (!newWeight.trim() || Number.isNaN(weight) || weight <= 0) return;
-                  addWeightLog.mutate({ weight }, { onSuccess: () => setNewWeight("") });
-                }}
-                disabled={!newWeight.trim() || Number.isNaN(Number(newWeight)) || addWeightLog.isPending}
-                className="bg-[#007BFF] hover:bg-[#0056b3] text-white text-sm font-medium px-4 py-2 rounded-xl disabled:opacity-50 transition-colors"
-              >
-                {addWeightLog.isPending ? "..." : "Registrar"}
-              </button>
-            </div>
-          </div>
-
-          {/* Gráfico de peso — só se tiver logs */}
-          {weightLogs.length > 0 ? (
-            <WeightChart weightLogs={weightLogs} startWeight={startWeight} targetWeight={targetWeight} currentWeight={currentWeight} />
-          ) : (
-            <div className="bg-white rounded-2xl p-12 text-center shadow-sm border border-slate-100">
-              <p className="text-5xl mb-4">📊</p>
-              <h3 className="text-lg font-semibold text-slate-700 mb-2">Registre seu progresso</h3>
-              <p className="text-slate-500 mb-6">Registre seu peso para ver seu progresso ao longo do tempo.</p>
-            </div>
-          )}
 
           {/* Conquistas */}
           <AchievementsSummaryCard />

@@ -5,7 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Bell, ChevronRight, LogOut, Plug, Zap, type LucideIcon } from "lucide-react";
 import { useProfile } from "@/hooks/useProfile";
 import { useSubscriptionStatus } from "@/hooks/useSubscriptionStatus";
@@ -67,6 +67,10 @@ export default function ProfilePage() {
   const { signOut } = useClerk();
   const router = useRouter();
   const queryClient = useQueryClient();
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.has("achievement") || params.has("achievements")) router.replace("/progress?" + params.toString());
+  }, [router]);
   const { physicalData, preferences, socialProfile, isLoading } = useProfile();
   const { data: subscription } = useSubscriptionStatus();
   const { data: hydration } = useHydrationSummary();
