@@ -13,7 +13,7 @@ const periods: { value: WeightRange; label: string; subtitle: string }[] = [
   { value: "all", label: "Tudo", subtitle: "Todo o período" },
 ];
 const decimal = (n: number | undefined | null) => n == null || !Number.isFinite(n) ? "—" : n.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
-const signed = (n: number | null) => n == null ? "—" : (Math.abs(n) < .05 ? "0,0" : (n < 0 ? "−" : "+") + decimal(Math.abs(n)));
+const signed = (n: number | null, digits = 1) => n == null ? "—" : (Math.abs(n) < 0.5 * 10 ** -digits ? (0).toLocaleString("pt-BR", {minimumFractionDigits:digits, maximumFractionDigits:digits}) : (n < 0 ? "−" : "+") + Math.abs(n).toLocaleString("pt-BR", {minimumFractionDigits:digits, maximumFractionDigits:digits}));
 const dateLabel = (date: string) => toUtcDateOnly(date).toLocaleDateString("pt-BR", { day: "numeric", month: "short", timeZone: "UTC" }).replace(" de ", " ").replace(".", "");
 const validWeight = (weight: number | undefined): weight is number => weight !== undefined && Number.isFinite(weight) && weight > 0;
 
@@ -119,8 +119,8 @@ export default function ProgressOverview({ logs, currentWeight, startWeight, tar
     <div className={styles.twoCards}>
       <section className={styles.card + " " + styles.statCard}>
         <h2>Média semanal</h2>
-        <div className={styles.statNumber}><span>{signed(weekly)}</span><small>kg/dia</small></div>
-        <div className={styles.weekTicks} role="img" aria-label={weekly===null ? "Sem dados suficientes" : "Escala da variação média diária: de menos " + decimal(week.scale) + " a mais " + decimal(week.scale) + " kg por dia; marcador em " + signed(weekly)}>{Array.from({length:29},(_,i)=><i key={i} className={weekly!==null && i===weeklyTick?styles.orangeTick:weekly!==null&&i>=Math.min(14,weeklyTick)&&i<=Math.max(14,weeklyTick)?styles.blackTick:undefined}/>)}</div>
+        <div className={styles.statNumber}><span>{signed(weekly, 2)}</span><small>kg/dia</small></div>
+        <div className={styles.weekTicks} role="img" aria-label={weekly===null ? "Sem dados suficientes" : "Escala da variação média diária: de menos " + decimal(week.scale) + " a mais " + decimal(week.scale) + " kg por dia; marcador em " + signed(weekly, 2)}>{Array.from({length:29},(_,i)=><i key={i} className={weekly!==null && i===weeklyTick?styles.orangeTick:weekly!==null&&i>=Math.min(14,weeklyTick)&&i<=Math.max(14,weeklyTick)?styles.blackTick:undefined}/>)}</div>
         <div className={styles.rulerLabels}><span>−{decimal(week.scale)}</span><span>0</span><span>+{decimal(week.scale)}</span></div>
         <p>{week.change === null ? "Sem dados para 7 dias" : "Total em 7 dias: " + signed(week.change) + " kg"}<span className={styles.streakStatus}>Peso médio: {decimal(week.averageWeight)} kg</span></p>
       </section>
