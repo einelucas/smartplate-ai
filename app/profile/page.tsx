@@ -8,7 +8,7 @@ import dynamic from "next/dynamic";
 import { Toaster } from "react-hot-toast";
 import { useRouter } from "next/navigation";
 import { Spinner } from "@/components/spinner";
-import { Camera, Scale, Ruler, Target, LogOut, Edit, Flame, Star, Trophy, Plug, Sparkles, Lock } from "lucide-react";
+import { Camera, Scale, Ruler, Target, LogOut, Edit, Flame, Star, Trophy, Plug, Sparkles, Lock, Share2 } from "lucide-react";
 import AdherenceRing from "@/components/AdherenceRing";
 import ChartSkeleton from "@/components/skeletons/ChartSkeleton";
 import ProfileSkeleton from "@/components/skeletons/ProfileSkeleton";
@@ -24,6 +24,7 @@ import { formatHeightMeters, findLabel, DIET_GOALS, DIET_TYPES, COOKING_LEVELS, 
 import { calculateMealAdherence } from "@/lib/mealplan";
 
 const WeightChart = dynamic(() => import("@/components/WeightChart"), { ssr: false, loading: () => <ChartSkeleton /> });
+const StatisticsStoryModal = dynamic(() => import("@/components/StatisticsStoryModal"), { ssr: false });
 const EditProfileModal = dynamic(() => import("@/components/EditProfileModal"), { ssr: false });
 
 interface WeightLog {
@@ -49,6 +50,7 @@ export default function ProfilePage() {
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [newWeight, setNewWeight] = useState("");
+  const [showStatisticsStory, setShowStatisticsStory] = useState(false);
 
   const { data: weightLogs = [], isLoading: isLoadingWeightLogs } = useQuery<WeightLog[]>({
     queryKey: ["weight-logs"],
@@ -340,6 +342,11 @@ export default function ProfilePage() {
             </div>
           </div>
 
+          <button type="button" onClick={() => setShowStatisticsStory(true)}
+            className="w-full min-h-[48px] flex items-center justify-center gap-2 rounded-2xl border border-[#007BFF]/20 bg-[#007BFF]/5 px-4 py-3 text-sm font-semibold text-[#007BFF] transition-colors hover:bg-[#007BFF]/10">
+            <Share2 size={18} /> Compartilhar estatísticas
+          </button>
+
           {/* Adesão + Antes & Depois */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
@@ -412,6 +419,13 @@ export default function ProfilePage() {
           <AchievementsSummaryCard />
         </div>
       </div>
+
+      {showStatisticsStory && (
+        <StatisticsStoryModal onClose={() => setShowStatisticsStory(false)}
+          weightLogs={weightLogs} startWeight={startWeight} targetWeight={targetWeight}
+          currentWeight={currentWeight} displayName={displayName} timezone={socialProfile?.timezone}
+          streak={gamification?.currentStreak} />
+      )}
 
       {/* Modal de edição */}
       <EditProfileModal
