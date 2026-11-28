@@ -25,7 +25,8 @@ function WeightGraph({ points, start, end, target }: { points: DailyWeight[]; st
   const low = Math.min(...values), high = Math.max(...values);
   const margin = Math.max(.7, (high - low) * .16);
   const min = low - margin, max = high + margin;
-  const days = Math.max(1, dayDistance(start, end));
+  const elapsedDays = dayDistance(start, end);
+  const days = Math.max(1, elapsedDays);
   const x = (date: string) => pad + dayDistance(start, date) / days * (w - 2 * pad);
   const y = (weight: number) => pad + (max - weight) / (max - min) * (h - 2 * pad);
   const coords = points.map(p => ({ ...p, x: x(p.date), y: y(p.weight) }));
@@ -37,8 +38,8 @@ function WeightGraph({ points, start, end, target }: { points: DailyWeight[]; st
     return d + " C " + mid + " " + prev.y + ", " + mid + " " + p.y + ", " + p.x + " " + p.y;
   }, "");
   const area = line + " L " + last.x + " " + h + " L " + first.x + " " + h + " Z";
-  const tickCount = Math.min(4, days + 1);
-  const labels = Array.from(new Set(Array.from({ length: tickCount }, (_, i) => shiftDay(start, Math.round(days * i / Math.max(1, tickCount - 1))))));
+  const tickCount = Math.min(4, elapsedDays + 1);
+  const labels = Array.from(new Set(Array.from({ length: tickCount }, (_, i) => shiftDay(start, Math.round(elapsedDays * i / Math.max(1, tickCount - 1))))));
   const active = coords.find(p => p.date === selected);
   return <div className={styles.graph}>
     <svg viewBox={"0 0 " + w + " " + h} className={styles.chart} role="img" aria-label="Histórico de peso no período selecionado">
@@ -63,18 +64,21 @@ export default function ProgressOverview({ logs, currentWeight, startWeight, tar
   const historyRef = useRef<HTMLDialogElement>(null);
   const now = new Date(), today = getLocalDateString(now, timezone);
   const all = dailyWeights(logs, timezone, now);
+  const rawHistory = logs.filter(p => Number.isFinite(Date.parse(p.date)) && Date.parse(p.date) <= now.getTime() && validWeight(p.weight)).sort((a,b)=>Date.parse(b.date)-Date.parse(a.date));
   const selected = rangeWeights(all, range, today);
   const current = all[all.length-1]?.weight ?? currentWeight;
   const first = all[0];
   const total = current != null && first ? current - first.weight : null;
   const weekly = weeklyChange(selected.points);
+  // A escala visual representa a variação observada, com zero no centro.
+  const weeklyTick = weekly === null ? -1 : Math.round(13.5 + Math.max(-1, Math.min(1, weekly / 2)) * 13.5);
   const streak = loggingStreak(all, today);
   const estimated = estimateGoal(selected.points, targetWeight);
   const milestones = weightMilestones(all, startWeight, targetWeight);
   const completed = milestones.filter(m => m.date !== null).length;
   const targetReached = validWeight(targetWeight) && validWeight(current) && (validWeight(startWeight) ? (startWeight === targetWeight ? current === targetWeight : Math.sign(targetWeight - startWeight) * (current - targetWeight) >= 0) : current === targetWeight);
   function exportHistory() {
-    const csv = ["Data;Peso (kg)", ...all.map(p => p.date + ";" + String(p.weight).replace(".", ","))].join("\n");
+    const csv = ["Data;Peso (kg)", ...rawHistory.map(p => new Date(p.date).toISOString() + ";" + String(p.weight).replace(".", ","))].join("\n");
     const url = URL.createObjectURL(new Blob(["\ufeff", csv], {type:"text/csv;charset=utf-8"}));
     const a = document.createElement("a"); a.href=url; a.download="historico-de-peso.csv"; a.click(); URL.revokeObjectURL(url);
   }
@@ -100,7 +104,7 @@ export default function ProgressOverview({ logs, currentWeight, startWeight, tar
       <section className={styles.card + " " + styles.statCard}>
         <h2>Média semanal</h2>
         <div className={styles.statNumber}><span>{signed(weekly)}</span><small>kg/sem</small></div>
-        <div className={styles.weekTicks} aria-hidden="true">{Array.from({length:28},(_,i)=><i key={i} className={weekly!==null && i===11?styles.orangeTick:weekly!==null&&i<11?styles.blackTick:undefined}/>)}</div>
+        <div className={styles.weekTicks} aria-hidden="true">{Array.from({length:28},(_,i)=><i key={i} className={weekly!==null && i===weeklyTick?styles.orangeTick:weekly!==null&&i>=Math.min(14,weeklyTick)&&i<=Math.max(14,weeklyTick)?styles.blackTick:undefined}/>)}</div>
         <p>{targetReached ? "Meta atingida" : estimated && estimated >= today ? "Meta por volta de " + dateLabel(estimated) : weekly===null ? "Registre em dias diferentes" : "Estimativa indisponível"}</p>
       </section>
       <section className={styles.card + " " + styles.statCard}>
@@ -123,8 +127,8 @@ export default function ProgressOverview({ logs, currentWeight, startWeight, tar
     </dialog>
     <dialog ref={historyRef} className={styles.dialog}>
       <div className={styles.dialogTitle}><h2>Histórico de peso</h2><button type="button" aria-label="Fechar" onClick={()=>historyRef.current?.close()}><X size={22}/></button></div>
-      <button type="button" className={styles.export} onClick={exportHistory} disabled={!all.length}><Download size={16}/> Exportar CSV</button>
-      <div className={styles.historyList}>{[...all].reverse().map(p=><div key={p.date}><span>{dateLabel(p.date)} · {p.date.slice(0,4)}</span><span>{decimal(p.weight)} kg</span></div>)}{!all.length&&<p>Nenhum registro encontrado.</p>}</div>
+      <button type="button" className={styles.export} onClick={exportHistory} disabled={!rawHistory.length}><Download size={16}/> Exportar CSV</button>
+      <div className={styles.historyList}>{rawHistory.map((p,i)=><div key={p.date+"-"+i}><span>{new Date(p.date).toLocaleString("pt-BR",{timeZone: timezone || "UTC",dateStyle:"short",timeStyle:"short"})}</span><span>{decimal(p.weight)} kg</span></div>)}{!rawHistory.length&&<p>Nenhum registro encontrado.</p>}</div>
     </dialog>
   </>;
 }
